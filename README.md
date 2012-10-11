@@ -18,11 +18,44 @@ Currently all testing is done on the new 9.2 release.
 
 ## Usage
 
-Currently corpus input and processing is functional, but collocation extraction (the main feature) is missing.
+Currently corpus input and processing is functional, but collocation extraction (the main feature) is missing, so at least for the near future, natsume-server is only interesting for the developer.
+
+### Running with lein
+
+The simplest way to run natsume-server is to use [lein](https://github.com/technomancy/leiningen) in the project directory.
+
+```bash
+lein run /path/to/corpus/dir/
+```
+
+## Planned Features
+
+### Integration with automatic error correction/feedback system Natane
+
+- provide an API from Natsume to Natane to ease register (genre) error detection
+    - at the token level
+    - at the collocation level
+    - for both levels include the option of sending back example sentences with query included (this should also be offered as a separate API)
+- provide fulltext search API (perhaps using Elastic Search ([Elastisch](https://github.com/clojurewerkz/elastisch) in Clojure); maybe even generalize it so that register error detection could be possible)
+
+### Integration with reading assistance system Asunaro
+
+- add functionality to help read example sentences in Natsume
+    - tree view or dependency link view in JavaScript (by translating the existing Java program; or from scratch for the dependency view)
+
+### Learner dashboard
+
+- provide a dashboard displaying everything the user did
+    - need to record all user input and clicks (an expansion of the users/history tables in Asunaro)
+    - provide a user login system (OAuth?/standard)
+- provide review/learning tasks based on users input and level
+    - help build up vocabulary by using cloze test-like quizzes
+    - integrate with Natane learner database to train against common errors (per native language)
 
 ## Roadmap
 
 0.2.0 - initial release
+
 0.3.0 - basic collocation extraction
 
 ...
