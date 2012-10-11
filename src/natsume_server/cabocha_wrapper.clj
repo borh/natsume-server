@@ -2,7 +2,8 @@
   (:require [clojure.string :as string]
             [clojure.java.shell :as shell]
             [clojure.zip :as z])
-  (:use [taoensso.timbre :as timbre :only (trace debug info warn fatal spy)] ; error collision with one of aleph or lamina
+  (:use [taoensso.timbre :as timbre :only (trace debug info warn fatal spy)]
+        ;; timbre error collision with one of aleph or lamina
         [lamina core]
         [aleph http formats])
   (:import [com.ibm.icu.text Transliterator Normalizer]))
@@ -97,13 +98,15 @@
 
 (def unidic-features
   "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `1.3.12`."
-  [:pos1 :pos2 :pos3 :pos4 :cType :cForm :lForm :lemma :orth :pron :kana :goshu :orthBase :pronBase :kanaBase :formBase :iType :iForm :iConType :fType :fForm :fConType :aType :aConType :aModType])
+  [:pos1 :pos2 :pos3 :pos4 :cType :cForm :lForm :lemma :orth :pron
+   :kana :goshu :orthBase :pronBase :kanaBase :formBase :iType :iForm
+   :iConType :fType :fForm :fConType :aType :aConType :aModType])
 
 (defn parse-cabocha-morpheme
   "Parses MeCab/UniDic (via CaboCha) formatted output line and converts it into a map.
    TODO possibly make this into a record, if performance becomes an issue."
   [s position]
-  (let [[orth features ne] (string/split s #"\t") ;; skipping because :orth is also contained in split-features
+  (let [[orth features ne] (string/split s #"\t")
         split-features (string/split features #",")]
     ;;(when (< (count split-features) 9) (pprint split-features))
     ;;(println (get split-features 11))
@@ -125,13 +128,8 @@
 (defn is-header? [s] (re-find #"^\*[^\t\*]+$" s))
 (defn is-eos? [s] (= "EOS" s))
 (defn parse-cabocha-format
-  "Parses CaboCha output and returns a nested list of chunks (with associated id, link, etc.) and tokens (morphemes).
-  TODO There might be a way to do this with zippers?
-  Doing it with zippers should clean up the code and make it possible to have real 'nested' type structures.
-  After more consideration, there is no way to make a tree structure represent the dual-linked (adjacency and dependency link) graph structure of CaboCha dependency grammar trees, short of making it recurive in nature/making custom tree traversal code.
-  Therefore making separate custom traversal code for both adjacency and link structure makes more sense (at the expense of having two ways of traversing trees instead of one -- which is unavoidable anyway?).
-  Zippers can still be used to construct the initial structure.
-  We should use vectors to support `nth` type access with O(1) costs."
+  "Parses CaboCha output and returns a nested list of chunks (with
+  associated id, link, etc.) and tokens (morphemes)."
   [s]
   (:out (let [lines (string/split-lines s)] ; discard position index and only return :out
           (reduce
@@ -142,11 +140,13 @@
                                             #(conj % (parse-cabocha-header line)))
                (is-eos? line) accum ; do nothing
                :else (let [last-chunk-index (dec (count (get-in accum [:out])))
-                           morpheme (parse-cabocha-morpheme line (:position accum))] ; append to last chunk
+                           morpheme (parse-cabocha-morpheme line (:position accum))]
+                       ;; append to last chunk
                        (-> accum
                            (update-in [:out last-chunk-index :tokens] #(conj % morpheme))
                            (assoc :position (inc (:end morpheme))))))) ; add new position
-           {:position 0 :out []} ;; TODO find better way to have 2 separate reduce accumulators
+           {:position 0 :out []}
+           ;; TODO find better way to have 2 separate reduce accumulators
            lines))))
 
 (defn tree-branch?
@@ -246,9 +246,9 @@
 (defn next-morpheme
   [t]
   (cond
-    (z/end? t) (do #_(pprint "next-morpheme:end") t)                ; (z/root t)
+   (z/end? t) (do #_(pprint "next-morpheme:end") t) ; (z/root t)
     (contains? (z/node t) :tokens) (do
-                                     ;(pprint "next-morpheme:chunk")
+                                     ;;(pprint "next-morpheme:chunk")
                                      (-> t z/down)) ; in chunk
     (nil? (z/right t)) (-> t next-chunk next-morpheme)
     #_(if (nil? (-> t z/up z/right))
@@ -307,17 +307,18 @@
     (case type
       :noun ()))) ; FIXME
 
+;; Pre-processing (normalization, common substitutions, etc.) is done on the string before it is processed by CaboCha.
+;; The whole process is as follows:
+;;
+;; 1. save original string for later step
+;; 2. do Unicode NFKC on the input string
+;; 3. substitute all occurrences of `．，` with `。、`, and half- with full-width characters
+;; 4. send resulting string to CaboCha
+;; 5. tag all chunks by chunk type (noun phrase, adjectival phrase etc. by scanning head-tail information (:head-type = :noun, :tail-type :p-ga, etc.)
+;; 5. join certain classes of chunks like `プレゼントをする`, i.e. `名詞＋を＋する／名詞＋に＋なる`
+;; 6. replace the `orth` fields of all morphemes in CaboCha output with characters in the original string
 (defn string-to-tree
-  "Converts string into CaboCha tree data structure.
-   Pre-processing (normalization, common substitutions, etc.) is done on the string before it is processed by CaboCha.
-   The whole process is as follows:
-   1) save original string for later step
-   2) do Unicode NFKC on the input string
-   3) substitute all occurrences of `．，` with `。、`, and half- with full-width characters
-   4) send resulting string to CaboCha
-   5) tag all chunks by chunk type (noun phrase, adjectival phrase etc. by scanning head-tail information (:head-type = :noun, :tail-type :p-ga, etc.)
-   5) join certain classes of chunks like `プレゼントをする`, i.e. `名詞＋を＋する／名詞＋に＋なる`
-   6) replace the `orth` fields of all morphemes in CaboCha output with characters in the original string"
+  "Converts string into CaboCha tree data structure."
   [s]
   (-> s
       normalize-nfkc             ;2
@@ -328,3 +329,13 @@
       get-cabocha-websocket      ;4 ;; faster until we get JNI bindings working
       parse-cabocha-format       ;4
       ))
+
+;; # TODO
+;;
+;; - is there any way to parse CaboCha input with zippers?
+;;
+;;   Doing it with zippers should clean up the code and make it possible to have real 'nested' type structures.
+;;   After more consideration, there is no way to make a tree structure represent the dual-linked (adjacency and dependency link) graph structure of CaboCha dependency grammar trees, short of making it recurive in nature/making custom tree traversal code.
+;;   Therefore making separate custom traversal code for both adjacency and link structure makes more sense (at the expense of having two ways of traversing trees instead of one -- which is unavoidable anyway?).
+;;   Zippers can still be used to construct the initial structure.
+;;   We should use vectors to support `nth` type access with O(1) costs.

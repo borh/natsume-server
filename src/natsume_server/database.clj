@@ -2,32 +2,14 @@
 ;; Natsume uses the [`korma`](http://sqlkorma.com/) library to access
 ;; the PostgreSQL database. The database user, password and schema
 ;; must be set up in a separate step outlined in the Deployment README.
-;; TODO investigate lobos: http://www.vijaykiran.com/2012/01/17/web-application-development-with-clojure-part-2/
-;; TODO: read before deploying: http://www.depesz.com/2012/06/10/why-is-upsert-so-complicated/
-;; TODO: http://clojureelasticsearch.info/articles/facets.html <-- faceted fulltext search, look into how it works with postgres
 (ns natsume-server.database
   (:use ;;[korma.incubator.core]
-        [korma.db]
-        [korma.core]
-        [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)])
+   [korma.db]
+   [korma.core]
+   [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)])
   (:require [clojure.java.jdbc :as sql]
             [clojure.string :as string]
             #_[taoensso.carmine :as r]))
-
-;;;; Redis setup with `carmine`.
-;;(def pool (r/make-conn-pool :max-active 8))
-;;(def spec-server1 (r/make-conn-spec :host     "127.0.0.1"
-;;                                    :port     6379
-;;                                    :password "lala"
-;;                                    :timeout  4000))
-;;(defmacro carmine
-;;  "Acts like (partial with-conn pool spec-server1)."
-;;  [& body] `(r/with-conn pool spec-server1 ~@body))
-;;
-;;(defn token-incr
-;;  [pos lemma genres-id]
-;;  (carmine
-;;   (r/hincrby (str genres-id ":" pos) lemma 1)))
 
 ;; Atom data structure: pos -> lemma -> freq.
 ;; Defined using defonce to prevent overwriting on recompilation.
@@ -44,23 +26,7 @@
   []
   (reset! inmemory-tokens {}))
 
-;; MongoDB setup with `monger`.
-;; ...
-
-;; Clojure trie implementation.
-;; https://github.com/reverendpaco/clojure-dictionary-trie/blob/master/src/dictionary_trie/trie.clj
-;; We should only be upserting once per genre/run?
-;; *******************************************************************
-;; *******************************************************************
-;; *******************************************************************
-;; *******************************************************************
-;; What is the unit of computation here? sentence, file, genre????????
-;; *******************************************************************
-;; *******************************************************************
-;; *******************************************************************
-;; *******************************************************************
-
-;; PostgreSQL setup.
+;; # PostgreSQL setup.
 (def natsume-dbspec {:classname   "org.postgresql.Driver" ; must be in classpath
                      :subprotocol "postgresql"
                      :subname     "//localhost:5432/natsumedev"
@@ -69,8 +35,9 @@
 
 (defdb natsume-db natsume-dbspec)
 ;; Needs the following on the PostgreSQL server:
-;;CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD 'riDJMq98LpyWgB7F';
-;;CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
+;;
+;;     CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD 'riDJMq98LpyWgB7F';
+;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
 
 (defn drop-all-indexes
   "Remove indexes so we can reset tables."
@@ -80,9 +47,9 @@
    "DROP INDEX IF EXISTS idx_npv_mappings_npv_positions_id"
    "DROP INDEX IF EXISTS idx_npv_mappings_sentences_id"
    "DROP INDEX IF EXISTS idx_sentences_sources_id"
-;   "DROP INDEX IF EXISTS idx_token_freq_pos"
-;   "DROP INDEX IF EXISTS idx_token_freq_lemma"
-;   "DROP INDEX IF EXISTS idx_token_freq_genres_id"
+   ;; "DROP INDEX IF EXISTS idx_token_freq_pos"
+   ;; "DROP INDEX IF EXISTS idx_token_freq_lemma"
+   ;; "DROP INDEX IF EXISTS idx_token_freq_genres_id"
    "DROP INDEX IF EXISTS idx_orthbases_lemmas_id"
    "DROP INDEX IF EXISTS idx_orthbases_orthbase"
    "DROP INDEX IF EXISTS idx_orthbases_genres_freqs_orthbases_id"
@@ -90,7 +57,7 @@
    "DROP INDEX IF EXISTS idx_lemmas_pos2"
    "DROP INDEX IF EXISTS idx_lemmas_pos1"
    "DROP INDEX IF EXISTS idx_lemmas_lemma"
-;   "DROP INDEX IF EXISTS idx_lemmas_genres_id"
+   ;; "DROP INDEX IF EXISTS idx_lemmas_genres_id"
    "DROP INDEX IF EXISTS idx_sources_genres_id"
    "DROP INDEX IF EXISTS idx_sources_subgenres_id"
    "DROP INDEX IF EXISTS idx_sources_subsubgenres_id"
@@ -112,7 +79,7 @@
    "DROP TABLE IF EXISTS orthbases_genres_freqs"
    "DROP TABLE IF EXISTS orthbases"
    "DROP TABLE IF EXISTS lemmas" ; do not recreate unless necessary
-;   "DROP TABLE IF EXISTS token_freq" ; do not recreate unless necessary
+   ;; "DROP TABLE IF EXISTS token_freq" ; do not recreate unless necessary
    "DROP TABLE IF EXISTS npv_positions"
    "DROP TABLE IF EXISTS npv"
    "DROP TABLE IF EXISTS subsubsubgenres"
@@ -121,10 +88,15 @@
    "DROP TABLE IF EXISTS genres"
    ))
 
+;; The unit of computation is the file (or one user input). This means
+;; that each file is processed in memory and only then commited to the
+;; database. For the following reason we will need a helper SQL
+;; function (upsert) to take care of the merging:
 (defn create-functions
   []
   (sql/do-commands
-   "CREATE OR REPLACE FUNCTION upsert_lemmas( q_pos varchar(16), q_lemma varchar(32), q_genres_id INTEGER ) RETURNS void as $$
+   "CREATE OR REPLACE FUNCTION
+upsert_lemmas( q_pos varchar(16), q_lemma varchar(32), q_genres_id INTEGER ) RETURNS void as $$
 BEGIN
     UPDATE lemmas SET freq=freq+1 WHERE pos=q_pos AND lemma=q_lemma AND genres_id=q_genres_id;
     IF FOUND THEN
@@ -179,14 +151,17 @@ $$ language plpgsql;"))
    [:chunk_depth  "real"]])
 
 #_(defmacro create-table-vector
-  [f name schema]
-  `(apply ~f
-    ~name
-    ~@schema))
+    [f name schema]
+    `(apply ~f
+            ~name
+            ~@schema))
 
 (defn create-tables-and-indexes
   "Create tables and indexes for Natsume.
-  TODO benchmark w/o indexes (i.e. create indexes only after all data has been inserted; this will probably not apply to collocations as those require a lot of lookups(?))."
+
+  TODO benchmark w/o indexes (i.e. create indexes only after all data
+  has been inserted; this will probably not apply to collocations as
+  those require a lot of lookups(?))."
   []
   (do
 
@@ -217,13 +192,13 @@ $$ language plpgsql;"))
      [:pos2      "varchar(8)"  "NOT NULL"]
      [:lemma     "varchar(32)" "NOT NULL"]
      [:goshu     "varchar(4)"  "NOT NULL"] ; or is 2 enough?
-     ;[:freq      "integer"     "NOT NULL"]
-     ;[:genres_id "smallint"    "NOT NULL" "REFERENCES genres(id)"]
+     ;;[:freq      "integer"     "NOT NULL"]
+     ;;[:genres_id "smallint"    "NOT NULL" "REFERENCES genres(id)"]
      )
     (sql/do-commands "CREATE INDEX idx_lemmas_pos1  ON lemmas (pos1)")
     (sql/do-commands "CREATE INDEX idx_lemmas_pos2  ON lemmas (pos2)")
     (sql/do-commands "CREATE INDEX idx_lemmas_lemma ON lemmas (lemma)")
-    ;(sql/do-commands "CREATE INDEX idx_lemmas_genres_id ON lemmas (genres_id)")
+    ;;(sql/do-commands "CREATE INDEX idx_lemmas_genres_id ON lemmas (genres_id)")
 
     (sql/create-table
      "orthbases"
@@ -264,7 +239,11 @@ $$ language plpgsql;"))
      "sentences"
      [:id           "serial"   "PRIMARY KEY"]
      [:text         "text"     "NOT NULL"]
-     [:paragraph_id "integer"  "NOT NULL"] ;; in the future, would it make sense to make a paragraphs table that included readability based on paragraphs; also another table for whole-file readability? (ie, the commas count is already based on paragraph/whole file per-sentence averaging)
+     ;; in the future, would it make sense to make a paragraphs table
+     ;; that included readability based on paragraphs; also another
+     ;; table for whole-file readability? (ie, the commas count is
+     ;; already based on paragraph/whole file per-sentence averaging)
+     [:paragraph_id "integer"  "NOT NULL"]
      [:sources_id   "integer"  "REFERENCES sources(id)"]
      ;; the following are raw numbers that are needed to calculate readability
      [:length       "smallint"]
@@ -344,9 +323,6 @@ $$ language plpgsql;"))
      "CREATE INDEX idx_npv_mappings_npv_positions_id ON npv_mappings (id)"
      "CREATE INDEX idx_npv_mappings_sentences_id     ON npv_mappings (id)")))
 
-;; TODO use (declare ...) to pre-declare entites
-;; TODO korma.incubator - try to get many-to-many relationships working
-
 (defentity genres
   (entity-fields :id :name))
 
@@ -371,13 +347,6 @@ $$ language plpgsql;"))
   (belongs-to subsubgenres)
   (belongs-to subsubsubgenres))
 
-
-;;                 :length :hiragana :katakana :kanji :romaji :commas :symbols
-;;                 :tokens :chunks :predicates
-;;                 :obi2_level :tateishi :shibasaki
-;;                 :jlpt_level :bccwj_level
-;;                 :link_dist :chunk_depth
-
 (def readability-keys
   (flatten (map first readability-fields-schema)))
 
@@ -387,8 +356,12 @@ $$ language plpgsql;"))
   (apply entity-fields ent fields))
 
 (defentity sentences
-  (entity-fields-vector (flatten (list :id :text :paragraph_id :sources_id
-                                  (filter (fn [x] (not= x :tateishi :shibasaki)) readability-keys))))
+  (entity-fields-vector (flatten
+                         (list
+                          :id :text :paragraph_id :sources_id
+                          (filter
+                           (fn [x] (not= x :tateishi :shibasaki))
+                           readability-keys))))
   (belongs-to sources))
 
 (defentity sentences_readability
@@ -397,8 +370,8 @@ $$ language plpgsql;"))
 
 (defentity paragraph_readability
   (entity-fields-vector (conj readability-keys
-                         :paragraph_id
-                         :sentences ))
+                              :paragraph_id
+                              :sentences ))
   (has-one sentences {:fk :paragraph_id}))
 
 (defentity sources_readability
@@ -431,8 +404,11 @@ $$ language plpgsql;"))
   (do (invoke-with-connection create-tables-and-indexes)
       (invoke-with-connection create-functions)))
 
-;; ## Database query functions
-;; We can speed lookups by storing frequently checked data in memory, at the expense of memory (be sure to leave out sentences and infrequently accessed data).
+;; # Database query functions
+;;
+;; We can speed lookups by storing frequently checked data in memory,
+;; at the expense of memory (be sure to leave out sentences and
+;; infrequently accessed data).
 
 (defn insert-if-not-exist
   "Inserts `vals` into entity `e` if vals do not already exist.
@@ -447,29 +423,36 @@ $$ language plpgsql;"))
 
 (defn update-sources
   "Inserts sources meta-information from the corpus into the database.
-  If a file is not present in `sources.tsv`, bail with a fatal error message; if a file is not in `sources.tsv` or not on the filesystem, then ignore that file (do not insert.)"
+
+  If a file is not present in `sources.tsv`, bail with a fatal error
+  message; if a file is not in `sources.tsv` or not on the filesystem,
+  then ignore that file (do not insert.)"
   [sources-metadata file-set]
   (debug (str "Updating sources with file-set " file-set))
-  (doseq [[title author year basename genres-name subgenres-name subsubgenres-name subsubsubgenres-name permission] sources-metadata]
+  (doseq [[title author year basename genres-name subgenres-name
+           subsubgenres-name subsubsubgenres-name permission] sources-metadata]
     (cond
-      (not (contains? file-set basename)) (debug (str "Skipping insertion of file " basename " in sources.tsv"))
-      (not (empty? (select sources (where {:title basename})))) (debug (str "Skipping insertion of file " basename " because it is already in the database"))
-      :else
-      (let [genres-id          (insert-if-not-exist genres {:name genres-name})
-            subgenres-id       (insert-if-not-exist subgenres {:name subgenres-name})
-            subsubgenres-id    (insert-if-not-exist subsubgenres {:name subsubgenres-name})
-            subsubsubgenres-id (insert-if-not-exist subsubsubgenres {:name subsubsubgenres-name})]
-        (reset! current-genres-id genres-id)
-        (trace (format "genres-id=%d\tsubgenres-id=%d\tsubsubgenres-id=%d\tsubsubsubgenres-id=%d" genres-id subgenres-id subsubgenres-id subsubsubgenres-id))
-        (insert sources
-          (values {:title              title
-                   :author             author
-                   :year               (Integer/parseInt year)
-                   :basename           basename
-                   :genres_id          genres-id
-                   :subgenres_id       subgenres-id
-                   :subsubgenres_id    subsubgenres-id
-                   :subsubsubgenres_id subsubsubgenres-id}))))))
+     (not (contains? file-set basename))
+     (debug (str "Skipping insertion of file " basename " in sources.tsv"))
+     (not (empty? (select sources (where {:title basename}))))
+     (debug (str "Skipping insertion of file " basename " because it is already in the database"))
+     :else
+     (let [genres-id          (insert-if-not-exist genres {:name genres-name})
+           subgenres-id       (insert-if-not-exist subgenres {:name subgenres-name})
+           subsubgenres-id    (insert-if-not-exist subsubgenres {:name subsubgenres-name})
+           subsubsubgenres-id (insert-if-not-exist subsubsubgenres {:name subsubsubgenres-name})]
+       (reset! current-genres-id genres-id)
+       (trace (format "genres-id=%d\tsubgenres-id=%d\tsubsubgenres-id=%d\tsubsubsubgenres-id=%d"
+                      genres-id subgenres-id subsubgenres-id subsubsubgenres-id))
+       (insert sources
+               (values {:title              title
+                        :author             author
+                        :year               (Integer/parseInt year)
+                        :basename           basename
+                        :genres_id          genres-id
+                        :subgenres_id       subgenres-id
+                        :subsubgenres_id    subsubgenres-id
+                        :subsubsubgenres_id subsubsubgenres-id}))))))
 ;; (get-in (select genres (fields :id) (where {:name genres-name})) [0 :id])
 
 (defn basename->source_id
@@ -480,12 +463,15 @@ $$ language plpgsql;"))
   [sentence-values f]
   (do (trace "Inserting sentence")
       (let [id (:id (insert sentences (values sentence-values)))
-            readability-values (dissoc (assoc sentence-values :sentences_id id :sentences 1) :id :text :paragraph_id :sources_id)]
+            readability-values (dissoc
+                                (assoc sentence-values :sentences_id
+                                       id :sentences 1)
+                                :id :text :paragraph_id :sources_id)]
         (insert sentences_readability
-          (values
-           (dissoc
-            (f readability-values (:text sentence-values))
-            :sentences)))))) ; unholy combination, REFACTOR
+                (values
+                 (dissoc
+                  (f readability-values (:text sentence-values))
+                  :sentences)))))) ; unholy combination, REFACTOR
 
 (defn last-paragraph-id
   []
@@ -512,39 +498,74 @@ $$ language plpgsql;"))
                            (for [[[pos1 pos2 goshu] lemmas] @inmemory-tokens
                                  [lemma orthbases]          lemmas
                                  [orthbase freq]            orthbases]
-                             [{:pos1 pos1 :pos2 pos2 :goshu goshu :lemma lemma} {:orthBase orthbase :freq freq}])))]
+                             [{:pos1 pos1 :pos2 pos2 :goshu goshu :lemma lemma}
+                              {:orthBase orthbase :freq freq}])))]
     (doseq [[lemmas-part orthbase-part] tokens-part]
       (insert lemmas
-        (values lemmas-part))
+              (values lemmas-part))
       #_(insert orthbases-genres-freqs))))
 
 (def sum-statement
-  "sum(length) AS length, sum(hiragana) AS hiragana, sum(katakana) AS katakana, sum(kanji) AS kanji, sum(romaji) AS romaji, sum(commas) AS commas, sum(symbols) AS symbols, sum(japanese) AS japanese, sum(chinese) AS chinese, sum(gairai) AS gairai, sum(symbolic) AS symbolic, sum(mixed) AS mixed, sum(unk) AS unk, sum(pn) AS pn, sum(tokens) AS tokens, sum(chunks) AS chunks, sum(predicates) AS predicates, sum(jlpt_level) AS jlpt_level, sum(bccwj_level) AS bccwj_level, sum(link_dist) AS link_dist, sum(chunk_depth) AS chunk_depth")
+  "sum(length) AS length, sum(hiragana) AS hiragana,
+sum(katakana) AS katakana, sum(kanji) AS kanji, sum(romaji) AS romaji,
+sum(commas) AS commas, sum(symbols) AS symbols, sum(japanese) AS japanese,
+sum(chinese) AS chinese, sum(gairai) AS gairai, sum(symbolic) AS symbolic,
+sum(mixed) AS mixed, sum(unk) AS unk, sum(pn) AS pn, sum(tokens) AS tokens,
+sum(chunks) AS chunks, sum(predicates) AS predicates,
+sum(jlpt_level) AS jlpt_level, sum(bccwj_level) AS bccwj_level,
+sum(link_dist) AS link_dist, sum(chunk_depth) AS chunk_depth")
 
 (defn paragraph-readability-sums
   [id]
-  (first (exec-raw [(str "SELECT count(id) AS sentences, " sum-statement " FROM sentences WHERE paragraph_id=?") [id]] :results)))
+  (first (exec-raw [(str "SELECT count(id) AS sentences, "
+                         sum-statement
+                         " FROM sentences WHERE paragraph_id=?")
+                    [id]]
+                   :results)))
 
 (defn sources-readability-sums
   [id]
-  (first (exec-raw [(str "SELECT count(id) AS sentences, count(DISTINCT paragraph_id) AS paragraphs, " sum-statement " FROM sentences WHERE sources_id=?") [id]] :results)))
+  (first (exec-raw
+          [(str "SELECT count(id) AS sentences, count(DISTINCT paragraph_id) AS paragraphs, "
+                sum-statement
+                " FROM sentences WHERE sources_id=?")
+           [id]]
+          :results)))
 
 (defn get-paragraph-text
   [id]
-  (:string_agg (first (exec-raw ["SELECT string_agg(text, '\n') FROM sentences WHERE paragraph_id=?" [id]] :results))))
+  (:string_agg (first (exec-raw
+                       ["SELECT string_agg(text, '\n') FROM sentences WHERE paragraph_id=?"
+                        [id]]
+                       :results))))
 
 (defn get-sources-text
   [id]
-  (:string_agg (first (exec-raw ["SELECT string_agg(text, '\n') FROM sentences WHERE sources_id=?" [id]] :results))))
+  (:string_agg (first (exec-raw
+                       ["SELECT string_agg(text, '\n') FROM sentences WHERE sources_id=?"
+                        [id]]
+                       :results))))
 
 (defn insert-paragraph-readability
   [id f]
-  (insert paragraph_readability (values (assoc
-                                            (f (paragraph-readability-sums id) (get-paragraph-text id))
-                                          :paragraph_id id))))
+  (insert paragraph_readability
+          (values (assoc
+                      (f (paragraph-readability-sums id) (get-paragraph-text id))
+                    :paragraph_id id))))
 
 (defn insert-sources-readability
   [id f]
-  (insert sources_readability (values (assoc
-                                          (f (sources-readability-sums id) (get-sources-text id))
-                                        :sources_id id))))
+  (insert sources_readability
+          (values
+           (assoc
+               (f (sources-readability-sums id) (get-sources-text id))
+             :sources_id id))))
+
+;; # TODO
+;;
+;; - investigate lobos: http://www.vijaykiran.com/2012/01/17/web-application-development-with-clojure-part-2/
+;; - read before deploying: http://www.depesz.com/2012/06/10/why-is-upsert-so-complicated/
+;; - http://clojureelasticsearch.info/articles/facets.html <-- faceted fulltext search, look into how it works with postgres
+;; - Clojure trie implementation: https://github.com/reverendpaco/clojure-dictionary-trie/blob/master/src/dictionary_trie/trie.clj
+;; - use (declare ...) to pre-declare entites
+;; - `korma.incubator` - try to get many-to-many relationships working

@@ -8,8 +8,6 @@
   (:use [taoensso.timbre :as timbre :only (trace debug info warn fatal spy)] ; 'error' conflicts with lamina/aleph
         [clojure.tools.cli :only (cli)]))
 
-;; TODO refactor so that readability is decoupled from the core of natsume -- managing corpus data and extracting collocations.
-
 ;; # Miscellaneous filesystem helper utilities.
 (defn normalized-path [path] (.getCanonicalFile path))
 (defn base-name [path] (.getName path))
@@ -30,15 +28,16 @@
   ((string/split (.getName file) #"\.(?=[^\.]+$)") 0))
 
 #_(defn is-in-database?
-  "TODO find a way to log if we discard files here..."
-  [f]
-  (if (select sources (where {:basename (get-basename f)}))
-    true
-    false))
+    "TODO find a way to log if we discard files here..."
+    [f]
+    (if (select sources (where {:basename (get-basename f)}))
+      true
+      false))
 
 ;; # Sentence and paragraph splitting
 (def delimiter   #"[\.!\?．。！？]")
-(def delimiter-2 #"[!\?。！？]") ; Take care not to use this with JStage data -- temporary hack for BCCWJ
+;; Take care not to use this with JStage data -- temporary hack for BCCWJ
+(def delimiter-2 #"[!\?。！？]")
 (def closing-quotation #"[\)）」』】］〕〉》\]]") ; TODO
 (def opening-quotatoin #"[\(（「『［【〔〈《\[]") ; TODO
 (def numbers #"[０-９\d]")
@@ -70,7 +69,10 @@
 
 (defn paragraph->sentences
   "Splits one paragraph into multiple sentences.
-   Since it is hard to use Clojure's regexp functions (string/split) because they consume the matched group, we opt to add newlines to the end of all delimiters.???"
+
+   Since it is hard to use Clojure's regexp functions (string/split)
+  because they consume the matched group, we opt to add newlines to
+  the end of all delimiters.???"
   [s]
   (flatten
    (reduce (fn
@@ -112,7 +114,8 @@
         paragraphs (:paragraphs files-data)]
     ;;(debug (str "source_id = " source-id)) ;; ERROR
     ;;(debug paragraphs)
-    (reduce (fn [paragraph-id ss] ;; TODO hook in whole-paragraph readability functions after insertion
+    ;; TODO hook in whole-paragraph readability functions after insertion
+    (reduce (fn [paragraph-id ss]
               (doseq [sentence ss]
                 (let [sentence-map (merge
                                     (rd/get-sentence-info sentence)
@@ -129,17 +132,19 @@
 
 (defn initialize-corpus
   [corpus-dir]
-  ;(db/update-genres (tsv->vector (str corpus-dir "/genres.tsv")))
+  ;; (db/update-genres (tsv->vector (str corpus-dir "/genres.tsv")))
   (let [name (get-basename (io/file corpus-dir)) ;; for debug
         files (->> corpus-dir
                    io/file
                    file-seq
                    (filter is-text?))]
     (debug (str "Initializing " name " with files " files))
-    (let [basename-set (set (map get-basename files))] ;; we use a set because of better lookup performance?
+    (let [basename-set (set (map get-basename files))]
       (db/update-sources (tsv->vector (str corpus-dir "/sources.tsv")) basename-set))
     (do (doseq [sentences (pmap slurp-with-metadata files)] ; compare map and pmap
-                                        ;(filter db/basename-in-sources?) ;; this is a roundabout way of filtering, should be integrated with above db update function
+          ;; (filter db/basename-in-sources?) ;; this is a roundabout
+          ;; way of filtering, should be integrated with above db
+          ;; update function
           (do (debug "Inserting sentences from initialize-corpus")
               (insert-sentences sentences)))
         (db/merge-tokens!) ; TODO fix
@@ -154,7 +159,11 @@
     (db/init-database {:destructive 1})
     (map initialize-corpus (map str args)) ; TODO why map string? fix for multiple dirs
     ;; post-processing hooks go here
-    ;; TODO token_freq table --> this should only be done once, after that we can load it from the database, so make sure we are not doing this every time but as much as possible, save the data between runs
+
+    ;; TODO token_freq table --> this should only be done once, after
+    ;; that we can load it from the database, so make sure we are not
+    ;; doing this every time but as much as possible, save the data
+    ;; between runs
     )
   )
 
@@ -191,3 +200,7 @@
         (println "")
         (run options checked-directories))
       (println banner))))
+
+;; # TODO
+;;
+;; - refactor so that readability is decoupled from the core of natsume -- managing corpus data and extracting collocations.

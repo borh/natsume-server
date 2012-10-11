@@ -7,20 +7,14 @@
   (:import (org.apache.commons.compress.compressors.xz XZCompressorInputStream))
   (:use [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)]))
 
-;; Check out https://github.com/r0man/svm-clj for making classifier using which we can sort example sentences
-
 ;; # Features related to readability.
 ;;
 ;; The features can be roughly separated into three categories:
+;;
 ;; 1. Syntax-level features
 ;; 2. Vocabulary-level features
 ;; 3. Surface-level features
-
-;; TODO move from average to cummulative scores and normalize at a
-;; later step:
-;; For chunk depth and link distance, divide by chunk count.
-;; For JLPT and BCCWJ levels, divide by morpheme count, etc...
-
+;;
 ;; ## Syntax-level features
 (defn chunk-depth
   "Dependency grammar chunk depth.
@@ -50,9 +44,9 @@
     (let [chunks (drop-last t)] ; we drop last chunk as it has no link
       (apply + (for [chunk chunks] (- (:link chunk) (:id chunk))))
       #_(/
-       (reduce +
-               (for [chunk chunks] (- (:link chunk) (:id chunk))))
-       (count chunks)))))
+         (reduce +
+                 (for [chunk chunks] (- (:link chunk) (:id chunk))))
+         (count chunks)))))
 
 (defn subordinate-clause-count
   [t])
@@ -97,15 +91,15 @@
            (map #(Math/log10 %))
            (apply +))
       #_(let [log-sum
-            (->> tokens
-                 (map #(select-keys % [:pos1 :lemma]))
-                 (map #(get-in BCCWJ-word-map [(:pos1 %) (:lemma %)] 0))
-                 (map (partial + 1))
-                 (map #(Math/log10 %))
-                 (reduce +))]
-        (if (zero? log-sum)
-          0
-          log-sum)))))
+              (->> tokens
+                   (map #(select-keys % [:pos1 :lemma]))
+                   (map #(get-in BCCWJ-word-map [(:pos1 %) (:lemma %)] 0))
+                   (map (partial + 1))
+                   (map #(Math/log10 %))
+                   (reduce +))]
+          (if (zero? log-sum)
+            0
+            log-sum)))))
 
 (defn adaptive-word-log-freq
   "Adaptive word log frequency based on the users writing purpose (which is then mapped to corpora (distances))."
@@ -114,7 +108,9 @@
 (defonce JLPT-word-map
   (let [lines (xz-line-seq "data/JLPT-Word-List.tsv.xz")]
     (reduce (fn [JLPT-map line]
-              (let [[orth pron string-level] (map string/trim (string/split (string/replace line #"～" "") #"\t"))
+              (let [[orth pron string-level] (map string/trim
+                                                  (string/split (string/replace line #"～" "")
+                                                                #"\t"))
                     level (Integer/parseInt string-level)]
                 (assoc JLPT-map orth level pron level)))
             {}
@@ -123,11 +119,14 @@
 (defn JLPT-word-level
   "(pre-2010) Japanese Language Proficiency Test word level.
   Greater numbers correspond with lesser difficulty.
+
   TODO decide if we want to check based on orthBase or lemma -> we do both now.
   Should be averaged by morphemes."
   [t]
-  (let [content-tokens (filter ; filter away word classes that are not represented in the JLPT word lists
-                        (fn [x] (re-seq #"(名詞|形容詞|動詞|副詞|形状詞|接頭辞|助動詞|接尾辞)" (:pos1 x))) ; TODO whitelist
+  ;; filter away word classes that are not represented in the JLPT word lists
+  ;; TODO whitelist
+  (let [content-tokens (filter
+                        (fn [x] (re-seq #"(名詞|形容詞|動詞|副詞|形状詞|接頭辞|助動詞|接尾辞)" (:pos1 x)))
                         (cw/tree-to-morphemes-flat t))
         content-tokens-count (count content-tokens)]
     (if (zero? content-tokens-count)
@@ -141,10 +140,6 @@
             (map #(apply max %))
             (apply +))
        (count content-tokens) 4))))
-
-;; TODO: JLPT-kanji-level (<- based on list)
-;; TODO: BCCWJ-LB-kanji-level (or rather corpus/facet based)
-;; TODO: CEFR-based difficulty (cf. `hagoromo`)
 
 (defn collocation-avg-log-freq
   "Average collocation log frequency in corpus."
@@ -182,16 +177,17 @@
    0
    t))
 
+;; ### Shibasaki's predicate count
+;; 1. 出現した全部の動詞（ただし、複合動詞は１としてカウントする）
+;; 2. 「形容詞＋名詞」（例：赤い花）の形で出現しない形容詞（例：空は青く，山は緑だ．父の手は大きい．）({:cType 連用形-一般} {:pos1 読点})
+;; 3. 「形容動詞＋名詞」（例：偉大な仕事）の形で出現しない形容動詞（その男は正直で、誠実だった．）
+;; 4. 「名詞＋判定詞」（例：明日は良い天気でしょう．これは母の鏡だ．次は渋谷ですか．（判定詞＝助動詞）
+;; 5. 「名詞＋句点」すなわち体言止め（例：空からふる白いものは雪．）(i.e. last token is noun or noun + period)
+;; 6. 「非自立名詞＋助動詞」（例：のだ，のです）
+;;
+;; BUG: 文四郎はためらわずにその指を口に含むと、傷口を強く吸った。 => 3 predicates!? (ためらわずに is verb?!)
 (defn predicate-count-shibasaki
-  "Predicate count （平均述語数）.
-  1. 出現した全部の動詞（ただし、複合動詞は１としてカウントする）
-  2. 「形容詞＋名詞」（例：赤い花）の形で出現しない形容詞（例：空は青く，山は緑だ．父の手は大きい．）({:cType 連用形-一般} {:pos1 読点})
-  3. 「形容動詞＋名詞」（例：偉大な仕事）の形で出現しない形容動詞（その男は正直で、誠実だった．）
-  4. 「名詞＋判定詞」（例：明日は良い天気でしょう．これは母の鏡だ．次は渋谷ですか．（判定詞＝助動詞）
-  5. 「名詞＋句点」すなわち体言止め（例：空からふる白いものは雪．）(i.e. last token is noun or noun + period)
-  6. 「非自立名詞＋助動詞」（例：のだ，のです）
-
-  BUG: 文四郎はためらわずにその指を口に含むと、傷口を強く吸った。 => 3 predicates!? (ためらわずに is verb?!)"
+  "Predicate count （平均述語数）."
   [t]
   (reduce
    (fn [predicates chunk]
@@ -211,7 +207,7 @@
    0
    t))
 
-;; Counts by writing system operate on the raw string.
+;; NOTE: counts by writing system operate on the raw string.
 (defn char-writing-system
   "Return writing system type of char.
   To get codepoint of char: `(.codePointAt char 0)`.
@@ -219,30 +215,28 @@
   [^String ch]
   (let [code-point (.codePointAt ch 0)]
     (cond
-      (and (>= code-point 0x3041) (<= code-point 0x309f)) :hiragana
-      (and (>= code-point 0x4e00) (<= code-point 0x9fff)) :kanji
-      (and (>= code-point 0x30a0) (<= code-point 0x30ff)) :katakana
-      (or (and (>= code-point 65)    (<= code-point 122))    ; half-width alphabet (A-Za-z)
-          (and (>= code-point 65313) (<= code-point 65370))  ; full-width alphabet (Ａ-Ｚａ-ｚ)
-          (and (>= code-point 48)    (<= code-point 57))     ; half-width numbers  (0-9)
-          (and (>= code-point 65296) (<= code-point 65305))) ; full-width numbers  (０-９)
-      :romaji
-      (or (= code-point 12289) (= code-point 65291) (= code-point 44)) :commas ; [、，,] <- CHECK
-      :else :symbols)))
+     (and (>= code-point 0x3041) (<= code-point 0x309f)) :hiragana
+     (and (>= code-point 0x4e00) (<= code-point 0x9fff)) :kanji
+     (and (>= code-point 0x30a0) (<= code-point 0x30ff)) :katakana
+     (or (and (>= code-point 65)    (<= code-point 122))    ; half-width alphabet (A-Za-z)
+         (and (>= code-point 65313) (<= code-point 65370))  ; full-width alphabet (Ａ-Ｚａ-ｚ)
+         (and (>= code-point 48)    (<= code-point 57))     ; half-width numbers  (0-9)
+         (and (>= code-point 65296) (<= code-point 65305))) ; full-width numbers  (０-９)
+     :romaji
+     (or (= code-point 12289) (= code-point 65291) (= code-point 44)) :commas ; [、，,] <- CHECK
+     :else :symbols)))
 
-;; Read: http://www.jmesnil.net/weblog/2009/08/19/how-clojure-forces-me-to-rewire-my-brain-in-a-good-way/
-;; for how to rewrite this with reduce.
 #_(defn writing-system-count
-  "Returns a hash-map of character frequencies by writing system, averaging counts based on string length.
+    "Returns a hash-map of character frequencies by writing system, averaging counts based on string length.
   TODO get counts from the number of matches in re-seq, i.e.: (count (re-seq regexp string))."
-  [s]
-  (let [l (float (.length s))
-        target-keys [:hiragana :kanji :katakana :romaji :symbols]
-        freq-map (frequencies (map char-writing-system (map str s)))]
-    (assoc (apply hash-map
-                  (flatten (for [k target-keys]
-                             (list k (/ (get freq-map k 0.0) l)))))
-      :commas (get freq-map :commas 0)))) ; :commas are not averaged
+    [s]
+    (let [l (float (.length s))
+          target-keys [:hiragana :kanji :katakana :romaji :symbols]
+          freq-map (frequencies (map char-writing-system (map str s)))]
+      (assoc (apply hash-map
+                    (flatten (for [k target-keys]
+                               (list k (/ (get freq-map k 0.0) l)))))
+        :commas (get freq-map :commas 0)))) ; :commas are not averaged
 
 
 (defn writing-system-count
@@ -266,7 +260,8 @@
    "固"   :pn})
 
 (defn goshu-map
-  "Should this instead by all inserted into an SQL array? ... would lower the number of columns dramatically."
+  "Should this instead by all inserted into an SQL array? ... would
+  lower the number of columns dramatically."
   [t]
   (merge
    {:japanese 0
@@ -282,16 +277,15 @@
         (map #(get goshu-rename-map %))
         frequencies)))
 
-;; Shibasaki formula
+;; ### Shibasaki formula
+;;
+;; - year = 学年 (this is the return value of the function)
+;; - hiragana-ratio = 平仮名の割合
+;; - characters = 文の平均文字数
+;; - chunks = 文の平均文節数
+;; - predicates = 文の平均述語数
 (defn shibasaki
-  "$Y = -147.9 + (3.601e-04 * X_1^3) - (8.772e-02 * X_1^2) + (6.651 * X_1) + (3.679 * X_3) + (3.142e-04 * X_1^2 * X_2) - (3.986e-04 * X_1^2 * X_3) - (3.207e-04 * X_1 * X_2^2) - (3.109e-02 * X_1 * X_2) - (7.968e-03 * X_1 * X_3^2) + (3.468e-03 * X_1 * X_2 * X_3)$
-   - Y  = 学年
-   - X1 = 平仮名の割合
-   - X2 = 文の平均文字数
-   - X3 = 文の平均文節数
-   - X4 = 文の平均述語数
-
-   Taken from Shibasaki et al. (2011) p. 225"
+  "Taken from Shibasaki et al. (2011) p. 225; returns the K-12 year of input text."
   [^long hiragana ^long characters ^long chunks ^long predicates] ;; TODO predicates not used in formula #1
   (let [hiragana-ratio (/ hiragana characters)]
     (+ -147.9
@@ -306,6 +300,22 @@
        (- (* 7.968E-3 hiragana-ratio chunks chunks))
        (* 3.468E-3 hiragana-ratio characters chunks))))
 
+;; ### Tateishi's formula
+;;
+;; RS = 0.06 x pa + 0.25 x ph - 0.19 x pc - 0.61 x pk
+;;      -1.34 x Is -1.35 x la + 7.52 x lh - 22.1 x lc - 5.3 x lk
+;;      -3.87 x cp - 109.1
+;;
+;; Tateishi's formula: RS = -0.12ls - 1.37la + 7.4lh - 23.18lc - 5.4lk - 4.67cp + 115.79
+;;
+;; pa, ph, pc, pk are the percentages of alphabet runs, hiragana runs, kanzi runs, and katakana runs, respectively:
+;;
+;; - ls = average number of characters per sentence
+;; - la = average number of Roman letters and symbols per run
+;; - lh = average number of Hiragana characters per run
+;; - lc = average number of Kanji characters per run
+;; - lk = average number of Katakana characters per run
+;; - cp = ratio of touten (comma) to kuten (period)
 (defn get-runs
   [s]
   (let [r- (reduce
@@ -336,20 +346,8 @@
     (list (into {} (for [[k v] r] [k (* 100 (/ (count v) total-runs))]))
           (into {} (for [[k v] r] [k (if (zero? (count v)) 0.0 (float (/ (apply + v) (count v))))])))))
 
-;; Tateishi formula
 (defn tateishi
-  "RS = 0.06 x pa + 0.25 x ph - 0.19 x pc - 0.61 x pk
-        -1.34 x Is -1.35 x la + 7.52 x lh - 22.1 x lc - 5.3 x lk
-        -3.87 x cp - 109.1
-   Tateishi's formula: RS = -0.12ls - 1.37la + 7.4lh - 23.18lc - 5.4lk - 4.67cp + 115.79
-   - RS = ??????
-   pa, ph, pc, pk are the percentages of alphabet runs, hiragana runs, kanzi runs, and katakana runs, respectively.
-   - ls = average number of characters per sentence
-   - la = average number of Roman letters and symbols per run
-   - lh = average number of Hiragana characters per run
-   - lc = average number of Kanji characters per run
-   - lk = average number of Katakana characters per run
-   - cp = ratio of touten (comma) to kuten (period)"
+  ""
   [characters commas periods p-runs a-runs] ;romaji symbols hiragana katakana kanji
   (+ (*  0.06 (:romaji   p-runs))
      (*  0.25 (:hiragana p-runs))
@@ -360,25 +358,28 @@
      (*  7.52 (:hiragana a-runs))
      (* 22.10 (:kanji    a-runs))
      (*  5.30 (:katakana a-runs))
-     (* -3.87 (/ commas periods)) ; should :periods realy be :sentences? -> divide-by-zero danger??
+     ;; should :periods realy be :sentences? -> divide-by-zero danger??
+     (* -3.87 (/ commas periods))
      -109.1)
   #_(+ (*  -0.12 characters)
-     (*  -1.37 (:romaji   a-runs)) ; includes symbols
-     (*   7.4  (:hiragana a-runs))
-     (* -23.18 (:kanji    a-runs))
-     (*  -5.4  (:katakana a-runs))
-     (*  -4.67 (/ commas periods)) ; should :periods realy be :sentences? -> divide-by-zero danger??
-     115.79))
+       (*  -1.37 (:romaji   a-runs)) ; includes symbols
+       (*   7.4  (:hiragana a-runs))
+       (* -23.18 (:kanji    a-runs))
+       (*  -5.4  (:katakana a-runs))
+       ;; should :periods realy be :sentences? -> divide-by-zero danger??
+       (*  -4.67 (/ commas periods))
+       115.79))
 
+;; # Token genre frequency table
 #_(def token-freq-inmemory
-  "Atom data structure: genre -> pos -> lemma -> freq
+    "Atom data structure: genre -> pos -> lemma -> freq
   Genre is TODO"
-  (atom {}))
+    (atom {}))
 
 #_(defn update-pos-lemma-freq
-  [t]
-  (doseq [token (cw/tree-to-morphemes-flat t)]
-    (swap! token-freq-inmemory update-in [(:pos1 token) (:lemma token)] (fn [f] (if (nil? f) 1 (inc f))))))
+    [t]
+    (doseq [token (cw/tree-to-morphemes-flat t)]
+      (swap! token-freq-inmemory update-in [(:pos1 token) (:lemma token)] (fn [f] (if (nil? f) 1 (inc f))))))
 
 (defn update-pos-lemma-freq
   [t genres-id]
@@ -387,6 +388,8 @@
     #_(db/token-incr (:pos1 token) (:lemma token) genres-id)
     #_(db/upsert-inc (:pos1 token) (:lemma token) genres-id)))
 
+;; # Readability tables
+;;
 ;; The problem WRT normalization is that there are several different normalizations required overall.
 ;; For example, the comma-period ratio is based on whole-text averaging????
 ;; !!There is a difference between averages of sentence averages and averages of whole texts.!!
@@ -410,7 +413,8 @@
       :predicates  predicates
       ;;:obi2_level  0;(obi2level s) ;; only for production
       ;;:shibasaki   (shibasaki (:hiragana wsm) characters chunks predicates)
-      ;;:tateishi    (tateishi characters (:romaji wsm) (:symbols wsm) (:hiragana wsm) (:katakana wsm) (:kanji wsm) (:commas wsm) 1)
+      ;;:tateishi    (tateishi characters (:romaji wsm) (:symbols wsm)
+      ;;              (:hiragana wsm) (:katakana wsm) (:kanji wsm) (:commas wsm) 1)
       :jlpt_level  (float (JLPT-word-level tree))
       :bccwj_level (float (BCCWJ-word-log-freq tree))
       :link_dist   (float (link-distance tree))
@@ -468,7 +472,8 @@
       :chunks      (by-sentences chunks)
       :predicates  (by-sentences predicates)
 
-      :obi2_level  0;(if (empty? text) 0 (obi2level text)); text -----> (db/get-paragraph-text paragraph-id)
+      :obi2_level  0
+      ;;(if (empty? text) 0 (obi2level text)); text -> (db/get-paragraph-text paragraph-id)
       :tateishi    (tateishi avg-length commas sentences percentage-runs average-runs)
       :shibasaki   (shibasaki avg-hiragana avg-length avg-chunks avg-predicates)
 
@@ -477,3 +482,13 @@
 
       :link_dist   (/ (:link_dist   m) (if (> 1 chunks) (dec chunks) chunks))
       :chunk_depth (/ (:chunk_depth m) chunks)})))
+
+;; # TODO
+;;
+;; - Check out https://github.com/r0man/svm-clj for making classifier using which we can sort example sentences
+;; - move from average to cummulative scores and normalize at a later step:
+;;     - for chunk depth and link distance, divide by chunk count.
+;;     - for JLPT and BCCWJ levels, divide by morpheme count, etc...
+;; - JLPT-kanji-level (<- based on list)
+;; - BCCWJ-LB-kanji-level (or rather corpus/facet based)
+;; - CEFR-based difficulty (cf. `hagoromo`)
