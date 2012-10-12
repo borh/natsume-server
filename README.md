@@ -30,9 +30,9 @@ lein run /path/to/corpus/dir/
 
 ## Planned Features
 
-### Integration with automatic error correction/feedback system Natane
+### Integration with automatic error correction/feedback system Nutmeg
 
-- provide an API from Natsume to Natane to ease register (genre) error detection
+- provide an API from Natsume to Nutmeg to ease register (genre) error detection
     - at the token level
     - at the collocation level
     - for both levels include the option of sending back example sentences with query included (this should also be offered as a separate API)

@@ -1,3 +1,4 @@
+;; # Commandline interface and logic
 (ns natsume-server.core
   (:gen-class)
   (:require [clojure.java.io :as io]
@@ -5,10 +6,10 @@
             [natsume-server.readability :as rd]
             [natsume-server.database :as db])
   (:import (java.io.File))
-  (:use [taoensso.timbre :as timbre :only (trace debug info warn fatal spy)] ; 'error' conflicts with lamina/aleph
+  (:use [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)]
         [clojure.tools.cli :only (cli)]))
 
-;; # Miscellaneous filesystem helper utilities.
+;; ## Miscellaneous filesystem helper utilities.
 (defn normalized-path [path] (.getCanonicalFile path))
 (defn base-name [path] (.getName path))
 (defn directory? [path] (.isDirectory path))
@@ -108,12 +109,11 @@
     {:source-id source-id
      :paragraphs paragraphs}))
 
+;; # Database and readability connective logic
 (defn insert-sentences
   [files-data]
   (let [source-id (:source-id files-data)
         paragraphs (:paragraphs files-data)]
-    ;;(debug (str "source_id = " source-id)) ;; ERROR
-    ;;(debug paragraphs)
     ;; TODO hook in whole-paragraph readability functions after insertion
     (reduce (fn [paragraph-id ss]
               (doseq [sentence ss]
@@ -131,6 +131,7 @@
     (db/insert-sources-readability source-id rd/average-readability)))
 
 (defn initialize-corpus
+  "Processes given corpus directory."
   [corpus-dir]
   ;; (db/update-genres (tsv->vector (str corpus-dir "/genres.tsv")))
   (let [name (get-basename (io/file corpus-dir)) ;; for debug
@@ -151,7 +152,9 @@
         (db/reset-inmemory-tokens!))))
 
 (defn run
-  "Print out the options and the arguments."
+  "Initializes database and processes corpus directories from input.
+  If no corpus directory is given or the -h flag is present, prints
+  out available options and arguments."
   [opts args]
   (debug (str "Options:\n" opts "\n"))
   (debug (str "Arguments:\n" args "\n"))
