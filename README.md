@@ -45,7 +45,7 @@ lein run /path/to/corpus/dir/
 
 ### Learner dashboard
 
-- provide a dashboard displaying everything the user did
+- provide a dashboard displaying everything the user did, using cookies and totally optional (make sure to save old Apache logs!)
     - need to record all user input and clicks (an expansion of the users/history tables in Asunaro)
     - provide a user login system (OAuth?/standard)
 - provide review/learning tasks based on users input and level
@@ -57,6 +57,8 @@ lein run /path/to/corpus/dir/
 0.2.0 - initial release
 
 0.3.0 - basic collocation extraction
+
+0.4.0 - token and collocation information offered as API
 
 ...
 
