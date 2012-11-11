@@ -287,19 +287,83 @@
 
 ;; Tagging middleware
 ;;
-;; Using core.logic to further chunk morphemes into bigger units
-;; called Natsume Units (NU), which are made from SUWs and can be
-;; longer than LUWs, but never cross chunk (bunsetsu) boundaries.
 ;; FIXME what about `名詞＋を＋する／名詞＋に＋なる`?
 
-(defn infer-type
-  [])
-
-(defn chunk-dispatch
+(defn recode-pos
+  "Recodes morphemes in given chunk c into simple POS keywords."
   [c]
-  (let [type (infer-type c)]
-    (case type
-      :noun ()))) ; FIXME
+  (reduce
+   (fn [r m]
+     (let [pos (str (:pos1 m) (:pos2 m) (:pos3 m))]
+       (conj r
+             (cond
+               (re-seq #"^(副詞|名詞.+副詞可能)" pos) :adverb
+               (re-seq #"^代?名詞[^副]+" pos) :noun
+               (re-seq #"^連体詞" pos) :preposition
+               (re-seq #"^動詞" pos) :verb
+               (re-seq #"^助詞" pos) :p
+               (re-seq #"^(形容詞|接尾辞形容詞的)" pos) :adjective
+               (re-seq #"^(補助)?記号" pos) :symbol
+               (re-seq #"^助動詞" pos) :auxiliary-verb
+               (re-seq #"^形状詞" pos) :adjective
+               (re-seq #"^感動詞" pos) :utterance
+               (re-seq #"^接頭辞" pos) :prefix
+               (re-seq #"^接尾辞" pos) :suffix
+               :else :unknown-pos))))
+   []
+   c))
+
+;; Transition map: defines when POS should change or not.
+(def transitions
+  {[:noun :verb] :verb
+   [:noun :adjective] :adjective
+   [:adjective :verb] :verb
+   [:verb :auxiliary-verb] :verb
+   [:adjective :auxiliary-verb] :adjective})
+
+;; Content-functional boundaries: set of POSs which trigger change from content to functional.
+(def content-function-boundaries
+  #{:p :symbol})
+
+(defn enumerate
+  "Enumerates (indexes) given sequence."
+  [s]
+  (map-indexed vector s))
+
+(defn infer-type-chunk
+  "Infers the content and functional parts of the chunk.
+   Also corrects the :head and :tail indexes given by CaboCha, which are sometimes wrong."
+  [c]
+  (let [indexed-pos-vec (enumerate (recode-pos c))]
+    (reduce
+     (fn [data indexed-pos]
+       (let [[i pos] indexed-pos
+             new-pos (get transitions [(:head-type data) pos] nil)]
+         (cond
+           (content-function-boundaries pos) (assoc data :tail-type pos :tail (if (nil? (:tail data)) i (:tail data)))
+           (nil? (:tail-type data)) (if (nil? new-pos)
+                                      (assoc data :head-type pos :head i)
+                                      (assoc data :head-type new-pos :head i))
+           :else (do (warn (str "Unknown type: " pos))
+                     data))))
+     {:head-type nil :tail-type nil
+      :head nil      :tail nil}
+     indexed-pos-vec)))
+
+(defn annotate-chunk
+  [c]
+  (merge c (infer-type-chunk (:tokens c))))
+
+(defn annotate-tree
+  [t]
+  (map annotate-chunk t))
+
+(defn revert-orth-with
+  [tree original-input]
+  (let [update-morpheme #(assoc % :orth (subs original-input (:begin %) (:end %)))
+        update-morphemes #(map update-morpheme %)
+        update-chunk #(update-in % [:tokens] update-morphemes)]
+    (map update-chunk tree)))
 
 ;; Pre-processing (normalization, common substitutions, etc.) is done on the string before it is processed by CaboCha.
 ;; The whole process is as follows:
@@ -320,8 +384,10 @@
       (string/replace "．" "。") ;3
       (string/replace "，" "、") ;3
       ;;run-cabocha-on-string    ;4
+      ;;parse-cabocha-format     ;4
       get-cabocha-websocket      ;4 ;; faster until we get JNI bindings working
-      parse-cabocha-format       ;4
+      (revert-orth-with s)
+      annotate-tree
       ))
 
 ;; # TODO
