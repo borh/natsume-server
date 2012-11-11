@@ -60,7 +60,7 @@
    1) one or more non-empty lines delimited by one empty line or BOF/EOF
    2) lines prefixed with fullwidth unicode space '　'"
   [s]
-  (string/split s #"([\r\n]{4,}|[\r\n]{2,}　)"))
+  (string/split s #"([\r\n]{4,}|[\r\n]{2,}　|[\n]{2,})")) ; FIXME
 
 (defn paragraph->sentences-2
   "Splits one pre-formatted paragraph into multiple sentences.
