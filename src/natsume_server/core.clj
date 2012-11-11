@@ -111,6 +111,7 @@
      :paragraphs paragraphs}))
 
 ;; # Database and readability connective logic
+
 (defn insert-sentences
   [files-data]
   (let [source-id (:source-id files-data)
@@ -168,6 +169,7 @@
     ;; that we can load it from the database, so make sure we are not
     ;; doing this every time but as much as possible, save the data
     ;; between runs
+    ;; TODO how to do this in the REPL with -main? (time (doall (run [] "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT")))
     )
   )
 
@@ -183,7 +185,9 @@
 
 (defn -main
   "Read files from corpus and do stuff...
-   `args` contains corpus directory names and (optional) flags."
+   `args` contains corpus directory names and (optional) flags.
+
+  Example usage from REPL: (-main )"
   [& args]
   (let [[options arguments banner]
         (cli args
