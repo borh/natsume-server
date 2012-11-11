@@ -21,46 +21,16 @@
    "「ひょうきん予備校」に講師役として出演した際も生徒役の非常階段に「こんなしょうもないコンビ名、聞くに及ばん!」などと怒鳴り散らしていた(この時、同じく生徒役のダウンタウンは「僕がダウンで彼がタウンです」と慌てて名前を分割し難を逃れた)。"
    "ビーツ一個と人参一本を‘都合して’きた。"
    "黄真伊(ファン・ジニ、妓名は明月(ミョンウォル、)、約1506年 - 1544年頃)は、中宗の治世中に活躍した、李氏朝鮮で最も伝説的な妓生である。"
-   ]
+   "1979年11月1日に、CBS・ソニーレコード(現・ソニー・ミュージックエンタテインメント)より、川崎麻世の歌う主題歌2曲を収録したシングル盤(品番:06SH671)が定価\\600で発売された。"   ]
   )
 
-(def test-sentences-escape ; this is meant more for checking if the sentences are correctly escaped to be inserted into postgres
-  ["1979年11月1日に、CBS・ソニーレコード(現・ソニー・ミュージックエンタテインメント)より、川崎麻世の歌う主題歌2曲を収録したシングル盤(品番:06SH671)が定価\\\\600で発売された。"
-   "1979年11月1日に、CBS・ソニーレコード(現・ソニー・ミュージックエンタテインメント)より、川崎麻世の歌う主題歌2曲を収録したシングル盤(品番:06SH671)が定価\\600で発売された。"
-   ;; Is there a way to test this ala QuickCheck?
-   "\b"
-   "\f"
-   "\n"
-   "\r
-\t
-\\v
-\1
-\2
-\3
-\4
-\5
-\6
-\7
-\\8
-\\9
-\\x0
-\\x0
-\\x1
-\\xa
-\\x3
-\\x4
-\\x5
-\\x18
-\\\0
-\\\\0
-\\\\\0
-\\\\\\0
-\\\\\\\0
-\0"])
+;; This is meant more for checking if the sentences are correctly escaped to be inserted into postgres.
+(def escape-sequences
+  (map char (range 128)))
 
 (def test-date-normalization
   ["例えば、〇二年四月三〇日〜五月二日・復旦大学日本研究センターが主催した「戦後日本の主要社会思潮および中日関係」。" ; Date normalization + quote
-   "しかし同年オフ、階段で転倒しそうになり、とっさに手すりをつかんだ際に脱臼。" ; ?
+   "しかし同年オフ、階段で転倒しそうになり、とっさに手すりをつかんだ際に脱臼。" ; ? 脱臼 as verb? 同年オフ handling?
    "しかし、その自殺は極めて疑わしく、階段からわざと転落させられたとも言われる" ; Conjugation check
    ])
 
@@ -76,7 +46,7 @@
    "【組織】"])
 
 (def test-number-normalization
-  ["小型で許容回転数を16000rpmと高める事で効率を改善している。" ; Number normalization
+  ["16000rpm" ; Number normalization
    "そのため校内を行き来する場合は100段近い階段を上り下りしなければならない。"
    "第2ソースファイルの情報を追加しました。"])
 
@@ -103,12 +73,12 @@
    "複合させられる"
    "複合させられた"
    "複合させられなかった"
-   "遊覧飛行する"])
+   "遊覧飛行する"
+   "転落させられたとも"])
 
 (def test-adverbs
-  [""
-   ""
-   ""])
+  ["絶対"
+   "昨日"])
 
 (def test-adjectives
   ["綺麗"
@@ -118,16 +88,28 @@
    "愛しくなかった"
    "愛しくありませんでした"
    "愛しかった"
-   "転がりやすい"])
+   "転がりやすい"
+   "我慢強い"])
 
 ;; Tests
 
-(fact "morpheme is a noun"
-  (:pos1 (first (cw/tree-to-morphemes-flat (cw/string-to-tree "名詞"))))
-  =>
-  "名詞")
+(defn head-types-runner-first
+  "Helper function to run tests on string sequences."
+  [xs]
+  (map :head-type (map first (map cw/string-to-tree xs))))
+
+(fact "nominal chunks are nominal"
+      (head-types-runner-first test-nouns) => (has every? #(= :noun %)))
 
 (fact "verbal chunks are verbs"
-  (map #(:head-type (first %)) test-verbs) => (has every? :verb))
+      (head-types-runner-first test-verbs) => (has every? #(= :verb %)))
+
+(fact "adverbal chunks are adverbs"
+      (head-types-runner-first test-adverbs) => (has every? #(= :adverb %)))
+
+(fact "adjectival chunks are adjectives"
+      (head-types-runner-first test-adjectives) => (has every? #(= :adjective %)))
+
+;; TODO permute test -- permutation over all POS to stress test the matching algorithm (https://github.com/clojure/math.combinatorics)
 
 ;; How to structure the test sentences? i.e. should there be one sentence list over which lots of facts should be checked against, or one/many facts per sentence (in a let binding)?
