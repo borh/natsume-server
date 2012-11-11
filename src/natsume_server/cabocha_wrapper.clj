@@ -59,20 +59,14 @@
          (kill-fn#)))))
 
 (defmacro with-handler [handler & body]
-  `(with-server (start-http-server ~handler
-                  {:port 8081
-                   :websocket true
-                   })
+  `(with-server (start-http-server ~handler {:port 8081 :websocket true})
      ~@body))
 
 (defn websocket-handler [ch req]
   (siphon ch req)) ; used to be ch ch
 
-(defn ws-client []
-  (websocket-client {:url "ws://localhost:8080/ws"}))
-
-(def cabocha-websocket-channel
-  #(deref (websocket-client {:url "ws://localhost:8080/ws"})))
+(defonce cabocha-websocket-channel
+  #(deref (websocket-client {:url "ws://localhost:8080/ws/json"})))
 
 (defn get-cabocha-websocket
   "For a given string returns a CaboCha analyzed string using WebSockets."
@@ -80,8 +74,8 @@
   (with-handler websocket-handler
     (let [ch (cabocha-websocket-channel)]
       (enqueue ch s)
-      (let [r @(read-channel ch)]
-        (close ch)
+      (let [r (decode-json @(read-channel ch))]
+        (close ch) ; FIXME understand websockets
         r))))
 
 (defn parse-cabocha-header
