@@ -75,14 +75,15 @@
   because they consume the matched group, we opt to add newlines to
   the end of all delimiters.???"
   [s]
-  (flatten
-   (reduce (fn
-             [accum sentence]
-             (conj accum
-                   (remove string/blank?
-                           (flatten (string/split sentence sentence-split-re)))))
-           []
-           (string/split-lines s))))
+  (vec
+   (flatten
+    (reduce (fn
+              [accum sentence]
+              (conj accum
+                    (remove string/blank?
+                            (flatten (string/split sentence sentence-split-re)))))
+            []
+            (string/split-lines s)))))
 
 (defn split-on-tab
   [s]
