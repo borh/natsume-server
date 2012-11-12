@@ -147,223 +147,155 @@
            ;; TODO find better way to have 2 separate reduce accumulators
            lines))))
 
-(defn tree-branch?
-  [t]
-  (or (vector? t)
-      (contains? t :tokens)))
-
-(defn tree-children
-  [t]
-  (if (contains? t :tokens) (:tokens t) t))
-
-(defn make-tree-node
-  [t children]
-  (into (if (map? (first t)) [(first t)] [t])
-        children))
-
-(defn cabocha-zipper
-  "Custom zipper for the CaboCha tree data structure."
-  [root]
-  (z/zipper
-   tree-branch?
-   tree-children
-   make-tree-node
-   root))
-
-(defn sequential-traverse-apply-tree
-  "TODO this is nice, but too limiting...."
-  [t f]
-  (loop [loc (z/down (cabocha-zipper t))]
-    (cond
-      (z/end? loc) (z/root loc)
-      (contains? (z/node loc) :tokens) (recur (z/down loc))
-      :else (recur (z/next
-                    (do (f (z/node loc))
-                        loc))))))
-
-;; The basic structure should look like this:
-;;
-;; [chunk,chunk,chunk,...]
-;;
-;; where chunk = [token,token,...]
-;;
-;; and token is a map of features.
-;;
-;; Restrictions on links between chunks are that one chunk can have only one outward link,
-;; but multiple incoming links are allowed.
-;;
-;; Operations on trees we want to support are:
-;; 1. Process adjacent chunks as a sequence
-;; 2. Process chunks by dependency link order, which includes
-;;    A. going from the head to the tail, and then to the tails tail, and so on ... in depth-first fashion
-;;    B. going from the tail to *all* the heads, in a breadth-first order
-;;
-;; So, extracting NPV relations would entail:
-;; 1. Search the adjecent chunk sequence for Ns in linear order
-;; 2. For each N, check if N is paired with the right P and its tail is a V
-;;
-;; Rewriting "名詞を＋する" and "名詞に＋なる" type adjacent chunk combinations into one bigger chunk,
-;; and setting that chunk's :head-type to "verb", and :tail-type to last chunk's :tail-type:
-;; 1. Search the adjacent chunk sequence for "する" or "なる" :head-type
-;; 2. Edit tree to include new combination chunk and remove old affected chunks
-;;
-;; We will have rules that depend on sequences of conditions that must match over sequences of morphemes/chunks/links.
-;; Therefore a stack of need-to-match conditions is needed.
-;; Again, can this be expressed with FSMs?
-
-;; p: current position in the form of {:chunk-id X :morpheme-id Y}
-(defn next-chunk
-  "Returns the next adjacent chunk in `t`.
-   Returns nil if last chunk."
-  [t]
-  (cond
-    (z/end? t) (do ;(pprint "next-chunk:end")
-                 (z/root t)) ; (z/root t) ; z/root for last chunk??? how do we know if we are done?
-    (contains? (z/node t) :tokens) (do ;(pprint "next-chunk:chunk")
-                                       (-> t z/right)) ; in chunk
-    (nil? (-> t z/up z/right)) (do ;(pprint "next-chunk:last-chunk")
-                                 [(z/node t) :end])
-
-    :else (do ;(pprint "next-chunk:morpheme")
-            (-> t z/up z/right))))                ; in morpheme
-
-(defn prev-chunk
-  "TODO Try to cleanup next-chunk, then rework for here."
-  [t]
-  (cond
-    (z/end? t) (do ;(pprint "next-chunk:end")
-                 (z/root t)) ; (z/root t) ; z/root for last chunk??? how do we know if we are done?
-    (contains? (z/node t) :tokens) (do ;(pprint "next-chunk:chunk")
-                                     (-> t z/left)) ; in chunk
-    (nil? (-> t z/up z/left)) (do ;(pprint "next-chunk:last-chunk")
-                                   [(z/node t) :end])
-    :else (do ;(pprint "next-chunk:morpheme")
-            (-> t z/up z/right)))
-  )
-
-(defn next-morpheme
-  [t]
-  (cond
-   (z/end? t) (do #_(pprint "next-morpheme:end") t) ; (z/root t)
-    (contains? (z/node t) :tokens) (do
-                                     ;;(pprint "next-morpheme:chunk")
-                                     (-> t z/down)) ; in chunk
-    (nil? (z/right t)) (-> t next-chunk next-morpheme)
-    #_(if (nil? (-> t z/up z/right))
-                         (do ;(pprint "next-morpheme:last-chunk+last-morpheme")
-                             [( z/node t) :end])
-                         (do ;(pprint "next-morpheme:last-morpheme")
-                             (-> t next-chunk next-morpheme))) ; last morpheme in chunk
-    :else (do ;(pprint "next-morpheme:morpheme")
-              (-> t z/right))))      ; in morpheme
-
-(defn prev-morpheme
-  "TODO"
-  [t])
-
-(defn next-linked-chunk
-  "TODO
-  If in token, go up, check :link and go to it (use :link - :id for distance).
-  If in chunk ...
-  If :link is -1, end."
-  [t]
-  (cond
-    (z/end? t) t
-    (contains? (z/node t) :tokens) (if (= :link -1)
-                                     t
-                                     (repeatedly (- :link :id) (next-chunk t)))
-    :else (next-linked-chunk (z/up t))))
-
-(defn tree-to-morphemes-function
-  [t f]
-  (loop [loc (-> (cabocha-zipper t) z/down z/down)]
-    (if (z/end? loc)
-      (z/root loc)
-      (do ;(pprint :recur)
-          (recur (next-morpheme
-                  (do (f (z/node loc))
-                      loc)))))))
-
 (defn tree-to-morphemes-flat
   [t]
   (->> t (map :tokens) flatten))
 
-
-;; Tagging middleware
+;; ## Tagging middleware
 ;;
 ;; FIXME what about `名詞＋を＋する／名詞＋に＋なる`?
 
-(defn recode-pos
+;; ### Definitions of content and functional word classes
+(def content-word-classes
+  #{:verb :noun :adverb :adjective :preposition})
+
+(def variable-word-classes
+  #{:suffix :prefix :utterance :auxiliary-verb}) ; :symbol?
+
+(def functional-word-classes
+  #{:p :symbol})
+
+(defn- recode-pos
   "Recodes morphemes in given chunk c into simple POS keywords."
   [c]
   (reduce
    (fn [r m]
-     (let [pos (str (:pos1 m) (:pos2 m) (:pos3 m))]
+     (let [pos (str (:pos1 m) (:pos2 m) (:pos3 m))
+           cType (:cType m)]
        (conj r
              (cond
-               (re-seq #"^(副詞|名詞.+副詞可能)" pos) :adverb
-               (re-seq #"^代?名詞[^副]+" pos) :noun
-               (re-seq #"^連体詞" pos) :preposition
-               (re-seq #"^動詞" pos) :verb
-               (re-seq #"^助詞" pos) :p
-               (re-seq #"^(形容詞|接尾辞形容詞的)" pos) :adjective
-               (re-seq #"^(補助)?記号" pos) :symbol
-               (re-seq #"^助動詞" pos) :auxiliary-verb
-               (re-seq #"^形状詞" pos) :adjective
-               (re-seq #"^感動詞" pos) :utterance
-               (re-seq #"^接頭辞" pos) :prefix
-               (re-seq #"^接尾辞" pos) :suffix
-               :else :unknown-pos))))
+              (re-seq #"^(副詞|名詞.+副詞可能)" pos) :adverb
+              (re-seq #"^代?名詞[^副]+" pos) :noun
+              (re-seq #"^連体詞" pos) :preposition
+              (re-seq #"^動詞" pos) :verb
+              (re-seq #"^助詞" pos) :p
+              (re-seq #"^(形容詞|接尾辞形容詞的)" pos) :adjective
+              (re-seq #"^(補助)?記号" pos) :symbol
+              (and (re-seq #"^助動詞" pos)
+                   (re-seq #"^助動詞-(ダ|デス)$" cType)) :p
+              (re-seq #"^助動詞" pos) :auxiliary-verb
+              (re-seq #"^形状詞" pos) :adjective
+              (re-seq #"^感動詞" pos) :utterance
+              (re-seq #"^接頭辞" pos) :prefix
+              (re-seq #"^接尾辞" pos) :suffix
+              :else :unknown-pos))))
    []
    c))
 
-;; Transition map: defines when POS should change or not.
+;; ## Transition map
+;;
+;; Defines when POS should change or not.
+
+(defn- vector-map->map
+  "Helper function to make a map from map-like vectors."
+  [v]
+  (apply merge (map #(apply hash-map %) v)))
+
 (def transitions
-  {[:noun :verb] :verb
-   [:noun :adjective] :adjective
-   [:adjective :verb] :verb
-   [:verb :auxiliary-verb] :verb
-   [:adjective :auxiliary-verb] :adjective})
+  (merge {[:verb :noun] :verb
+          [:adjective :noun] :adjective
+          [:verb :adjective] :verb
+          [:auxiliary-verb :verb] :verb
+          [:auxiliary-verb :adjective] :adjective
+          [:noun :symbol] :noun}
+         (vector-map->map
+          (for [c content-word-classes f functional-word-classes] [[c f] f]))
+         (vector-map->map
+          (for [pos (union content-word-classes functional-word-classes variable-word-classes)]
+            [[pos pos] pos]))))
 
-;; Content-functional boundaries: set of POSs which trigger change from content to functional.
-(def content-function-boundaries
-  #{:p :symbol})
-
-(defn enumerate
+(defn- enumerate
   "Enumerates (indexes) given sequence."
   [s]
   (map-indexed vector s))
 
-(defn infer-type-chunk
-  "Infers the content and functional parts of the chunk.
-   Also corrects the :head and :tail indexes given by CaboCha, which are sometimes wrong."
-  [c]
-  (let [indexed-pos-vec (enumerate (recode-pos c))]
-    (reduce
-     (fn [data indexed-pos]
-       (let [[i pos] indexed-pos
-             new-pos (get transitions [(:head-type data) pos] nil)]
-         (cond
-           (content-function-boundaries pos) (assoc data :tail-type pos :tail (if (nil? (:tail data)) i (:tail data)))
-           (nil? (:tail-type data)) (if (nil? new-pos)
-                                      (assoc data :head-type pos :head i)
-                                      (assoc data :head-type new-pos :head i))
-           :else (do (warn (str "Unknown type: " pos))
-                     data))))
-     {:head-type nil :tail-type nil
-      :head nil      :tail nil}
-     indexed-pos-vec)))
+(defn- update-if-not-nil
+  [m k v]
+  (let [curr-v (get m k)]
+    (if (nil? (curr-v))
+      v
+      curr-v)))
 
-(defn annotate-chunk
+(defn- reduce-with-transitions
+  [indexed-tokens]
+  (log/debug (format "START REDUCE: '%s'" indexed-tokens))
+  (reduce
+   (fn [accum i-t]
+     (log/debug (format "accum: '%s'\ti-t: '%s'" accum i-t))
+     (let [new-t (get transitions
+                      [(second (peek accum))
+                       (second i-t)])] ; 1.
+       (log/debug
+        (format "new-t: '%s'; input: '%s'" new-t [(second (peek accum)) (second i-t)]))
+       (if (nil? new-t)
+         ;; Replace token:
+         (do (log/debug (format "not replacing %s" i-t)) (conj accum i-t))
+         (do (log/debug (format "replacing with %s" new-t)) (conj (pop accum) [(first i-t) new-t])))))
+   []
+   indexed-tokens))
+
+(defn- make-composite-token-string
+  [begin end c]
+  (log/debug (format "begin: '%s' end: '%s' c: '%s'" begin end c))
+  (apply str (map #(get-in (vec c) [% :orth]) (range begin end))))
+
+(defn- infer-type-chunk
+  "Infers the content and functional parts of the chunk in reverse order.
+   Also corrects the :head and :tail indexes given by CaboCha, which are sometimes wrong.
+
+   1. Apply transition on reversed token sequence.
+      When two tokens match, they are recombined into the transitioned one.
+      The lesser token index is kept.
+   2. Repeat 1. until no matches are found.
+   3. Assign :tail and :tail-type if functional token exists, likewise for content token.
+
+   Possible chunk types are: content only, functional only, and content and functional.
+
+   TODO: In reality, the functional part can (and should) be split into two possible parts.
+         Example: 言ったかも知れないが = 言った=noun + かも知れない=functional_1 + が=functional_2
+         In this example, functional_1 would be modality, while funcitonal_1 would be normal case particle"
+  [c]
+  (let [indexed-tokens (reverse (enumerate (recode-pos c)))
+        maybe-head-tail (loop [trans-i-tokens indexed-tokens] ; 2.
+                          (log/debug (format "LOOP: '%s'" trans-i-tokens))
+                          (let [reduced (reduce-with-transitions trans-i-tokens)]
+                            (if (not= trans-i-tokens reduced)
+                              (recur reduced)
+                              trans-i-tokens)))]
+    (log/debug maybe-head-tail)
+    (second
+     (reduce ; 3.
+      (fn [[l m] [i t]] ; l = last index, m = map
+        (if (functional-word-classes t)
+          [i (assoc m :tail-type t :tail i :tail-string (make-composite-token-string i (if (nil? l) (count c) l) c))]
+          [i (assoc m :head-type t :head i :head-string (make-composite-token-string i (if (nil? l) (count c) l) c))]))
+      [nil
+       {:head-type nil :tail-type nil :tail-string nil
+        :head      nil :tail      nil :head-string nil}]
+      maybe-head-tail))))
+
+(defn- annotate-chunk
   [c]
   (merge c (infer-type-chunk (:tokens c))))
 
-(defn annotate-tree
+(defn- annotate-tree
   [t]
   (map annotate-chunk t))
 
-(defn revert-orth-with
+(defn- revert-orth-with
+  "Reverts the :orth of all tokens in tree to their pre-NFC norm form."
   [tree original-input]
+  (log/trace (format "tree: '%s'\noriginal-input: '%s'" (apply str (map :orth (tree-to-morphemes-flat tree))) original-input))
   (let [update-morpheme #(assoc % :orth (subs original-input (:begin %) (:end %)))
         update-morphemes #(map update-morpheme %)
         update-chunk #(update-in % [:tokens] update-morphemes)]
