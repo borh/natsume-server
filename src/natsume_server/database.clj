@@ -348,7 +348,7 @@ $$ language plpgsql;"))
 
 (defentity sources
   (entity-fields :id :title :author :year :basename :genres_id :subgenres_id :subsubgenres_id)
-                                        ;(has-one sentences)
+  (has-one sentences)
   (belongs-to genres)
   (belongs-to subgenres)
   (belongs-to subsubgenres)
