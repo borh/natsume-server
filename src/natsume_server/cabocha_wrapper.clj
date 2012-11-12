@@ -1,12 +1,16 @@
 (ns natsume-server.cabocha-wrapper
   (:require [clojure.string :as string]
             [clojure.java.shell :as shell]
-            [clojure.zip :as z])
-  (:use [taoensso.timbre :as timbre :only (trace debug info warn fatal spy)]
-        ;; timbre error collision with one of aleph or lamina
-        [lamina core]
-        [aleph http formats])
+            [clojure.zip :as z]
+            [taoensso.timbre :as log]
+            [natsume-server.log-config :as lc])
+  (:use
+   [lamina core]
+   [aleph http formats]
+   [clojure.set :only (union)])
   (:import [com.ibm.icu.text Transliterator Normalizer]))
+
+(lc/setup-log log/config :error)
 
 ;; With processing of user text we have to take care in repecting the
 ;; users preferences, such as the type of periods and commas he/she

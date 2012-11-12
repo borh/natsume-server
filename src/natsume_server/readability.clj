@@ -3,9 +3,12 @@
             [natsume-server.database :as db]
             [clojure.java.shell :as shell]
             [clojure.string :as string]
-            [clojure.java.io :as io])
-  (:import (org.apache.commons.compress.compressors.xz XZCompressorInputStream))
-  (:use [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)]))
+            [clojure.java.io :as io]
+            [taoensso.timbre :as log]
+            [natsume-server.log-config :as lc])
+  (:import (org.apache.commons.compress.compressors.xz XZCompressorInputStream)))
+
+(lc/setup-log log/config :error)
 
 ;; # Features related to readability.
 ;;
@@ -449,7 +452,7 @@
 
         [percentage-runs average-runs] (get-runs text)
         ]
-    ;;(debug text)
+    ;;(log/debug text)
     (merge
      m
      {:hiragana    (by-length hiragana)

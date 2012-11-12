@@ -3,13 +3,14 @@
 ;; the PostgreSQL database. The database user, password and schema
 ;; must be set up in a separate step outlined in the Deployment README.
 (ns natsume-server.database
-  (:use ;;[korma.incubator.core]
-   [korma.db]
-   [korma.core]
-   [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)])
+  (:use [korma.db]
+        [korma.core])
   (:require [clojure.java.jdbc :as sql]
             [clojure.string :as string]
-            #_[taoensso.carmine :as r]))
+            [taoensso.timbre :as log]
+            [natsume-server.log-config :as lc]))
+
+(lc/setup-log log/config :error)
 
 ;; Atom data structure: pos -> lemma -> freq.
 ;; Defined using defonce to prevent overwriting on recompilation.
@@ -434,21 +435,21 @@ $$ language plpgsql;"))
   message; if a file is not in `sources.tsv` or not on the filesystem,
   then ignore that file (do not insert.)"
   [sources-metadata file-set]
-  (debug (str "Updating sources with file-set " file-set))
+  (log/debug (str "Updating sources with file-set " file-set))
   (doseq [[title author year basename genres-name subgenres-name
            subsubgenres-name subsubsubgenres-name permission] sources-metadata]
     (cond
      (not (contains? file-set basename))
-     (debug (str "Skipping insertion of file " basename " in sources.tsv"))
+     (log/debug (str "Skipping insertion of file " basename " in sources.tsv"))
      (not (empty? (select sources (where {:title basename}))))
-     (debug (str "Skipping insertion of file " basename " because it is already in the database"))
+     (log/debug (str "Skipping insertion of file " basename " because it is already in the database"))
      :else
      (let [genres-id          (insert-if-not-exist genres {:name genres-name})
            subgenres-id       (insert-if-not-exist subgenres {:name subgenres-name})
            subsubgenres-id    (insert-if-not-exist subsubgenres {:name subsubgenres-name})
            subsubsubgenres-id (insert-if-not-exist subsubsubgenres {:name subsubsubgenres-name})]
        (reset! current-genres-id genres-id)
-       (trace (format "genres-id=%d\tsubgenres-id=%d\tsubsubgenres-id=%d\tsubsubsubgenres-id=%d"
+       (log/trace (format "genres-id=%d\tsubgenres-id=%d\tsubsubgenres-id=%d\tsubsubsubgenres-id=%d"
                       genres-id subgenres-id subsubgenres-id subsubsubgenres-id))
        (insert sources
                (values {:title              title
@@ -467,7 +468,7 @@ $$ language plpgsql;"))
 
 (defn insert-sentence
   [sentence-values f]
-  (do (trace "Inserting sentence")
+  (do (log/trace "Inserting sentence")
       (let [id (:id (insert sentences (values sentence-values)))
             readability-values (dissoc
                                 (assoc sentence-values :sentences_id
@@ -486,7 +487,7 @@ $$ language plpgsql;"))
 
 (defn upsert-inc
   [pos1 lemma genres-id]
-  (trace (format "upserting %s %s %d" pos1 lemma genres-id))
+  (log/trace (format "upserting %s %s %d" pos1 lemma genres-id))
   (exec-raw (format "SELECT upsert_lemmas('%s', '%s', %d)" pos1 lemma genres-id) :results))
 
 (defn write-pos-lemma-table

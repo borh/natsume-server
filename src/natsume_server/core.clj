@@ -4,10 +4,11 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [natsume-server.readability :as rd]
-            [natsume-server.database :as db])
+            [natsume-server.database :as db]
+            [taoensso.timbre :as log]
+            [natsume-server.log-config :as lc])
   (:import (java.io.File))
-  (:use [taoensso.timbre :as timbre :only (trace debug info warn error fatal spy)]
-        [clojure.tools.cli :only (cli)]))
+  (:use [clojure.tools.cli :only (cli)]))
 
 ;; ## Miscellaneous filesystem helper utilities.
 (defn normalized-path [path] (.getCanonicalFile path))
@@ -106,7 +107,7 @@
   (let [basename (get-basename (io/file f))
         source-id (db/basename->source_id basename)
         paragraphs (do (string->paragraph->lines (slurp f)))]
-    ;;(debug (str "Slurping " f " with source_id " source-id " and # of paragraphs " (count paragraphs)))
+    ;;(log/debug (str "Slurping " f " with source_id " source-id " and # of paragraphs " (count paragraphs)))
     {:source-id source-id
      :paragraphs paragraphs}))
 
@@ -141,14 +142,14 @@
                    io/file
                    file-seq
                    (filter is-text?))]
-    (debug (str "Initializing " name " with files " files))
+    (log/debug (str "Initializing " name " with files " files))
     (let [basename-set (set (map get-basename files))]
       (db/update-sources (tsv->vector (str corpus-dir "/sources.tsv")) basename-set))
     (do (doseq [sentences (pmap slurp-with-metadata files)] ; compare map and pmap
           ;; (filter db/basename-in-sources?) ;; this is a roundabout
           ;; way of filtering, should be integrated with above db
           ;; update function
-          (do (debug "Inserting sentences from initialize-corpus")
+          (do (log/debug "Inserting sentences from initialize-corpus")
               (insert-sentences sentences)))
         (db/merge-tokens!) ; TODO fix
         (db/reset-inmemory-tokens!))))
@@ -158,8 +159,8 @@
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
   [opts args]
-  (debug (str "Options:\n" opts "\n"))
-  (debug (str "Arguments:\n" args "\n"))
+  (log/debug (str "Options:\n" opts "\n"))
+  (log/debug (str "Arguments:\n" args "\n"))
   (do
     (db/init-database {:destructive 1})
     (map initialize-corpus (map str args)) ; TODO why map string? fix for multiple dirs
@@ -200,8 +201,8 @@
     (if (:verbose options)
       (do
         (println "Turning on verbose logging.")
-        (timbre/set-level! :debug))
-      (timbre/set-level! :error))
+        (lc/setup-log log/config :debug))
+      (lc/setup-log log/config :error))
     (println options)
     (if-let [checked-directories (process-directories arguments)]
       (do
