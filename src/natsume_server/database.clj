@@ -323,17 +323,23 @@ $$ language plpgsql;"))
      "CREATE INDEX idx_npv_mappings_npv_positions_id ON npv_mappings (id)"
      "CREATE INDEX idx_npv_mappings_sentences_id     ON npv_mappings (id)")))
 
+(declare sentences sources)
+
 (defentity genres
-  (entity-fields :id :name))
+  (entity-fields :id :name)
+  (has-one sources))
 
 (defentity subgenres
-  (entity-fields :id :name))
+  (entity-fields :id :name)
+  (has-one sources))
 
 (defentity subsubgenres
-  (entity-fields :id :name))
+  (entity-fields :id :name)
+  (has-one sources))
 
 (defentity subsubsubgenres
-  (entity-fields :id :name))
+  (entity-fields :id :name)
+  (has-one sources))
 
 (defentity lemmas
   (entity-fields :pos :lemma :freq :genres_id)
