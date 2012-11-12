@@ -53,7 +53,9 @@
 (def test-nouns
   ["名詞"
    "複合名詞"
-   "複合名詞句"])
+   "複合名詞句"
+   "これ"
+   "私"])
 
 (def test-verbs
   ["言う"
@@ -74,7 +76,7 @@
    "複合させられた"
    "複合させられなかった"
    "遊覧飛行する"
-   "転落させられたとも"])
+   "転落させられた"])
 
 (def test-adverbs
   ["絶対"
@@ -91,24 +93,88 @@
    "転がりやすい"
    "我慢強い"])
 
+(def test-prepositions
+  ["この"
+   "いわゆる"
+   "大きな"
+   "大した"])
+
+(def test-particles
+  ["が"
+   "を"
+   "に"
+   "で"
+   "と"
+   "から"
+   "より"
+   "も"
+   "において"
+   "に関して"])
+
 ;; Tests
+
+(defn permute-strings
+  [xs ys]
+  (for [x xs y ys] (str x y)))
 
 (defn head-types-runner-first
   "Helper function to run tests on string sequences."
   [xs]
   (map :head-type (map first (map cw/string-to-tree xs))))
 
+(defn get-keys-in-first-chunk
+  ""
+  [xs & keys]
+  (let [chunks (map first (map cw/string-to-tree xs))]
+    (map #(select-keys % keys) chunks)))
+
+(defn chunk->keys
+  "Helper function to run tests on string sequences."
+  [xs]
+  (get-keys-in-first-chunk xs :head-type :tail-type :tokens))
+
+(defn generate-head-tail-checker
+  [map]
+  (chatty-checker
+   [actual]
+   (= map
+      (select-keys actual [:head-type :tail-type])))  )
+
 (fact "nominal chunks are nominal"
-      (head-types-runner-first test-nouns) => (has every? #(= :noun %)))
+  (head-types-runner-first test-nouns) => (has every? #(= :noun %)))
+
+(facts "noun + particle have right head and tail"
+ (doseq [t (chunk->keys (permute-strings test-nouns test-particles))]
+   (fact "subtest"
+     t => (generate-head-tail-checker {:head-type :noun :tail-type :p}))))
 
 (fact "verbal chunks are verbs"
       (head-types-runner-first test-verbs) => (has every? #(= :verb %)))
 
+(facts "verb + ga have right head and tail"
+ (doseq [t (chunk->keys (permute-strings test-verbs ["が", "のに"]))]
+   (fact "subtest"
+     t => (generate-head-tail-checker {:head-type :verb :tail-type :p}))))
+
 (fact "adverbal chunks are adverbs"
       (head-types-runner-first test-adverbs) => (has every? #(= :adverb %)))
 
+(facts "adverb + particle have right head and tail"
+ (doseq [t (chunk->keys (permute-strings test-adverbs test-particles))]
+   (fact "subtest"
+     t => (generate-head-tail-checker {:head-type :adverb :tail-type :p}))))
+
 (fact "adjectival chunks are adjectives"
       (head-types-runner-first test-adjectives) => (has every? #(= :adjective %)))
+
+(fact "prepositional chunks are prepositions"
+      (head-types-runner-first test-prepositions) => (has every? #(= :preposition %)))
+
+;; This is two chunks!
+#_(facts "preposition + noun + particle have right head and tail"
+  (doseq [t (chunk->keys (permute-strings (permute-strings test-prepositions test-nouns) test-particles))]
+   (fact "subtest"
+     t => (generate-head-tail-checker {:head-type :noun :tail-type :p}))))
 
 ;; TODO permute test -- permutation over all POS to stress test the matching algorithm (https://github.com/clojure/math.combinatorics)
 
