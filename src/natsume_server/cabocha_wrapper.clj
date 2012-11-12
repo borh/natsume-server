@@ -204,6 +204,7 @@
 (def transitions
   (merge {[:verb :noun] :verb
           [:adjective :noun] :adjective
+          [:adjective :verb] :adjective
           [:verb :adjective] :verb
           [:auxiliary-verb :verb] :verb
           [:auxiliary-verb :adjective] :adjective
