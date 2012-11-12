@@ -30,9 +30,9 @@
 ;; written back into the CaboCha output morpheme's `orth` field.
 
 ;; Is NFKC the right norm here?
-(defn normalize-nfkc
+(defn normalize-nfc
   [^String s]
-  (Normalizer/normalize s Normalizer/NFKC))
+  (Normalizer/normalize s Normalizer/NFC))
 
 ;; This is apparently very heavyweight, so we should make sure we are
 ;; only loadinig it once (I am not sure this is the right way).
@@ -373,7 +373,7 @@
 ;; The whole process is as follows:
 ;;
 ;; 1. save original string for later step
-;; 2. do Unicode NFKC on the input string
+;; 2. do Unicode NFC on the input string
 ;; 3. substitute all occurrences of `．，` with `。、`, and half- with full-width characters
 ;; 4. send resulting string to CaboCha
 ;; 5. tag all chunks by chunk type (noun phrase, adjectival phrase etc. by scanning head-tail information (:head-type = :noun, :tail-type :p-ga, etc.)
@@ -383,7 +383,7 @@
   "Converts string into CaboCha tree data structure."
   [s]
   (-> s
-      normalize-nfkc             ;2
+      normalize-nfc             ;2
       convert-half-to-fullwidth  ;2
       (string/replace "．" "。") ;3
       (string/replace "，" "、") ;3
