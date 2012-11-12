@@ -6,7 +6,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :jvm-opts ["-server" "-XX:+UseConcMarkSweepGC" "-XX:+CMSIncrementalMode" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-XX:PermSize=64M" "-XX:MaxPermSize=256M" "-Xmx2g"]
   :main natsume-server.core
-  :dependencies [[org.clojure/clojure "1.4.0"]
+  :dependencies [[org.clojure/clojure "1.5.0-beta1"]
                  [org.clojure/java.jdbc "0.2.3"]
                  [postgresql "9.1-901.jdbc4"]
                  [korma "0.3.0-beta11"]
