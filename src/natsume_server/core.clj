@@ -188,7 +188,7 @@
   "Read files from corpus and do stuff...
    `args` contains corpus directory names and (optional) flags.
 
-  Example usage from REPL: (-main )"
+  Example usage from REPL: (-main \"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT\")"
   [& args]
   (let [[options arguments banner]
         (cli args
