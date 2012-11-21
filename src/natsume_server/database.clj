@@ -55,17 +55,12 @@
    "DROP INDEX IF EXISTS idx_npv_mappings_npv_positions_id"
    "DROP INDEX IF EXISTS idx_npv_mappings_sentences_id"
    "DROP INDEX IF EXISTS idx_sentences_sources_id"
-   ;; "DROP INDEX IF EXISTS idx_token_freq_pos"
-   ;; "DROP INDEX IF EXISTS idx_token_freq_lemma"
-   ;; "DROP INDEX IF EXISTS idx_token_freq_genres_id"
    "DROP INDEX IF EXISTS idx_orthbases_lemmas_id"
-   "DROP INDEX IF EXISTS idx_orthbases_orthbase"
+   "DROP INDEX IF EXISTS idx_orthbases_name"
    "DROP INDEX IF EXISTS idx_orthbases_genres_freqs_orthbases_id"
    "DROP INDEX IF EXISTS idx_orthbases_genres_freqs_genres_id"
-   "DROP INDEX IF EXISTS idx_lemmas_pos2"
-   "DROP INDEX IF EXISTS idx_lemmas_pos1"
-   "DROP INDEX IF EXISTS idx_lemmas_lemma"
-   ;; "DROP INDEX IF EXISTS idx_lemmas_genres_id"
+   "DROP INDEX IF EXISTS idx_lemmas_pos"
+   "DROP INDEX IF EXISTS idx_lemmas_name"
    "DROP INDEX IF EXISTS idx_sources_genres_id"
    "DROP INDEX IF EXISTS idx_sources_subgenres_id"
    "DROP INDEX IF EXISTS idx_sources_subsubgenres_id"
@@ -86,8 +81,7 @@
    "DROP TABLE IF EXISTS sources"
    "DROP TABLE IF EXISTS orthbases_genres_freqs"
    "DROP TABLE IF EXISTS orthbases"
-   "DROP TABLE IF EXISTS lemmas" ; do not recreate unless necessary
-   ;; "DROP TABLE IF EXISTS token_freq" ; do not recreate unless necessary
+   "DROP TABLE IF EXISTS lemmas"
    "DROP TABLE IF EXISTS npv_positions"
    "DROP TABLE IF EXISTS npv"
    "DROP TABLE IF EXISTS subsubsubgenres"
@@ -99,8 +93,8 @@
 ;; The unit of computation is the file (or one user input). This means
 ;; that each file is processed in memory and only then commited to the
 ;; database. For the following reason we will need a helper SQL
-;; function (upsert) to take care of the merging:
-(defn create-functions
+;; function (upsert) to take care of the merging: (requires PostgreSQL>=9.1)
+#_(defn create-functions
   []
   (sql/do-commands
    "CREATE OR REPLACE FUNCTION
@@ -196,25 +190,19 @@ $$ language plpgsql;"))
     (sql/create-table
      "lemmas"
      [:id        "serial"      "PRIMARY KEY"]
-     [:pos1      "varchar(8)"  "NOT NULL"]
-     [:pos2      "varchar(8)"  "NOT NULL"]
-     [:lemma     "varchar(32)" "NOT NULL"]
-     [:goshu     "varchar(4)"  "NOT NULL"] ; or is 2 enough?
-     ;;[:freq      "integer"     "NOT NULL"]
-     ;;[:genres_id "smallint"    "NOT NULL" "REFERENCES genres(id)"]
-     )
-    (sql/do-commands "CREATE INDEX idx_lemmas_pos1  ON lemmas (pos1)")
-    (sql/do-commands "CREATE INDEX idx_lemmas_pos2  ON lemmas (pos2)")
-    (sql/do-commands "CREATE INDEX idx_lemmas_lemma ON lemmas (lemma)")
-    ;;(sql/do-commands "CREATE INDEX idx_lemmas_genres_id ON lemmas (genres_id)")
+     [:pos       "varchar(8)"  "NOT NULL"]
+     [:name      "varchar(32)" "NOT NULL"]
+     [:goshu     "varchar(4)"  "NOT NULL"])
+    (sql/do-commands "CREATE INDEX idx_lemmas_pos  ON lemmas (pos)")
+    (sql/do-commands "CREATE INDEX idx_lemmas_name ON lemmas (name)")
 
     (sql/create-table
      "orthbases"
      [:id        "serial"      "PRIMARY KEY"]
      [:lemmas_id "integer"     "NOT NULL" "REFERENCES lemmas(id)"]
-     [:orthbase  "varchar(32)" "NOT NULL"])
+     [:name      "varchar(32)" "NOT NULL"])
     (sql/do-commands "CREATE INDEX idx_orthbases_lemmas_id ON orthbases (lemmas_id)")
-    (sql/do-commands "CREATE INDEX idx_orthbases_orthbase  ON orthbases (orthbase)")
+    (sql/do-commands "CREATE INDEX idx_orthbases_name      ON orthbases (name)")
 
     (sql/create-table
      "orthbases_genres_freqs"
@@ -349,8 +337,21 @@ $$ language plpgsql;"))
   (entity-fields :id :name)
   (has-one sources))
 
+(declare orthbases)
 (defentity lemmas
-  (entity-fields :pos :lemma :freq :genres_id)
+  (entity-fields :pos :name :goshu)
+  (has-one orthbases))
+
+(declare orthbases_genres_freqs)
+(defentity orthbases
+  (entity-fields :name)
+  (belongs-to lemmas)
+  (belongs-to orthbases_genres_freqs)
+  (has-one orthbases_genres_freqs))
+
+(defentity orthbases_genres_freqs
+  (entity-fields :freq)
+  (belongs-to orthbases)
   (belongs-to genres))
 
 (defentity sources
