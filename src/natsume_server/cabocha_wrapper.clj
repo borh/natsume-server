@@ -97,32 +97,65 @@
   #{:suffix :prefix :utterance :auxiliary-verb}) ; :symbol?
 
 (def functional-word-classes
-  #{:p :symbol})
+  #{:particle :symbol})
+
+(defn- keywordize-ne
+  [s]
+  (keyword (string/lower-case (string/replace s #"[BI]-" ""))))
+
+(defn unify-aspect-tags
+  "Unifies the separate :aspect and #{:iru :simau :kuru} tags into one :aspect-* tag."
+  [a]
+  (let [match (clojure.set/select #{:iru :simau :kuru} a)]
+    (if (and (:aspect a) (not-empty match))
+      (conj (apply disj a :aspect match)
+            (keyword (str "aspect-" (name (first match)))))
+      a)))
 
 (defn- recode-pos
-  "Recodes morphemes in given chunk c into simple POS keywords."
+  "Recodes tokens in given chunk c into meta-information tags.
+   Word class is recorded in :pos and other tags in :tags set."
   [c]
   (reduce
    (fn [r m]
      (let [pos (str (:pos1 m) (:pos2 m) (:pos3 m))
-           cType (:cType m)]
-       (conj r
-             (cond
-              (re-seq #"^(副詞|名詞.+副詞可能)" pos) :adverb
-              (re-seq #"^代?名詞[^副]+" pos) :noun
-              (re-seq #"^連体詞" pos) :preposition
-              (re-seq #"^動詞" pos) :verb
-              (re-seq #"^助詞" pos) :p
-              (re-seq #"^(形容詞|接尾辞形容詞的)" pos) :adjective
-              (re-seq #"^(補助)?記号" pos) :symbol
-              (and (re-seq #"^助動詞" pos)
-                   (re-seq #"^助動詞-(ダ|デス)$" cType)) :p
-              (re-seq #"^助動詞" pos) :auxiliary-verb
-              (re-seq #"^形状詞" pos) :adjective
-              (re-seq #"^感動詞" pos) :utterance
-              (re-seq #"^接頭辞" pos) :prefix
-              (re-seq #"^接尾辞" pos) :suffix
-              :else :unknown-pos))))
+           lemma (:lemma m)
+           pos-code (cond
+                     (re-seq #"^(副詞|名詞.+副詞可能)" pos) :adverb
+                     (re-seq #"^代?名詞[^副]+" pos) :noun
+                     (re-seq #"^連体詞" pos) :preposition
+                     (re-seq #"^動詞" pos) :verb
+                     (and (re-seq #"^助詞接続助詞" pos)
+                          (= "て" lemma)) :auxiliary-verb
+                     (re-seq #"^(助|接続)詞" pos) :particle
+                     (re-seq #"^(形容詞|接尾辞形容詞的)" pos) :adjective
+                     (re-seq #"^((補助)?記号|空白)" pos) :symbol
+                     (and (re-seq #"^助動詞" pos)
+                          (re-seq #"^助動詞-(ダ|デス)$" (:cType m))) :particle
+                     (re-seq #"^助動詞" pos) :auxiliary-verb
+                     (re-seq #"^形状詞" pos) :adjective
+                     (re-seq #"^感動詞" pos) :utterance
+                     (re-seq #"^接頭辞" pos) :prefix
+                     (re-seq #"^接尾辞" pos) :suffix
+                     :else :unknown-pos)
+           tags (cond
+                 (= :verb pos-code) (cond (= "出来る" lemma) #{:dekiru}
+                                          (= "居る"   lemma) #{:iru}
+                                          (= "仕舞う" lemma) #{:simau}
+                                          (= "来る"   lemma) #{:kuru}
+                                          :else #{})
+                 (= :adjective pos-code) (cond (= "無い" lemma) #{:negative} :else #{})
+                 (= :auxiliary-verb pos-code) (cond
+                                               (= (:cType m) "助動詞-タ")                  #{:past}
+                                               (re-seq #"^助動詞-(ナイ|ヌ)$" (:cType m))   #{:negative}
+                                               (re-seq #"^ら?れる$" lemma)                 #{:passive}
+                                               (= (:lemma m) "せる")                       #{:active}
+                                               (re-seq #"^助動詞-(マス|デス)$" (:cType m)) #{:polite}
+                                               (= (:lemma m) "て")                         #{:aspect}
+                                               :else                                       #{})
+                 :else #{})
+           ne (if (not= "O" (:ne m)) #{(keywordize-ne (:ne m))} #{})]
+       (conj r {:pos pos-code :tags (union tags ne)})))
    []
    c))
 
@@ -142,6 +175,7 @@
           [:verb :adjective] :verb
           [:auxiliary-verb :verb] :verb
           [:auxiliary-verb :adjective] :adjective
+          [:suffix :noun] :noun
           [:noun :symbol] :noun}
          (vector-map->map
           (for [c content-word-classes f functional-word-classes] [[c f] f]))
@@ -166,23 +200,41 @@
   (log/debug (format "START REDUCE: '%s'" indexed-tokens))
   (reduce
    (fn [accum i-t]
-     (log/debug (format "accum: '%s'\ti-t: '%s'" accum i-t))
-     (let [new-t (get transitions
-                      [(second (peek accum))
-                       (second i-t)])] ; 1.
+     (log/debug (format "  accum: '%s'\ti-t: '%s'" accum i-t))
+     (let [get-pos #(:pos (second %))
+           get-tags #(:tags (second %))
+           i (first i-t)
+           pos (get-pos i-t)
+           tags (get-tags i-t)
+           new-t {:pos (get transitions [(get-pos (peek accum)) pos]) :tags (union tags (get-tags (peek accum)))}] ; 1.
        (log/debug
-        (format "new-t: '%s'; input: '%s'" new-t [(second (peek accum)) (second i-t)]))
-       (if (nil? new-t)
+        (format "    new-t: '%s'; input: '%s'" new-t [(get-pos (peek accum)) pos]))
+       (if (nil? (:pos new-t))
          ;; Replace token:
-         (do (log/debug (format "not replacing %s" i-t)) (conj accum i-t))
-         (do (log/debug (format "replacing with %s" new-t)) (conj (pop accum) [(first i-t) new-t])))))
+         (do (log/debug (format "    not replacing %s" i-t))    (conj accum i-t)) ; Add token
+         (do (log/debug (format "    replacing with %s" new-t)) (conj (pop accum) [i (union (get-tags (pop accum)) new-t)]))))) ; Replace token
    []
    indexed-tokens))
 
 (defn- make-composite-token-string
+  "Given a chunk and begin and end token indexes, compounds the orthographic representations of
+   tokens into bigger units in a smart way.
+
+   For example, given 続け + られ + た, it will return 続けられる."
   [begin end c]
-  (log/debug (format "begin: '%s' end: '%s' c: '%s'" begin end c))
-  (apply str (map #(get-in (vec c) [% :orth]) (range begin end))))
+  ;;(println begin)
+  ;;(println end)
+  ;;(println (vec c))
+  ;;(println "hello")
+  ;;(println (map #(get-in (vec c) [%]) (range begin end)))
+  ;;(println (:orthBase (last (map #(get-in (vec c) [%]) (range begin end)))))
+  ;;(println (vec (map :orth (pop (map #(get-in (vec c) [%]) (range begin end))))))
+  (let [tokens (vec (map #(get-in (vec c) [%]) (range begin end)))
+        smart-base #(if (re-seq #"^助動?詞" (:pos1 %)) (:orth %) (:orthBase %)) ; :lemma is another possibility
+        tail-token-orthbase (smart-base (peek tokens))
+        head-tokens-orth    (vec (map :orth (pop tokens)))]
+    (log/debug (format "begin: '%s' end: '%s' head-token-orthbase: '%s' tail-token-orthbase: '%s'" begin end head-tokens-orth tail-token-orthbase))
+    (apply str (conj head-tokens-orth tail-token-orthbase))))
 
 (defn- infer-type-chunk
   "Infers the content and functional parts of the chunk in reverse order.
@@ -192,13 +244,13 @@
       When two tokens match, they are recombined into the transitioned one.
       The lesser token index is kept.
    2. Repeat 1. until no matches are found.
-   3. Assign :tail and :tail-type if functional token exists, likewise for content token.
+   3. Assign :tail and :tail-pos if functional token exists, likewise for content token.
 
-   Possible chunk types are: content only, functional only, and content and functional.
+   All combinations of the three chunk types are possible: content, function, and modality.
 
    TODO: In reality, the functional part can (and should) be split into two possible parts.
          Example: 言ったかも知れないが = 言った=noun + かも知れない=functional_1 + が=functional_2
-         In this example, functional_1 would be modality, while funcitonal_1 would be normal case particle"
+         In this example, functional_1 would be modality, while funcitonal_2 would be normal case particle"
   [c]
   (let [indexed-tokens (reverse (enumerate (recode-pos c)))
         maybe-head-tail (loop [trans-i-tokens indexed-tokens] ; 2.
@@ -207,16 +259,19 @@
                             (if (not= trans-i-tokens reduced)
                               (recur reduced)
                               trans-i-tokens)))]
-    (log/debug maybe-head-tail)
+    #_(log/debug maybe-head-tail)
     (second
      (reduce ; 3.
       (fn [[l m] [i t]] ; l = last index, m = map
-        (if (functional-word-classes t)
-          [i (assoc m :tail-type t :tail i :tail-string (make-composite-token-string i (if (nil? l) (count c) l) c))]
-          [i (assoc m :head-type t :head i :head-string (make-composite-token-string i (if (nil? l) (count c) l) c))]))
+        (let [pos (:pos t)
+              tags (unify-aspect-tags (:tags t))
+              base-string (make-composite-token-string i (if (nil? l) (count c) l) c)]
+          (if (functional-word-classes pos)
+            [i (assoc m :tail-pos pos :tail-tags tags :tail i :tail-string base-string)]
+            [i (assoc m :head-pos pos :head-tags tags :head i :head-string base-string)])))
       [nil
-       {:head-type nil :tail-type nil :tail-string nil
-        :head      nil :tail      nil :head-string nil}]
+       {:head-pos nil :head-tags nil :tail-pos nil :tail-string nil
+        :head     nil :tail-tags nil :tail     nil :head-string nil}]
       maybe-head-tail))))
 
 (defn- annotate-chunk
