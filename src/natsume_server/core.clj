@@ -8,7 +8,8 @@
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
   (:import (java.io.File))
-  (:use [clojure.tools.cli :only (cli)]))
+  (:use [clojure.tools.cli :only (cli)])
+  (:gen-class))
 
 ;; ## Miscellaneous filesystem helper utilities.
 (defn normalized-path [path] (.getCanonicalFile path))
