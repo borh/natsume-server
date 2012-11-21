@@ -68,8 +68,8 @@
 (defn websocket-handler [ch req]
   (siphon ch req)) ; used to be ch ch
 
-(defonce cabocha-websocket-channel
-  #(deref (websocket-client {:url "ws://localhost:8080/ws/json"})))
+(def cabocha-websocket-channel
+  #(deref (websocket-client {:url "ws://localhost:5010/ws/json"})))
 
 (defn get-cabocha-websocket
   "For a given string returns a CaboCha analyzed string using WebSockets."
