@@ -5,40 +5,47 @@
 (ns natsume-server.database
   (:use [korma.db]
         [korma.core])
-  (:require [clojure.java.jdbc :as sql]
+  (:require [clojure.java.io :as io]
+            [clojure.java.jdbc :as sql]
             [clojure.string :as string]
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc]))
 
 (lc/setup-log log/config :error)
 
-;; Atom data structure: pos -> lemma -> freq.
-;; Defined using defonce to prevent overwriting on recompilation.
-(defonce inmemory-tokens
-  (atom {}))
-
-(defn inmemory-token-inc!
-  [pos1 pos2 goshu lemma orthbase]
-  (swap! inmemory-tokens update-in
-         [[pos1 pos2 goshu] lemma orthbase]
-         (fn [freq] (if (nil? freq) 1 (inc freq)))))
-
-(defn reset-inmemory-tokens!
-  []
-  (reset! inmemory-tokens {}))
+;; # Local config
+(def local-config
+  "Loads config from the 'local-config.clj' file in the project root directory as well as environment
+   variables (prefixed with 'NATSUME_').
+   NOTE: Environment variables override file variables override source-file variables."
+  (try
+    (with-open [r (io/reader "local-config.clj")]
+      (read (java.io.PushbackReader. r)))
+    (catch Exception e ; TODO find out how to check for FileNotFoundException exactly
+      (into {} (filter
+                (comp nil?)
+                (map #(vector (keyword (string/lower-case (string/replace % "NATSUME_" "")))
+                              (get (System/getenv) %))
+                     ["NATSUME_SUBNAME" "NATSUME_USER" "NATSUME_PASSWORD"]))))))
 
 ;; # PostgreSQL setup.
-(def natsume-dbspec {:classname   "org.postgresql.Driver" ; must be in classpath
-                     :subprotocol "postgresql"
-                     :subname     "//localhost:5432/natsumedev"
-                     :user        "natsumedev"
-                     :password    "riDJMq98LpyWgB7F"}) ; Replace with `System/getenv`
+;;
+;; Needs the following to be set up on the PostgreSQL server:
+;;
+;;     CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD '';
+;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
+;;
+;; :subname, :user and :password should match that found in the following dbspec:
+(def natsume-dbspec
+  (merge
+   {:classname   "org.postgresql.Driver"
+    :subprotocol "postgresql"
+    :subname     "//localhost:5432/natsumedev"
+    :user        "natsumedev"
+    :password    ""}
+   local-config))
 
 (defdb natsume-db natsume-dbspec)
-;; Needs the following on the PostgreSQL server:
-;;
-;;     CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD 'riDJMq98LpyWgB7F';
-;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
 
 (defn drop-all-indexes
   "Remove indexes so we can reset tables."
