@@ -97,17 +97,21 @@
       [line (->> filename slurp string/split-lines (map split-on-tab))]
     line))
 
-(defn string->paragraph->lines
+(defn paragraphs->sentences
+  [ps]
+  (map paragraph->sentences ps))
+
+(defn string->sentences
   [s]
-  (->> s
-       string->paragraphs
-       (map paragraph->sentences)))
+  (-> s
+      string->paragraphs
+      paragraphs->sentences))
 
 (defn slurp-with-metadata
   [f]
   (let [basename (get-basename (io/file f))
         source-id (db/basename->source_id basename)
-        paragraphs (do (string->paragraph->lines (slurp f)))]
+        paragraphs (do (string->sentences (slurp f)))]
     ;;(log/debug (str "Slurping " f " with source_id " source-id " and # of paragraphs " (count paragraphs)))
     {:source-id source-id
      :paragraphs paragraphs}))
