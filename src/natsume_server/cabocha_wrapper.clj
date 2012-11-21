@@ -29,7 +29,6 @@
 ;; The original string should be kept and preferrably its contents
 ;; written back into the CaboCha output morpheme's `orth` field.
 
-;; Is NFKC the right norm here?
 (defn normalize-nfc
   [^String s]
   (Normalizer/normalize s Normalizer/NFC))
