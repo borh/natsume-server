@@ -399,7 +399,7 @@
 ;; Would be best to not average at this level -- leave it for the upper levels, maybe even in SQL.
 (defn get-sentence-info
   [s]
-  (let [tree       (cw/string-to-tree s)
+  (let [tree       (cw/sentence->tree s)
         wsm        (writing-system-count s)
         gm         (goshu-map tree)
         characters (count s)

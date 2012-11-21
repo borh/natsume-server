@@ -243,23 +243,22 @@
 ;; 2. do Unicode NFC on the input string
 ;; 3. substitute all occurrences of `．，` with `。、`, and half- with full-width characters
 ;; 4. send resulting string to CaboCha
-;; 5. tag all chunks by chunk type (noun phrase, adjectival phrase etc. by scanning head-tail information (:head-type = :noun, :tail-type :p-ga, etc.)
+;; 5. tag all chunks by chunk type (noun phrase, adjectival phrase etc. by scanning head-tail information (:head-pos = :noun, :tail-pos :p-ga, etc.)
 ;; 5. join certain classes of chunks like `プレゼントをする`, i.e. `名詞＋を＋する／名詞＋に＋なる`
 ;; 6. replace the `orth` fields of all morphemes in CaboCha output with characters in the original string
-(defn string-to-tree
+(defn sentence->tree
   "Converts string into CaboCha tree data structure."
   [s]
   (-> s
-      normalize-nfc             ;2
+      normalize-nfc              ;2
       convert-half-to-fullwidth  ;2
       (string/replace "．" "。") ;3
       (string/replace "，" "、") ;3
       ;;run-cabocha-on-string    ;4
       ;;parse-cabocha-format     ;4
       get-cabocha-websocket      ;4 ;; faster until we get JNI bindings working
-      (revert-orth-with s)
-      annotate-tree
-      ))
+      (revert-orth-with s)       ;6
+      annotate-tree))            ;5
 
 ;; # TODO
 ;;
