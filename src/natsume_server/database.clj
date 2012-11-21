@@ -417,7 +417,7 @@ $$ language plpgsql;"))
     (invoke-with-connection drop-all-indexes)
     (invoke-with-connection drop-all-tables))
   (do (invoke-with-connection create-tables-and-indexes)
-      (invoke-with-connection create-functions)))
+      #_(invoke-with-connection create-functions)))
 
 ;; # Database query functions
 ;;
@@ -504,21 +504,94 @@ $$ language plpgsql;"))
     (doseq [[lemma freq] lemmas]
       (insert lemmas (values {:pos pos :lemma lemma :freq freq})))))
 
+;; Atom data structure: pos -> lemma -> freq.
+;; Defined using defonce to prevent overwriting on recompilation.
+(defonce inmemory-tokens
+  (atom {}))
+
+(defn inmemory-token-inc!
+  [pos1 pos2 goshu lemma orthbase]
+  (log/debug (format "%s %s %s %s %s" pos1 pos2 goshu lemma orthbase))
+  (swap! inmemory-tokens update-in
+         [[(str pos1 pos2) goshu] lemma orthbase]
+         (fn [freq] (if (nil? freq) 1 (inc freq)))))
+
+(defn reset-inmemory-tokens!
+  []
+  (reset! inmemory-tokens {}))
+
+;;
+
 (defn merge-tokens!
   "genres-id:pos -> lemma: freq"
   []
-  (let [tokens-part (partition
-                     1000 ; if we don't partiton the insert fails because of length issues
-                     (mapv #(assoc % :genres_id @current-genres-id)
-                           (for [[[pos1 pos2 goshu] lemmas] @inmemory-tokens
-                                 [lemma orthbases]          lemmas
-                                 [orthbase freq]            orthbases]
-                             [{:pos1 pos1 :pos2 pos2 :goshu goshu :lemma lemma}
-                              {:orthBase orthbase :freq freq}])))]
-    (doseq [[lemmas-part orthbase-part] tokens-part]
-      (insert lemmas
-              (values lemmas-part))
-      #_(insert orthbases-genres-freqs))))
+  #_(insert lemmas (values {:pos pos :goshu goshu :name lemma}))
+  (doseq [[[pos goshu] lemmas] @inmemory-tokens
+          [lemma orthbases]    lemmas]
+    (let [lemma-id (get-in (exec-raw ["INSERT INTO lemmas (pos, goshu, name) VALUES (?, ?, ?) RETURNING id" [pos goshu lemma]] :results) [0 :id])]
+      (log/debug (format "lemma-id: %d" lemma-id))
+      (doseq [[orthbase freq]    orthbases]
+        (let [orthbase-id (get-in (exec-raw ["INSERT INTO orthbases (lemmas_id, name) VALUES (?, ?) RETURNING id" [lemma-id orthbase]] :results) [0 :id])
+              #_(:id (insert orthbases (values [{:name orthbase :lemmas_id lemma-id}])))]
+          (exec-raw ["INSERT INTO orthbases_genres_freqs (orthbases_id, genres_id, freq) VALUES (?, ?, ?)" [orthbase-id @current-genres-id freq]])
+          #_(insert orthbases_genres_freqs (values {:orthbases_id orthbase-id :genres_id @current-genres-id :freq freq}))))))
+  #_(let [tokens-parts (partition-all
+                      1000 ; if we don't partiton the insert fails because of length issues
+                      (mapv #(do (log/debug %) (assoc-in % [1 :genres_id] @current-genres-id)) ; FIXME/TODO
+                            (for [[[pos goshu] lemmas] @inmemory-tokens
+                                  [lemma orthbases]    lemmas
+                                  [orthbase freq]      orthbases]
+                              (do (log/debug (format "Making.. '%s %s %s' :: '%s %s'" pos goshu lemma orthbase freq))
+                                  [{:pos pos :goshu goshu :name lemma}
+                                   {:name orthbase :freq freq}]))))]
+    (log/debug (format "tokens-part: '%s'" (vector tokens-parts)))
+    (doseq [part tokens-parts
+            [lemmas-part orthbase-part] part]
+      (log/debug (format "lemmas-part: '%s'" lemmas-part))
+      (log/debug (format "orthbase-part: '%s'" orthbase-part))
+      (let [lemmas-id (insert lemmas
+                              (values lemmas-part))]
+        (log/debug (format "Lemmas id: %s" lemmas-id))
+        (insert orthbases
+                (values orthbase-part))
+        (insert orthbases_genres_freqs
+                (values orthbase-part))))))
+
+(defn get-genres
+  []
+  (select genres))
+
+(defn get-genre-token-counts
+  []
+  (let [r (select orthbases_genres_freqs
+                  (fields :genres_id)
+                  (aggregate (sum :freq) :total :genres_id))]
+    (into {} (for [row r] [(:genres_id row) (:total row)]))))
+
+(defn get-token-freqs
+  [pos orthbase]
+  (select orthbases
+          (with lemmas)
+          (with orthbases_genres_freqs)
+          (fields :orthbases_genres_freqs.freq :orthbases_genres_freqs.genres_id)
+          (where {:name orthbase :lemmas.pos pos})
+          (group :orthbases_genres_freqs.genres_id :orthbases.name :orthbases_genres_freqs.freq)))
+
+(defn get-norm-token-freqs
+  [pos orthbase]
+  (let [freqs (get-token-freqs pos orthbase)
+        genre-totals (get-genre-token-counts)]
+    (into {}
+          (map (fn [m]
+                 (let [genre (:genres_id m)
+                       freq  (:freq m)]
+                   [genre (/ freq (get genre-totals genre))]))
+               freqs))))
+
+(defn register-score
+  [pos orthbase good-id bad-id]
+  (let [r (get-norm-token-freqs pos orthbase)]
+    (- (Math/log (get r good-id 1)) (Math/log (get r bad-id 1)))))
 
 (def sum-statement
   "sum(length) AS length, sum(hiragana) AS hiragana,
