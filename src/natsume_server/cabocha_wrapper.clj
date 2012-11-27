@@ -197,22 +197,22 @@
 
 (defn- reduce-with-transitions
   [indexed-tokens]
-  (log/debug (format "START REDUCE: '%s'" indexed-tokens))
+  (log/trace (format "START REDUCE: '%s'" indexed-tokens))
   (reduce
    (fn [accum i-t]
-     (log/debug (format "  accum: '%s'\ti-t: '%s'" accum i-t))
+     (log/trace (format "  accum: '%s'\ti-t: '%s'" accum i-t))
      (let [get-pos #(:pos (second %))
            get-tags #(:tags (second %))
            i (first i-t)
            pos (get-pos i-t)
            tags (get-tags i-t)
            new-t {:pos (get transitions [(get-pos (peek accum)) pos]) :tags (union tags (get-tags (peek accum)))}] ; 1.
-       (log/debug
+       (log/trace
         (format "    new-t: '%s'; input: '%s'" new-t [(get-pos (peek accum)) pos]))
        (if (nil? (:pos new-t))
          ;; Replace token:
-         (do (log/debug (format "    not replacing %s" i-t))    (conj accum i-t)) ; Add token
-         (do (log/debug (format "    replacing with %s" new-t)) (conj (pop accum) [i (union (get-tags (pop accum)) new-t)]))))) ; Replace token
+         (do (log/trace (format "    not replacing %s" i-t))    (conj accum i-t)) ; Add token
+         (do (log/trace (format "    replacing with %s" new-t)) (conj (pop accum) [i (union (get-tags (pop accum)) new-t)]))))) ; Replace token
    []
    indexed-tokens))
 
@@ -233,7 +233,7 @@
         smart-base #(if (re-seq #"^助動?詞" (:pos1 %)) (:orth %) (:orthBase %)) ; :lemma is another possibility
         tail-token-orthbase (smart-base (peek tokens))
         head-tokens-orth    (vec (map :orth (pop tokens)))]
-    (log/debug (format "begin: '%s' end: '%s' head-token-orthbase: '%s' tail-token-orthbase: '%s'" begin end head-tokens-orth tail-token-orthbase))
+    (log/trace (format "begin: '%s' end: '%s' head-token-orthbase: '%s' tail-token-orthbase: '%s'" begin end head-tokens-orth tail-token-orthbase))
     (apply str (conj head-tokens-orth tail-token-orthbase))))
 
 (defn- infer-type-chunk
@@ -254,12 +254,11 @@
   [c]
   (let [indexed-tokens (reverse (enumerate (recode-pos c)))
         maybe-head-tail (loop [trans-i-tokens indexed-tokens] ; 2.
-                          (log/debug (format "LOOP: '%s'" trans-i-tokens))
+                          (log/trace (format "LOOP: '%s'" trans-i-tokens))
                           (let [reduced (reduce-with-transitions trans-i-tokens)]
                             (if (not= trans-i-tokens reduced)
                               (recur reduced)
                               trans-i-tokens)))]
-    #_(log/debug maybe-head-tail)
     (second
      (reduce ; 3.
       (fn [[l m] [i t]] ; l = last index, m = map
