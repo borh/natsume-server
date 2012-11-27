@@ -1,39 +1,193 @@
 (ns natsume-server.server
   (:use [ring.adapter.jetty :only (run-jetty)]
-        [compojure.core :only (defroutes GET POST)]
-        [ring.middleware.format-params :only (wrap-restful-params)]
-        [ring.middleware.format-response :only (wrap-restful-response)])
-  (:require [natsume-server.core :as core]
-            [natsume-server.cabocha-wrapper :as cw]
+        [compojure.core :only (GET POST context defroutes)]
+        [ring.util.codec :only (url-decode)]
+        [ring.util.response :only (content-type)]
+        [ring.middleware.stacktrace :only (wrap-stacktrace)]
+        [ring.middleware.cors :only (wrap-cors)]
+        [compojure.response :only (Renderable)]
+        [natsume-server.core :only (string->sentences string->paragraphs paragraph->sentences)]
+        [natsume-server.cabocha-wrapper :only (sentence->tree)])
+  (:require [natsume-server.database :as db]
+            [cheshire.core :as json]
+            [taoensso.timbre :as log]
+            [ring.util.response :as ring-response]
             [compojure.route :as route]
-            [compojure.handler :as handler]))
+            [compojure.handler :as handler]
+            [compojure.response :as response]
+            [natsume-server.log-config :as lc])
+  (:gen-class))
 
-(defn split-input
-  [text]
-  (core/string->paragraph->lines text))
+;; # Log configuration
+;;
+;; We prefer a separate log file 'server.log' to the main 'natsume.log' one.
+(lc/setup-log log/config :debug)
 
-(defn transform-sentences
-  [text]
-  (->> text
-       (map #(map cw/string-to-tree %))))
+;; # Natsume logic
+#_(defn ->tree
+  [paragraphs]
+  (map #(map sentence->tree %) paragraphs))
 
-(defn analyze-input
-  [text]
-  (-> text
-      core/string->paragraph->lines
-      transform-sentences))
+(defn annotate-tokens-in-tree
+  "Applies function to all tokens in tree."
+  [tree f]
+  (map (fn [chunk] (update-in chunk [:tokens] (fn [tokens] (map f tokens)))) tree))
 
-;; FIXME somehow compojure-style destructuring does not work so we deal with the request map directly
-(defroutes app*
-  (GET  "/split"   request (split-input (:query-string request)))
-  (POST "/split"   request (split-input (slurp (:body request))))
-  (GET  "/analyze" request (analyze-input (:query-string request)))
-  (POST "/analyze" request (analyze-input (slurp (:body request))))
-  (route/not-found "Sorry, there's nothing here."))
+(defn annotate-in-text
+  "Applies function to all sentences in text."
+  [text f]
+  (map (fn [paragraph] (map f paragraph)) text))
 
-(def app (-> app*
-             handler/api
-             wrap-restful-params
-             wrap-restful-response))
+(defn error-annotation
+  "Annotates tree with register_score given positive and negative input."
+  [tree positive negative]
+  (annotate-tokens-in-tree
+   tree
+   #(assoc % :registerScore (db/register-score (str (:pos1 %) (:pos2 %)) (:orthBase %) positive negative))))
 
-(defonce server (run-jetty #'app {:port 9000 :join? false}))
+(defn filter-token-keys
+  [text keys]
+  (annotate-in-text text (fn [tree] (annotate-tokens-in-tree tree #(select-keys % keys)))))
+
+(defn paragraph->tree
+  [p]
+  (->> p
+       string->paragraphs
+       (map sentence->tree)))
+
+(defn text->tree
+  [s]
+  (->> s
+       string->sentences
+       (map (fn [sentence] (map sentence->tree sentence)))))
+
+;; TODO look at preconditions and options maps: {:pre [name]} // http://blog.jayfields.com/2010/07/clojure-destructuring.html
+
+(defn text->tree+error
+  ([s]
+     (text->tree+error s 1 2)) ; TODO smarter defaults (i.e. by corpus name)
+  ([s positive negative]
+     (-> s
+         text->tree
+         (annotate-in-text #(error-annotation % positive negative)))))
+
+(defn tree->token-seq
+  [tree]
+  (flatten (map :tokens (flatten tree))))
+
+(defn text->tree+error+token+filter
+  ([s filter-keys]
+     (tree->token-seq (filter-token-keys (text->tree+error s) filter-keys)))
+  ([s filter-keys positive negative]
+     (tree->token-seq (filter-token-keys (text->tree+error s positive negative) filter-keys))))
+
+;; # Resources
+(defn analyze-text
+  [body]
+  (text->tree+error body))
+
+(defn corpus-genres
+  []
+  (db/get-genres))
+
+(defn text-analyze-error
+  [text filter positive negative]
+  (cond
+   (and text filter positive negative) (text->tree+error+token+filter text filter positive negative)
+   filter                              (text->tree+error+token+filter text filter)
+   (and positive negative)             (text->tree+error text positive negative)
+   :else                               (text->tree+error text)))
+
+(defn token-pos-name
+  ([pos name positive negative]
+     {:registerScore (db/register-score pos name positive negative)})
+  ([pos name]
+     (token-pos-name pos name 2 1)))
+
+;; # Render override for vectors
+(extend-protocol Renderable
+  clojure.lang.APersistentVector
+  (render [resp-map _]
+    (ring-response/response resp-map)))
+
+;; # Routes
+
+(defroutes main-routes*
+  (context "/corpus" _
+           (GET "/genres" _ (corpus-genres))
+           (GET "/genres/:name" [name] [name])
+           (GET "/genres/:name/npv/:noun/:p/:verb" [name noun p verb] [name noun p verb]))
+  (GET "/token/*/:pos" [name] #_(token-pos-name name) "Unimplemented.")
+  (GET "/token/error"  [pos orthBase positive negative] (token-pos-name pos orthBase positive negative))
+  (GET "/sentence/analyze"  [text] (sentence->tree text))
+  (GET "/paragraph/analyze" [text] (paragraph->tree text))
+  (GET "/text/analyze"      [text filter positive negative] (text-analyze-error text filter positive negative))
+  (GET "/text/split"        [text] (string->sentences text))
+  (GET "/paragraph/split"   [text] (paragraph->sentences text))
+  (route/not-found "<h1>Route not found.</h1><p>Refer to API documentation: https://github.com/borh/natsume-server/wiki/API-ja</p>"))
+
+;; # Handler with middleware
+(defn wrap-request-logger
+  [handler]
+  (fn [request]
+    (log/info request)
+    (handler request)))
+
+(defn wrap-json-response
+  "Middleware that converts responses with a map for a body into a JSON
+response."
+  [handler]
+  (fn [request]
+    (let [response (handler request)]
+      (if (or (coll? (:body response)))
+        (-> response
+            (content-type "application/json; charset=UTF-8")
+            (update-in [:body] json/encode))
+        response))))
+
+(defn wrap-normalize-json-request
+  "Looks in body and query-params for JSON data and parses it into :json-data.
+   Body data has higher priorty and will override any query params."
+  [handler]
+  (fn [request]
+    (let [json-body  (try (json/decode (slurp (:body request)) true) (catch Exception e nil))
+          json-query (try (json/decode (url-decode (:query-string request)) true) (catch Exception e nil))
+          json-data (cond json-body  json-body
+                          json-query json-query
+                          :else nil)]
+      (handler (if json-data
+                 (update-in request [:params] #(merge % json-data))
+                 request)))))
+
+(def handler
+  (-> main-routes*
+      wrap-request-logger
+      (wrap-cors
+       :access-control-allow-origin #"http://localhost:8000" ; FIXME why is "*" not working with Chrome?
+       :access-control-allow-headers "Origin, X-Requested-With, Content-Type, Accept"
+       :access-control-allow-methods [:get :put])
+      wrap-json-response
+      wrap-normalize-json-request
+      handler/api
+      wrap-stacktrace))
+
+;; # Jetty server and main function
+
+(def jetty-atom (atom nil))
+
+(defn stop!
+  []
+  (swap! jetty-atom #(try (.stop %) (catch Exception e %))))
+
+(defn start! [options]
+  (if (not (nil? @jetty-atom)) (stop!))
+  (reset! jetty-atom (run-jetty
+                      #'handler
+                      (assoc options
+                        :join? false))))
+
+(defn -main
+  ([port]
+     (start! {:port (Integer/parseInt port)}))
+  ([]
+     (-main "5011")))
