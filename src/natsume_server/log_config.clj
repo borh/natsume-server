@@ -15,4 +15,4 @@
                   :async?    true
                   :max-message-per-msecs nil
                   :fn (fn [{:keys [ap-config level prefix message more] :as args}]
-                        (spit "natsume.log" (format "%s: %s\n" prefix message) :append true))}))
+                        (spit "log/natsume.log" (format "%s: %s\n" prefix message) :append true))}))
