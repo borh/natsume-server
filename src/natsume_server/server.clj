@@ -145,19 +145,35 @@ response."
             (update-in [:body] json/encode))
         response))))
 
+;; Adapted from https://github.com/ring-clojure/ring/blob/master/ring-core/src/ring/middleware/keyword_params.clj
+(defn- decode-key
+  "Decodes charcter strings to keywords and integer strings to integers."
+  [k]
+  (cond (and (string? k) (re-matches #"[A-Za-z*+!_?-][A-Za-z0-9*+!_?-]*" k)) (keyword k)
+        (and (string? k) (re-matches #"^\d+$" k)) (Integer/decode k)
+        :else k))
+
+(defn- keyify-params [target]
+  "Keyifies and decodes params, particulary form-params or query-params that do not have type
+   information attached to them. Reference/based on: ring.middleware.keyword-params"
+  (cond
+   (map? target) (into {}
+                       (for [[k v] target]
+                         [(decode-key k) (keyify-params v)]))
+   (vector? target) (vec (map keyify-params target))
+   :else (decode-key target)))
+
 (defn wrap-normalize-json-request
-  "Looks in body and query-params for JSON data and parses it into :json-data.
-   Body data has higher priorty and will override any query params."
+  "Looks in body and query-params for JSON data and merges it with :params.
+   Body data has higher priorty and will override any query params, which will override exsisting
+   params."
   [handler]
   (fn [request]
     (let [json-body  (try (json/decode (slurp (:body request)) true) (catch Exception e nil))
-          json-query (try (json/decode (url-decode (:query-string request)) true) (catch Exception e nil))
-          json-data (cond json-body  json-body
-                          json-query json-query
-                          :else nil)]
-      (handler (if json-data
-                 (update-in request [:params] #(merge % json-data))
-                 request)))))
+          json-query (try (json/decode (url-decode (:query-string request)) true) (catch Exception e nil))]
+      (handler (-> request
+                   (update-in [:params] keyify-params)
+                   (update-in [:params] #(merge % json-query json-body)))))))
 
 (def handler
   (-> main-routes*
