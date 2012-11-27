@@ -1,10 +1,10 @@
 ;; # Commandline interface and logic
 (ns natsume-server.core
-  (:gen-class)
   (:require [clojure.java.io :as io]
             [clojure.string :as string]
             [natsume-server.readability :as rd]
             [natsume-server.database :as db]
+            [fs.core :as fs]
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
   (:import (java.io.File))
@@ -12,30 +12,9 @@
   (:gen-class))
 
 ;; ## Miscellaneous filesystem helper utilities.
-(defn normalized-path [path] (.getCanonicalFile path))
-(defn base-name [path] (.getName path))
-(defn directory? [path] (.isDirectory path))
-(defn file? [path] (.isFile path))
-(defn extension
-  [path]
-  (let [base (base-name path)
-        i (.lastIndexOf base ".")]
-    (when (pos? i)
-      (subs base i))))
 (defn is-text?
   [path]
-  (= (extension path) ".txt"))
-
-(defn get-basename
-  [file]
-  ((string/split (.getName file) #"\.(?=[^\.]+$)") 0))
-
-#_(defn is-in-database?
-    "TODO find a way to log if we discard files here..."
-    [f]
-    (if (select sources (where {:basename (get-basename f)}))
-      true
-      false))
+  (= (fs/extension path) ".txt"))
 
 ;; # Sentence and paragraph splitting
 (def delimiter   #"[\.!\?．。！？]")
@@ -109,10 +88,10 @@
 
 (defn slurp-with-metadata
   [f]
-  (let [basename (get-basename (io/file f))
+  (let [basename (fs/base-name f true)
         source-id (db/basename->source_id basename)
         paragraphs (do (string->sentences (slurp f)))]
-    ;;(log/debug (str "Slurping " f " with source_id " source-id " and # of paragraphs " (count paragraphs)))
+    (log/trace (str "Slurping " f " with source_id " source-id " and # of paragraphs " (count paragraphs)))
     {:source-id source-id
      :paragraphs paragraphs}))
 
@@ -142,13 +121,13 @@
   "Processes given corpus directory."
   [corpus-dir]
   ;; (db/update-genres (tsv->vector (str corpus-dir "/genres.tsv")))
-  (let [name (get-basename (io/file corpus-dir)) ;; for debug
+  (let [name (fs/base-name corpus-dir) ;; for debug
         files (->> corpus-dir
                    io/file
                    file-seq
                    (filter is-text?))]
     (log/debug (str "Initializing " name " with files " files))
-    (let [basename-set (set (map get-basename files))]
+    (let [basename-set (set (map #(fs/base-name % true) files))]
       (db/update-sources (tsv->vector (str corpus-dir "/sources.tsv")) basename-set))
     (do (doseq [sentences (pmap slurp-with-metadata files)] ; compare map and pmap
           ;; (filter db/basename-in-sources?) ;; this is a roundabout
@@ -186,8 +165,8 @@
   (if-not (empty? dirs)
     (->> dirs
          (map io/file)
-         (map normalized-path)
-         (filter directory?))))
+         (map fs/normalized-path)
+         (filter fs/directory?))))
 
 (defn -main
   "Read files from corpus and do stuff...
