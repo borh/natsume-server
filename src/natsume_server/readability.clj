@@ -399,27 +399,84 @@
 ;; For example, the comma-period ratio is based on whole-text averaging????
 ;; !!There is a difference between averages of sentence averages and averages of whole texts.!!
 ;; Would be best to not average at this level -- leave it for the upper levels, maybe even in SQL.
+
+(def core-sentence-data-graph
+  {:tree         (fnk [sentence] (am/sentence->tree sentence))
+   :tokens       (fnk [tree] (token-count tree))
+   :chunks       (fnk [tree] (chunk-count tree))
+   :predicates   (fnk [tree] (predicate-count-shibasaki tree))
+   :collocations (fnk [tree] (collocations/extract-collocations tree))})
+
+(def readability-stats-graph
+  {:jlpt-level   (fnk [tree] (JLPT-word-level tree))
+   :bccwj-level  (fnk [tree] (BCCWJ-word-log-freq tree))
+   :link-dist    (fnk [tree] (link-distance tree))
+   :chunk-depth  (fnk [tree] (chunk-depth tree))})
+
+(def char-type-stats-graph
+  {:length     (fnk [sentence] (count sentence))
+   :char-types (fnk [sentence length] (map-vals #(float (/ % length)) (writing-system-count sentence)))})
+
+(def goshu-stats-graph
+  {:goshu-map (fnk [tree tokens] (map-vals #(float (/ % tokens)) (goshu-map tree)))})
+
+(def composite-sentence-graph
+  (merge core-sentence-data-graph
+         readability-stats-graph
+         char-type-stats-graph
+         goshu-stats-graph))
+
+(def sentence-graph
+  (graph/eager-compile composite-sentence-graph))
+
+;; Based on: http://blog.jayfields.com/2010/09/clojure-flatten-keys.html
+(defn flatten-keys
+  "Flattens nested maps on inner keys."
+  [m]
+  (letfn [(flatten-keys* [a ks m]
+            (if (map? m)
+              (reduce into (map (fn [[k v]] (flatten-keys* a k v)) (seq m)))
+              (assoc a ks m)))]
+    (flatten-keys* {} [] m)))
+
+(defn sentence-readability [s]
+  (assoc (flatten-keys (sentence-graph {:sentence s}))
+    :text s))
+
+#_(def average-readability-graph
+  (assoc readability-graph
+    :tokens      (by-sentences tokens)
+    :chunks      (by-sentences chunks)
+    :predicates  (by-sentences predicates)
+
+    ;;:obi2_level  #_0 (if (empty? text) 0 (obi2level text)); text -> (db/get-paragraph-text paragraph-id)
+    :tateishi    (tateishi avg-length commas sentences percentage-runs average-runs)
+    :shibasaki   (shibasaki avg-hiragana avg-length avg-chunks avg-predicates)
+
+    :jlpt_level  (by-sentences (:jlpt_level m)) #_(/ (:jlpt_level  m) tokens)
+    :bccwj_level (/ (:bccwj_level m) tokens)
+
+    :link_dist   (/ (:link_dist   m) (if (> 1 chunks) (dec chunks) chunks))
+    :chunk_depth (/ (:chunk_depth m) chunks)))
+
 (defn get-sentence-info
   [s]
-  (let [tree       (cw/sentence->tree s)
+  (let [tree         (am/sentence->tree s)
+        collocations (collocations/extract-collocations tree)
         wsm        (writing-system-count s)
         gm         (goshu-map tree)
         characters (count s)
         chunks     (chunk-count tree)
         predicates (predicate-count-shibasaki tree)]
-    ;;(println gm)
-    (update-pos-lemma-freq tree @db/current-genres-id)
+    #_(update-pos-lemma-freq tree @db/current-genres-id)
     (merge
      wsm
      gm
-     {:length      characters
+     {;;:collocations collocations
+      :length      characters
       :tokens      (token-count tree)
       :chunks      chunks
       :predicates  predicates
-      ;;:obi2_level  0;(obi2level s) ;; only for production
-      ;;:shibasaki   (shibasaki (:hiragana wsm) characters chunks predicates)
-      ;;:tateishi    (tateishi characters (:romaji wsm) (:symbols wsm)
-      ;;              (:hiragana wsm) (:katakana wsm) (:kanji wsm) (:commas wsm) 1)
       :jlpt_level  (float (JLPT-word-level tree))
       :bccwj_level (float (BCCWJ-word-log-freq tree))
       :link_dist   (float (link-distance tree))
