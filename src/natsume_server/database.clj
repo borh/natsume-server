@@ -778,14 +778,6 @@ sum(chunks) AS chunks, sum(predicates) AS predicates,
 sum(jlpt_level) AS jlpt_level, sum(bccwj_level) AS bccwj_level,
 sum(link_dist) AS link_dist, sum(chunk_depth) AS chunk_depth")
 
-(defn paragraph-readability-sums
-  [id]
-  (first (exec-raw [(str "SELECT count(id) AS sentences, "
-                         sum-statement
-                         " FROM sentences WHERE paragraph_id=?")
-                    [id]]
-                   :results)))
-
 (defn sources-readability-sums
   [id]
   (first (exec-raw
@@ -794,13 +786,6 @@ sum(link_dist) AS link_dist, sum(chunk_depth) AS chunk_depth")
                 " FROM sentences WHERE sources_id=?")
            [id]]
           :results)))
-
-(defn get-paragraph-text
-  [id]
-  (:string_agg (first (exec-raw
-                       ["SELECT string_agg(text, '\n') FROM sentences WHERE paragraph_id=?"
-                        [id]]
-                       :results))))
 
 (defn get-sources-text
   [id]
