@@ -158,13 +158,6 @@ BEGIN
 END;
 $$ language plpgsql;"))
 
-(defn invoke-with-connection
-  [f]
-  (sql/with-connection
-    natsume-dbspec
-    (sql/transaction
-     (f))))
-
 (def readability-fields-schema
   [[:length       "integer"]
 
@@ -440,10 +433,10 @@ $$ language plpgsql;"))
    :destructive recreates all tables (destructive, use with caution!)"
   [params]
   (when (:destructive params) ;; Drop and recreate all tables
-    (invoke-with-connection drop-all-indexes)
-    (invoke-with-connection drop-all-tables))
-  (do (invoke-with-connection create-tables-and-indexes)
-      #_(invoke-with-connection create-functions)))
+    (db-do! (drop-all-indexes))
+    (db-do! (drop-all-tables)))
+  (do (db-do! (create-tables-and-indexes))
+      #_(db-do! (create-functions))))
 
 ;; # Database query functions
 ;;
