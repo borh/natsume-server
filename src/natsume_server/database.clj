@@ -3,11 +3,13 @@
 ;; the PostgreSQL database. The database user, password and schema
 ;; must be set up in a separate step outlined in the Deployment README.
 (ns natsume-server.database
-  (:use [korma.db]
-        [korma.core])
   (:require [clojure.java.io :as io]
             [clojure.java.jdbc :as sql]
             [clojure.string :as string]
+            [korma.db :refer :all]
+            [korma.core :refer :all]
+            [korma.config :as korma-config]
+            [plumbing.core :refer :all]
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc]))
 
