@@ -3,7 +3,7 @@
         [natsume-server.server]
         [ring.mock.request]
         [natsume-server.cabocha-wrapper :only (sentence->tree)]
-        [natsume-server.core :only (string->paragraphs)])
+        [natsume-server.text :only (string->paragraphs)])
   (:require [cheshire.core :as json]))
 
 (defmacro handler-runner
