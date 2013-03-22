@@ -74,21 +74,28 @@
     "複合させられた"       #{:past :active :passive}
     "複合させられなかった" #{:past :negative :active :passive}
     "遊覧飛行する"         #{}
+    "遵守しなければならない" #{} ; FIXME
+    "申せば"               #{:potential} ; FIXME
+    "話したら"             #{:potential} ; FIXME
+    "巻いたりしている"     #{:tari :aspect-iru} ; FIXME
     }))
 
 (def test-verbs (remove-tags tagged-verbs))
 
 (def test-adverbs
-  ["絶対"
-   "昨日"])
+  ["絶対"       #{}
+   "昨日"       #{}
+   "そういった" #{:past}])
 
 (def tagged-adverbs (add-pos-tag "head" :adverb test-adverbs))
 
 (def test-adjectives
   {"綺麗"                   #{}
    "綺麗な"                 #{}
+   "シャープな"             #{}
    "愛しい"                 #{}
-   "愛しく"                 #{}
+   ;; POS is OK, but take care with collocation type -> :adjectivalAdverbVerb
+   "愛しく"                 #{} ; TODO -> :adverb?; collocation type /is/ adverbial, but POS is :adjective
    "愛しくなかった"         #{:negative :past}
    "愛しくありませんでした" #{:negative :past :polite} ; 2 chunks, but this is OK
    "愛しかった"             #{:past}
@@ -146,6 +153,11 @@
   (into {} (for [[x-string x-tags] xs [y-string y-tags] ys]
              {(str x-string y-string) (merge x-tags y-tags)})))
 
+(defn permute-chunk-tags
+  [xs ys]
+  (into {} (for [[x-string x-tags] xs [y-string y-tags] ys]
+             {(str x-string y-string) [x-tags y-tags]})))
+
 (defn get-test-tags
   [x]
   (let [[expected-string expected-tags] x
@@ -154,13 +166,27 @@
         test-tags (first (map #(select-keys % expected-keys) test-tree))]
     test-tags))
 
+(defn get-sentence-test-tags
+  [x]
+  (let [[expected-string expected-tags] x
+        expected-keys (keys expected-tags)
+        test-tree (sentence->tree expected-string)
+        test-tags (map #(select-keys % expected-keys) test-tree)]
+    test-tags))
+
 (defmacro check-tags-helper
   [tests]
   `(for [t# ~tests]
      (it (str (first t#) " has matching pos and meta tags")
-      (should= (second t#) (get-test-tags t#)))))
+         (should= (second t#) (get-test-tags t#)))))
 
-(describe
+(defmacro check-sentence-tags-helper
+  [tests]
+  `(for [t# ~tests]
+     (it (str (first t#) " has matching pos and meta tags")
+         (should= (second t#) (get-sentence-test-tags t#)))))
+
+#_(describe
  "Word class:"
 
  ;; Checking single word class tagging (either head or tail only)
@@ -183,6 +209,18 @@
      (check-tags-helper compound-classes)))
  )
 
+(comment
+ (describe
+  "NPV"
+
+  (let [noun+particle (permute-tags tagged-nouns tagged-particles)
+        npvs          (permute-chunk-tags noun+particle tagged-verbs)]
+    #_(println npvs)
+    (for [npv npvs]
+      (check-sentence-tags-helper npv)))
+
+  ))
+
 (describe
  "sentence->tree"
 
@@ -191,4 +229,9 @@
 
  (it "converts halfwidth to fullwidth characters"
      (should= "。「」、・ヲァィゥェォャュョッーアイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン゙゚" (convert-half-to-fullwidth "｡｢｣､･ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝﾞﾟ")))
+
+ (it "parse-checks"
+     (let [test-string "今日はいいあしあちぇ"]
+       (should== (parse-cabocha-format test-string)
+                 (parse-sentence-cabocha-tree test-string))))
  )
