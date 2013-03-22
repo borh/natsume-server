@@ -16,6 +16,22 @@ Currently all testing is done on the new 9.2 release.
 
 `natsume-server` additionally makes use of [MeCab](http://code.google.com/p/mecab/) and [CaboCha](https://code.google.com/p/cabocha/), though because of problems using the Java bindings, all CaboCha processing is done over the network.
 
+### Free-floating jars
+
+Unfortunately, 3 free-floating jars need to be downloaded and installed into a local maven repo:
+
+```bash
+mvn install:install-file -DgroupId=com.aliasi -DartifactId=lingpipe -Dpackaging=jar -Dversion=4.1.0 -Dfile=lingpipe-4.1.0.jar -DgeneratePom=true
+```
+
+```bash
+mvn install:install-file -DgroupId=postgresql -DartifactId=postgresql -Dpackaging=jar -Dversion=9.2-1002.jdbc4 -Dfile=postgresql-9.2-1002.jdbc4.jar -DgeneratePom=true
+```
+
+```bash
+mvn install:install-file -DgroupId=org.chasen -DartifactId=cabocha -Dpackaging=jar -Dversion=0.66 -Dfile=/usr/share/java/cabocha/CaboCha.jar -DgeneratePom=true
+```
+
 ## Usage
 
 Currently corpus input and processing is functional, but collocation extraction (the main feature) is missing, so at least for the near future, natsume-server is only interesting for the developer.
