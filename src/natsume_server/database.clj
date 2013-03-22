@@ -49,6 +49,51 @@
 
 (defdb natsume-db natsume-dbspec)
 
+;; JDBC/Korma naming strategy
+
+(defn dashes->underscores
+  "Accepts a string or a keyword as an argument, replaces all occurrences of the
+dash/hyphen character with an underscore, and returns the same type (string
+or keyword) that was passed in. This is useful for translating data structures
+from their wire format to the format that is needed for JDBC."
+  [str]
+  (let [result (string/replace (name str) \- \_)]
+    (if (keyword? str)
+      (keyword result)
+      result)))
+
+(defn underscores->dashes
+  "Accepts a string or a keyword as an argument, replaces all occurrences of the
+underscore character with a dash, and returns the same type (string
+or keyword) that was passed in. This is useful for translating data structures
+from their JDBC-compatible representation to their wire format representation."
+  [str]
+  (let [result (string/replace (name str) \_ \-)]
+    (if (keyword? str)
+      (keyword result)
+      result)))
+
+(defn dash-to-underscore [s] (string/lower-case (.replace s "-" "_")))
+(defn underscore-to-dash [s] (string/lower-case (.replace s "_" "-")))
+(def naming-strategy ; JDBC
+  {:entity dashes->underscores :keyword underscores->dashes})
+(korma-config/set-naming ; Korma
+ {:keys dashes->underscores :fields dashes->underscores})
+
+(defmacro db-do! [& body]
+  `(try (sql/with-connection natsume-dbspec
+          (sql/with-naming-strategy naming-strategy
+            (sql/transaction
+             (do ~@body))))
+        (catch Exception e# (do (println e#)
+                                (println (.getNextException e#))))))
+
+(defn invoke-with-connection
+  [f]
+  (sql/with-connection natsume-dbspec
+    (sql/with-naming-strategy naming-strategy
+      (sql/transaction (f)))))
+
 (defn drop-all-indexes
   "Remove indexes so we can reset tables."
   []
