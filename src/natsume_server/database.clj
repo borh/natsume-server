@@ -444,72 +444,221 @@ $$ language plpgsql;"))
 ;; at the expense of memory (be sure to leave out sentences and
 ;; infrequently accessed data).
 
+(defonce !genres (atom {}))
+;; TODO rather memoize? the against argument is that we can reload the
+;; whole !genres atom from the database and so make it 'persistent'.
 (defn insert-if-not-exist
   "Inserts `vals` into entity `e` if vals do not already exist.
   Return the :id of the existing or inserted `vals`."
-  [e vals]
-  (let [results (select e (where vals))]
-    (if (empty? results)
-      (:id (insert e (values vals)))
-      (get-in results [0 :id]))))
+  [e genre-level genre-name]
+  (if-let [id (get-in @!genres [genre-level genre-name])]
+    id
+    (let [id* (:id (insert e (values {:name genre-name})))]
+      (swap! !genres assoc-in [genre-level genre-name] id*)
+      id*))
 
-(def current-genres-id (atom 0))
+  #_(let [results (select e (where vals))]
+         (if (empty? results)
+           (:id (insert e (values vals)))
+           (get-in results [0 :id]))))
 
-(defn update-sources
+(def current-genres-id (atom 0)) ; DEPRECATE
+
+(defn make-sources-record [v]
+  (let [[title author year basename genres-name subgenres-name
+         subsubgenres-name subsubsubgenres-name permission] v
+        genres-id          (insert-if-not-exist genres :genres genres-name)
+        subgenres-id       (insert-if-not-exist subgenres :subgenres subgenres-name)
+        subsubgenres-id    (insert-if-not-exist subsubgenres :subsubgenres subsubgenres-name)
+        subsubsubgenres-id (insert-if-not-exist subsubsubgenres :subsubsubgenres subsubsubgenres-name)]
+    {:title              title
+     :author             author
+     :year               (Integer/parseInt year)
+     :basename           basename
+     :genres-id          genres-id
+     :subgenres-id       subgenres-id
+     :subsubgenres-id    subsubgenres-id
+     :subsubsubgenres-id subsubsubgenres-id}))
+
+(defn update-sources!
   "Inserts sources meta-information from the corpus into the database.
+
+  If a file is not present in `sources.tsv`, bail with a fatal error (FIXME)
+  message; if a file is not in `sources.tsv` or not on the filesystem,
+  then ignore that file (do not insert.)"
+  [sources-metadata file-set]
+  ;; Try to guess the genre id by name, checking to see if it is
+  ;; already in the database (not checking in the !genres atom as that
+  ;; is not persistent).
+  (let [maybe-genres-name (-> sources-metadata first (nth 4))
+        maybe-genres-id   (:id (select genres (where {:name maybe-genres-name})))
+        sources-of-genre  (set (map :basename (select sources (where {:genres-id maybe-genres-id}) (fields :basename))))]
+    (->> (partition-all 1000 sources-metadata)
+         (map #(filter (fn [record] (contains? file-set (nth record 3))) %))
+         ;; Optionally filter out sources already in database.
+         (?>> (not-empty sources-of-genre) map #(filter (fn [record] (not (contains? sources-of-genre (nth record 3)))) %))
+         (map #(map make-sources-record %))
+         ((comp dorun map) #(if (seq %) (insert sources (values %)))))))
+
+(comment
+ (defn update-sources
+   "Inserts sources meta-information from the corpus into the database.
 
   If a file is not present in `sources.tsv`, bail with a fatal error
   message; if a file is not in `sources.tsv` or not on the filesystem,
   then ignore that file (do not insert.)"
-  [sources-metadata file-set]
-  (log/debug (str "Updating sources with file-set " file-set))
-  (doseq [[title author year basename genres-name subgenres-name
-           subsubgenres-name subsubsubgenres-name permission] sources-metadata]
-    (cond
-     (not (contains? file-set basename))
-     (log/debug (str "Skipping insertion of file " basename " in sources.tsv"))
-     (not (empty? (select sources (where {:title basename}))))
-     (log/debug (str "Skipping insertion of file " basename " because it is already in the database"))
-     :else
-     (let [genres-id          (insert-if-not-exist genres {:name genres-name})
-           subgenres-id       (insert-if-not-exist subgenres {:name subgenres-name})
-           subsubgenres-id    (insert-if-not-exist subsubgenres {:name subsubgenres-name})
-           subsubsubgenres-id (insert-if-not-exist subsubsubgenres {:name subsubsubgenres-name})]
-       (reset! current-genres-id genres-id)
-       (log/trace (format "genres-id=%d\tsubgenres-id=%d\tsubsubgenres-id=%d\tsubsubsubgenres-id=%d"
-                      genres-id subgenres-id subsubgenres-id subsubsubgenres-id))
-       (insert sources
-               (values {:title              title
-                        :author             author
-                        :year               (Integer/parseInt year)
-                        :basename           basename
-                        :genres_id          genres-id
-                        :subgenres_id       subgenres-id
-                        :subsubgenres_id    subsubgenres-id
-                        :subsubsubgenres_id subsubsubgenres-id}))))))
+   [sources-metadata file-set]
+   (log/debug (str "Updating sources with file-set " file-set))
+   (doseq [[title author year basename genres-name subgenres-name
+            subsubgenres-name subsubsubgenres-name permission] sources-metadata]
+     (cond
+      (not (contains? file-set basename))
+      (log/debug (str "Skipping insertion of file " basename " in sources.tsv"))
+      (seq (select sources (where {:title basename})))
+      (log/debug (str "Skipping insertion of file " basename " because it is already in the database"))
+      :else
+      (let [genres-id          (insert-if-not-exist genres :genres genres-name)
+            subgenres-id       (insert-if-not-exist subgenres :subgenres subgenres-name)
+            subsubgenres-id    (insert-if-not-exist subsubgenres :subsubgenres subsubgenres-name)
+            subsubsubgenres-id (insert-if-not-exist subsubsubgenres :subsubsubgenres subsubsubgenres-name)]
+        (reset! current-genres-id genres-id)
+        (log/trace (format "genres-id=%d\tsubgenres-id=%d\tsubsubgenres-id=%d\tsubsubsubgenres-id=%d"
+                           genres-id subgenres-id subsubgenres-id subsubsubgenres-id))
+        (insert sources
+                (values {:title              title
+                         :author             author
+                         :year               (Integer/parseInt year)
+                         :basename           basename
+                         :genres-id          genres-id
+                         :subgenres-id       subgenres-id
+                         :subsubgenres-id    subsubgenres-id
+                         :subsubsubgenres-id subsubsubgenres-id})))))))
 ;; (get-in (select genres (fields :id) (where {:name genres-name})) [0 :id])
 
-(defn basename->source_id
+(defn basename->source-id
   [basename]
   (get-in (select sources (fields :id) (where {:basename basename})) [0 :id]))
 
-(defn insert-sentence
-  [sentence-values f]
-  (do (log/trace "Inserting sentence")
-      (let [id (:id (insert sentences (values sentence-values)))
-            readability-values (dissoc
-                                (assoc sentence-values :sentences_id
-                                       id :sentences 1)
-                                :id :text :paragraph_id :sources_id)]
-        (insert sentences_readability
-                (values
-                 (dissoc
-                  (f readability-values (:text sentence-values))
-                  :sentences)))))) ; unholy combination, REFACTOR
+;; TODO FIXME Is there any way to parallelize the sentence processing/insertion?
+(defn insert-sentence [sentence-values]
+  (log/trace "Inserting sentence")
+  (insert sentences (values (select-keys sentence-values
+                                         [:unk :text :kanji :mixed :romaji :chunk-depth :japanese :length :symbols :sentence-order-id :paragraph-id :jlpt-level :commas :symbolic :gairai :chinese :predicates :sources-id :katakana :bccwj-level :chunks :hiragana :tokens :link-dist :pn]))))
+
+(comment
+  (defn insert-sentence
+    [sentence-values f]
+    (do (log/trace "Inserting sentence")
+        (insert sentences (values (select-keys sentence-values
+                                               [:unk :text :kanji :mixed :romaji :chunk-depth :japanese :length :symbols :paragraph-id :jlpt-level :commas :symbolic :gairai :chinese :predicates :sources-id :katakana :bccwj-level :chunks :hiragana :tokens :link-dist :pn])))
+        #_(let [id (:id (insert sentences (values sentence-values)))
+                readability-values (dissoc
+                                    (assoc sentence-values :sentences-id
+                                           id :sentences 1)
+                                    :id :text :paragraph-id :sources-id)]
+            #_(insert sentences-readability
+                      (values
+                       (dissoc
+                        (f readability-values (:text sentence-values))
+                        :sentences))))))) ; unholy combination, REFACTOR
+
+(defonce created-tables (atom #{}))
+(defonce created-gram-tables (atom #{}))
+
+(defn drop-all-cascade
+  "Drop cascade all tables and indexes."
+  []
+  (db-do!
+   (sql/with-query-results stmts
+     ["SELECT 'DROP TABLE \"' || tablename || '\" CASCADE' FROM pg_tables WHERE schemaname = 'public'"]
+     (doseq [stmt (flatten (map vals stmts))]
+       (log/info stmt)
+       (sql/do-commands stmt))))
+  (reset! !genres {})
+  (reset! created-tables #{})
+  (reset! created-gram-tables #{}))
+
+;; TODO maybe forgoe making normalized data on first pass, just keep
+;; it in long format (previous natsume collocations_XYZ tables...)
+
+(defn create-dynamic-table [table-name colls]
+  (let [table-name* (dash-to-underscore (name table-name))]
+    (apply sql/create-table table-name*
+           (mapv (fn [c] (case (re-seq #"(begin|end)$" c) [(dash-to-underscore c) :smallint "NOT NULL"]
+                               (= "sentences-id" c)       [(dash-to-underscore c) :integer  "NOT NULL" "REFERENCES sentences(id)"]
+                               :else                      [(dash-to-underscore c) :text     "NOT NULL"]))
+                 (sort (map name colls))))
+    (doseq [c (remove #(re-seq #"(begin|end|sentences-id)$" (name %)) colls)] ;; idx_npv_mappings_npv_id
+      (let [field-name (dash-to-underscore (name c))]
+        (sql/do-commands (str "CREATE INDEX idx_" table-name* "_" field-name " ON " table-name* " (" field-name ")"))))))
+
+
+(defn create-dynamic-gram-table!
+  "TODO create indexes at end"
+  [grams]
+  (apply sql/create-table
+         (str "gram_" grams)
+         (conj
+          (apply concat (for [order (range 1 (inc grams))]
+                          [[(str "string_" order) :text     "NOT NULL"]
+                           [(str "pos_"    order) :text     "NOT NULL"]
+                           [(str "tags_"   order) "text[]"  "NOT NULL"]
+                           [(str "begin_"  order) :smallint "NOT NULL"]
+                           [(str "end_"    order) :smallint "NOT NULL"]]))
+          [:sentences-id :integer "NOT NULL" #_"REFERENCES sentences(id)"]))) ; TODO benchmark reference perf hit
+
+;; OK, developer conveniance and processing speed should be
+;; prioritized, so the implementation should be append-only, and
+;; denormalized. We choose to use 1-4 grams (whatever count
+;; encompasses two chunks).
+
+(defn make-jdbc-array [xs]
+  (let [conn (sql/find-connection)]
+    (.createArrayOf conn "text" (into-array String xs))))
+
+(defn make-string-array [xs]
+  (str "'{\"" (string/join "\",\"" xs) "\"}'"))
+
+(defn insert-collocations! [collocations sentences-id]
+  (db-do!
+   (doseq [collocation collocations]
+     (let [grams (count (:type collocation))
+           record-map (apply merge (for [i (range 1 (inc grams))]
+                                     (let [record (nth (:data collocation) (dec i))]
+                                       ;;(println i)
+                                       ;;(println (:data collocation))
+                                       ;;(println record)
+                                       (map-keys #(let [[f s] (string/split (name %) #"-")]
+                                                    (keyword (str s "-" i)))
+                                                 (-> record
+                                                     (?> (:head-pos record) update-in [:head-pos] name)
+                                                     (?> (:tail-pos record) update-in [:tail-pos] name)
+                                                     (?> (:head-tags record) update-in [:head-tags] #(make-jdbc-array (map name %)))
+                                                     (?> (:tail-tags record) update-in [:tail-tags] #(make-jdbc-array (map name %))))))))]
+       (when-not (get @created-gram-tables grams)
+         (db-do! (create-dynamic-gram-table! grams))
+         (swap! created-gram-tables conj grams))
+       (sql/insert-record (str "gram_" grams)
+                          (assoc record-map
+                            :sentences-id sentences-id))))))
+
+(defn insert-collocations [collocations sentences-id]
+  (doseq [x collocations]
+    (let [collocation-type (:collocation-type x)
+          collocation-values (-> x
+                                 (dissoc :collocation-type)
+                                 (assoc :sentences-id sentences-id))]
+      ;;(println collocation-type)
+      (when-not (collocation-type @created-tables)
+        ;;(println "creating dynamic table" collocation-type @created-tables)
+        (db-do! (create-dynamic-table collocation-type (keys collocation-values)))
+        (swap! created-tables conj collocation-type))
+      (println "inserting" (name collocation-type) collocation-values)
+      (db-do! (sql/insert-record collocation-type collocation-values)))))
 
 (defn last-paragraph-id
   []
-  (let [r (:max-id (first (select sentences (aggregate (max :paragraph_id) :max-id))))]
+  (let [r (:max-id (first (select sentences (aggregate (max :paragraph-id) :max-id))))]
     (if (nil? r) 0 r)))
 
 (defn upsert-inc
