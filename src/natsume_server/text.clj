@@ -49,16 +49,14 @@
                    ([a x]
                       (let [y (peek a)
                             z (and y (peek (pop a)))]
-                        (if (and y z)
-                          (if (delimiter-set y)                    ; ...|x |y |z |...
-                            (if-not (or (and (alphanumerics-set x) ;|   |５|．|０|
-                                             (not= \。 y)          ;|mpl|e |. |c |om/
-                                             (alphanumerics-set z));|   |  |  |  |
-                                        (closing-quotation-set z)  ; ...|る|。|）|と言った
-                                        (delimiter-set z))         ; ...|。|。|。|
-                              (conj (pop (pop a)) z \newline y x)
-                              (conj a x))
-                            (conj a x))
+                        (if (and (and y z)
+                                 (delimiter-set y)                   ; ...|x |y |z |...
+                                 (not (or (and (alphanumerics-set x) ;|   |５|．|０|
+                                               (not= \。 y)          ;|mpl|e |. |c |om/
+                                               (alphanumerics-set z));|   |  |  |  |
+                                          (closing-quotation-set z)  ; ...|る|。|）|と言った
+                                          (delimiter-set z))))       ; ...|。|。|。|
+                          (conj (pop (pop a)) z \newline y x)
                           (conj a x))))))
        reverse
        (apply str)
