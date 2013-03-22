@@ -1,27 +1,31 @@
 (ns natsume-server.server
-  (:use [ring.adapter.jetty :only (run-jetty)]
-        [compojure.core :only (GET POST context defroutes)]
-        [ring.util.codec :only (url-decode)]
-        [ring.util.response :only (content-type)]
-        [ring.middleware.stacktrace :only (wrap-stacktrace)]
-        [ring.middleware.cors :only (wrap-cors)]
-        [compojure.response :only (Renderable)]
-        [natsume-server.core :only (string->sentences string->paragraphs paragraph->sentences)]
-        [natsume-server.cabocha-wrapper :only (sentence->tree)])
   (:require [natsume-server.database :as db]
+            [natsume-server.readability :as rd]
+            [natsume-server.text :refer [string->sentences string->paragraphs paragraph->sentences]]
+            [natsume-server.annotation-middleware :refer [sentence->tree]]
             [cheshire.core :as json]
-            [taoensso.timbre :as log]
+
             [ring.util.response :as ring-response]
+            [ring.util.codec :refer [url-decode]]
+            [ring.util.response :refer [content-type]]
+            [ring.middleware.stacktrace :refer [wrap-stacktrace]]
+            [ring.middleware.cors :refer [wrap-cors]]
+
+            [compojure.core :refer [GET POST context defroutes]]
             [compojure.route :as route]
             [compojure.handler :as handler]
-            [compojure.response :as response]
+            [compojure.response :refer [Renderable] :as response]
+
+            [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
   (:gen-class))
+
+;; TODO https://github.com/aphyr/riemann-clojure-client integration
 
 ;; # Log configuration
 ;;
 ;; We prefer a separate log file 'server.log' to the main 'natsume.log' one.
-(lc/setup-log log/config :debug)
+(lc/setup-log log/config :info)
 
 ;; # Natsume logic
 #_(defn ->tree
