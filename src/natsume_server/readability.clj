@@ -92,25 +92,15 @@
   TODO: smoothing (although log is OK for now).
   Should be averaged by morphemes."
   [t]
-  (let [tokens (cw/tree-to-morphemes-flat t)]
+  (let [tokens (am/tree-to-morphemes-flat t)]
     (if (zero? (count tokens))
-      0
+      0.0
       (->> tokens
            (map #(select-keys % [:pos1 :lemma]))
            (map #(get-in BCCWJ-word-map [(:pos1 %) (:lemma %)] 0)) ; value for missing calculated using Good-Turing
            (map (partial + 1))
            (map #(Math/log10 %))
-           (apply +))
-      #_(let [log-sum
-              (->> tokens
-                   (map #(select-keys % [:pos1 :lemma]))
-                   (map #(get-in BCCWJ-word-map [(:pos1 %) (:lemma %)] 0))
-                   (map (partial + 1))
-                   (map #(Math/log10 %))
-                   (reduce +))]
-          (if (zero? log-sum)
-            0
-            log-sum)))))
+           (apply +)))))
 
 (defn adaptive-word-log-freq
   "Adaptive word log frequency based on the users writing purpose (which is then mapped to corpora (distances))."
@@ -138,19 +128,20 @@
   ;; TODO whitelist
   (let [content-tokens (filter
                         (fn [x] (re-seq #"(名詞|形容詞|動詞|副詞|形状詞|接頭辞|助動詞|接尾辞)" (:pos1 x)))
-                        (cw/tree-to-morphemes-flat t))
+                        (am/tree-to-morphemes-flat t))
         content-tokens-count (count content-tokens)]
-    (if (zero? content-tokens-count)
-      0 ; or 1?
-      (/
-       (->> content-tokens
-            (map #(select-keys % [:orthBase :lemma]))
-            (map vals)
-            (map #(select-keys JLPT-word-map %))
-            (map (fn [x] (let [xval (vals x)] (if (nil? xval) '(0) xval))))
-            (map #(apply max %))
-            (apply +))
-       (count content-tokens) 4))))
+    (float
+     (if (zero? content-tokens-count)
+       0                              ; or 1?
+       (/
+        (->> content-tokens
+             (map #(select-keys % [:orthBase :lemma]))
+             (map vals)
+             (map #(select-keys JLPT-word-map %))
+             (map (fn [x] (let [xval (vals x)] (if (nil? xval) '(0) xval))))
+             (map #(apply max %))
+             (apply +))
+        (count content-tokens) 4)))))
 
 (defn collocation-avg-log-freq
   "Average collocation log frequency in corpus."
@@ -169,7 +160,7 @@
 (defn token-count
   "Morpheme count （形態素数）."
   [t]
-  (count (cw/tree-to-morphemes-flat t)))
+  (count (am/tree-to-morphemes-flat t)))
 
 (defn chunk-count
   "Chunk count （文節数）."
@@ -283,8 +274,8 @@
     :unk      0
     :pn       0}
    (->> t
-        cw/tree-to-morphemes-flat
-        (map #(:goshu %))
+        am/tree-to-morphemes-flat
+        (map :goshu)
         (map #(get goshu-rename-map %))
         frequencies)))
 
@@ -389,12 +380,12 @@
 
 #_(defn update-pos-lemma-freq
     [t]
-    (doseq [token (cw/tree-to-morphemes-flat t)]
+    (doseq [token (am/tree-to-morphemes-flat t)]
       (swap! token-freq-inmemory update-in [(:pos1 token) (:lemma token)] (fn [f] (if (nil? f) 1 (inc f))))))
 
 (defn update-pos-lemma-freq
   [t genres-id]
-  (doseq [token (cw/tree-to-morphemes-flat t)] ; TODO this should rather be Natsume-style words
+  (doseq [token (am/tree-to-morphemes-flat t)] ; TODO this should rather be Natsume-style words
     (db/inmemory-token-inc! (:pos1 token) (:pos2 token) (:goshu token) (:lemma token) (:orthBase token))
     #_(db/token-incr (:pos1 token) (:lemma token) genres-id)
     #_(db/upsert-inc (:pos1 token) (:lemma token) genres-id)))
