@@ -1,12 +1,20 @@
 (ns natsume-server.readability
-  (:require [natsume-server.cabocha-wrapper :as cw]
-            [natsume-server.database :as db]
-            [clojure.java.shell :as shell]
+  (:require [clojure.java.shell :as shell]
             [clojure.string :as string]
             [clojure.java.io :as io]
+
+            [incanter.stats :as stats]
+            [plumbing.graph :as graph]
+            [plumbing.core :refer [defnk fnk map-vals]]
+
+            [natsume-server.annotation-middleware :as am]
+            [natsume-server.collocations :as collocations]
+            [natsume-server.database :as db]
+            [natsume-server.text :as txt]
+
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
-  (:import (org.apache.commons.compress.compressors.xz XZCompressorInputStream)))
+  (:import [org.apache.commons.compress.compressors.xz XZCompressorInputStream]))
 
 (lc/setup-log log/config :error)
 
