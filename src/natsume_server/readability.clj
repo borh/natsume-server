@@ -534,8 +534,7 @@
       :chunks      (by-sentences chunks)
       :predicates  (by-sentences predicates)
 
-      :obi2_level  0
-      ;;(if (empty? text) 0 (obi2level text)); text -> (db/get-paragraph-text paragraph-id)
+      ;;:obi2_level  #_0 (if (empty? text) 0 (obi2level text)); text -> (db/get-paragraph-text paragraph-id)
       :tateishi    (tateishi avg-length commas sentences percentage-runs average-runs)
       :shibasaki   (shibasaki avg-hiragana avg-length avg-chunks avg-predicates)
 
@@ -544,6 +543,15 @@
 
       :link_dist   (/ (:link_dist   m) (if (> 1 chunks) (dec chunks) chunks))
       :chunk_depth (/ (:chunk_depth m) chunks)})))
+
+(defn text-readability
+  [t]
+  (let [sentences (vec (flatten (txt/string->sentences t)))
+        readability-map (assoc (apply merge-with + (map get-sentence-info sentences))
+                          :sentences (count sentences))]
+    (assoc (average-readability readability-map t)
+      :obi2_level (if (empty? t) 0 (memoized-obi2level t)))))
+
 
 ;; # TODO
 ;;
