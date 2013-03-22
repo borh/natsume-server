@@ -94,6 +94,10 @@
   []
   (db/get-genres))
 
+(defn corpus-genres-progress
+  []
+  (db/get-progress))
+
 (defn text-analyze-error
   [text filter positive negative]
   (cond
@@ -108,26 +112,41 @@
   ([pos name]
      (token-pos-name pos name 2 1)))
 
-;; # Render override for vectors
+;; # Render override for persistent vectors and maps
 (extend-protocol Renderable
   clojure.lang.APersistentVector
+  (render [resp-map _]
+    (ring-response/response resp-map))
+  clojure.lang.PersistentHashMap
   (render [resp-map _]
     (ring-response/response resp-map)))
 
 ;; # Routes
 
+;; TODO get lang8 data from matsumoto-ken
+;; TODO add routes useful for Nutmeg
+;; TODO add readability to the API, selectable, with an eye towards use in Nutmeg
+;; TODO http://www.infoq.com/articles/hypermedia-api-tutorial-part-one
+;; TODO if camelizing is better, look at: https://github.com/flatland/useful/blob/develop/src/flatland/useful/string.clj
 (defroutes main-routes*
+  "Main routes for natsume-server.
+
+  There are currently two APIs offered. One is a REST-like API that exposes the underlying database.
+  The other is a JSON(P)-based API that offers access to several of Natsume's services."
   (context "/corpus" _
            (GET "/genres" _ (corpus-genres))
+           (GET "/genres/progress" _ (corpus-genres-progress))
            (GET "/genres/:name" [name] [name])
            (GET "/genres/:name/npv/:noun/:p/:verb" [name noun p verb] [name noun p verb]))
   (GET "/token/*/:pos" [name] #_(token-pos-name name) "Unimplemented.")
   (GET "/token/error"  [pos orthBase positive negative] (token-pos-name pos orthBase positive negative))
   (GET "/sentence/analyze"  [text] (sentence->tree text))
+  (GET "/sentence/readability" [text] (rd/sentence-readability text))
   (GET "/paragraph/analyze" [text] (paragraph->tree text))
-  (GET "/text/analyze"      [text filter positive negative] (text-analyze-error text filter positive negative))
+  (GET "/text/analyze"      [text filter positive negative] (do (log/error text) (if (seq text) (text-analyze-error text filter positive negative))))
   (GET "/text/split"        [text] (string->sentences text))
   (GET "/paragraph/split"   [text] (paragraph->sentences text))
+  (route/files "/")
   (route/not-found "<h1>Route not found.</h1><p>Refer to API documentation: https://github.com/borh/natsume-server/wiki/API-ja</p>"))
 
 ;; # Handler with middleware
@@ -137,9 +156,26 @@
     (log/info request)
     (handler request)))
 
+(defn wrap-dir-index [handler]
+  (fn [req]
+    (handler
+     (update-in req [:uri]
+                #(if (= "/" %) "/index.html" %)))))
+
+;; TODO merge with above but push total to riemann
+#_(defn wrap-request-logging
+  [handler]
+  (fn [{:keys [request-method uri] :as req}]
+    (let [start (System/currentTimeMillis)
+          resp (handler req)
+          finish (System/currentTimeMillis)
+          total (- finish start)]
+      (log "request %s %s (%dms)" request-method uri total)
+      resp)))
+
 (defn wrap-json-response
-  "Middleware that converts responses with a map for a body into a JSON
-response."
+  "Middleware that converts responses with a map for a body into a JSON response.
+  TODO add optional JSONP handling if callback is specified."
   [handler]
   (fn [request]
     (let [response (handler request)]
@@ -151,7 +187,7 @@ response."
 
 ;; Adapted from https://github.com/ring-clojure/ring/blob/master/ring-core/src/ring/middleware/keyword_params.clj
 (defn- decode-key
-  "Decodes charcter strings to keywords and integer strings to integers."
+  "Decodes character strings to keywords and integer strings to integers."
   [k]
   (cond (and (string? k) (re-matches #"[A-Za-z*+!_?-][A-Za-z0-9*+!_?-]*" k)) (keyword k)
         (and (string? k) (re-matches #"^\d+$" k)) (Integer/decode k)
@@ -159,13 +195,15 @@ response."
 
 (defn- keyify-params [target]
   "Keyifies and decodes params, particulary form-params or query-params that do not have type
-   information attached to them. Reference/based on: ring.middleware.keyword-params"
+   information attached to them. Reference/based on: ring.middleware.keyword-params
+   TODO look at https://github.com/richhickey/clojure/blob/c1c39162608551d50cfb18998d015974b11cfecc/src/clj/clojure/walk.clj#L95"
   (cond
    (map? target) (into {}
                        (for [[k v] target]
                          [(decode-key k) (keyify-params v)]))
-   (vector? target) (vec (map keyify-params target))
-   :else (decode-key target)))
+   (vector? target) (mapv keyify-params target)
+   ;;(string? target) (decode-key target) ;; FIXME turns the value into a keyword, which can cause errors
+   :else target))
 
 (defn wrap-normalize-json-request
   "Looks in body and query-params for JSON data and merges it with :params.
@@ -189,25 +227,18 @@ response."
       wrap-json-response
       wrap-normalize-json-request
       handler/api
+      wrap-dir-index
       wrap-stacktrace))
 
-;; # Jetty server and main function
-
-(def jetty-atom (atom nil))
-
-(defn stop!
-  []
-  (swap! jetty-atom #(try (.stop %) (catch Exception e %))))
-
-(defn start! [options]
-  (if (not (nil? @jetty-atom)) (stop!))
-  (reset! jetty-atom (run-jetty
-                      #'handler
-                      (assoc options
-                        :join? false))))
-
-(defn -main
-  ([port]
-     (start! {:port (Integer/parseInt port)}))
-  ([]
-     (-main "5011")))
+;; TODO:
+;; ```JavaScript
+;; $.ajax({
+;;     url:      'http://localhost:5011/text/split',
+;;     jsonp:    'callback',
+;;     dataType: 'jsonp',
+;;     data:     {"text":"今日は、世界！\nHello world.\n\nŽivjo."},
+;;     success:  function (d) {
+;;         console.log(d);
+;;     }
+;; });
+;; ```
