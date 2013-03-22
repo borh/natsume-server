@@ -153,6 +153,9 @@
         split-output (string/split obi-output #"\s")]
     (Integer/parseInt (first split-output))))
 
+(def memoized-obi2level
+  (memoize obi2level))
+
 ;; ## Surface-level features
 ;;
 ;; Token, chunk and predicate counts operate on the CaboCha tree
