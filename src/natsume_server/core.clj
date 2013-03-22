@@ -1,142 +1,115 @@
 ;; # Commandline interface and logic
 (ns natsume-server.core
   (:require [clojure.java.io :as io]
-            [clojure.string :as string]
+            [clojure.core.reducers :as r]
+
+            [clojure.tools.cli :refer [cli]]
+            [clojure.data.csv :as csv]
+            [me.raynes.fs :as fs]
+            [iota :as iota]
+            [plumbing.core :refer :all]
+            [plumbing.graph :as graph]
+
+            [natsume-server.text :as txt]
+            [natsume-server.utils :refer [strict-map-discard]]
+            [natsume-server.cabocha-wrapper :as cw]
             [natsume-server.readability :as rd]
             [natsume-server.database :as db]
-            [fs.core :as fs]
+
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
   (:import (java.io.File))
-  (:use [clojure.tools.cli :only (cli)])
   (:gen-class))
+
+;; ## Graph printing helpers
+(defn calculate-deps [f]
+  (map (fn [parent] [parent (first f)]) (-> f second meta first second first keys)))
+
+(defn print-dot [graph]
+  (println (clojure.string/join "\n"
+                                (map (fn [r] (str "\""(first r) "\" -> \"" (second r) "\";"))
+                                     (mapcat (fn [k] (calculate-deps k)) (graph/->graph graph))))))
 
 ;; ## Miscellaneous filesystem helper utilities.
 (defn is-text?
   [path]
   (= (fs/extension path) ".txt"))
 
-;; # Sentence and paragraph splitting
-(def delimiter   #"[\.!\?．。！？]")
-;; Take care not to use this with JStage data -- temporary hack for BCCWJ
-(def delimiter-2 #"[!\?。！？]")
-(def closing-quotation #"[\)）」』】］〕〉》\]]") ; TODO
-(def opening-quotatoin #"[\(（「『［【〔〈《\[]") ; TODO
-(def numbers #"[０-９\d]")
-;;(def alphanumerics #"[0-9\uFF10-\uFF19a-zA-Z\uFF41-\uFF5A\uFF21-\uFF3A]")
-(def alphanumerics #"[\d０-９a-zA-Zａ-ｚＡ-Ｚ]")
+;; ## Computation graphs
+(def corpus-graph
+  {:files      (fnk [corpus-dir] (filter is-text? (file-seq corpus-dir)))
+   :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
+   :sources    (fnk [corpus-dir] (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
+                                   (doall (csv/read-csv sources-reader :separator \tab :quote 0))))})
 
-(def sentence-split-re
-  (re-pattern
-   (format "(?<=%s+)(?!%s+|%s+)"
-           delimiter-2
-           closing-quotation
-           alphanumerics)))
+(def file-graph
+  {:paragraphs (fnk [filename] (txt/lines->paragraph-sentences (iota/vec (str filename))))
+   :sources-id (fnk [filename] (db/basename->source-id (fs/base-name filename true)))})
 
-;; This is the first function that deals with the file contents.
-;; We need another function that deals with normalization issues using icu4j.
-(defn string->paragraphs
-  "Splits string into paragraphs.
-   Paragraphs are defined as:
-   1) one or more non-empty lines delimited by one empty line or BOF/EOF
-   2) lines prefixed with fullwidth unicode space '　'"
-  [s]
-  (string/split s #"([\r\n]{4,}|[\r\n]{2,}　|[\n]{2,})")) ; FIXME
+(def sentence-graph
+  {:sentence-features    (fnk [text] (rd/sentence-readability text))
+   :sentence-data        (fnk [sentence-features paragraph-id sentence-order-id sources-id]
+                              (assoc sentence-features
+                                :paragraph-id paragraph-id
+                                :sentence-order-id sentence-order-id
+                                :sources-id   sources-id))
+   ;; The following are side-effecting persistence graphs
+   :sentences-id         (fnk [sentence-data] (:id (db/insert-sentence sentence-data)))
+   :collocations-id      (fnk [sentence-data sentences-id]
+                              (when-let [collocations (seq (:collocations sentence-data))]
+                                (:id (db/insert-collocations! collocations sentences-id))))})
+;; TODO Take care with side-effecting functions, might not they be optional?
 
-(defn paragraph->sentences-2
-  "Splits one pre-formatted paragraph into multiple sentences.
-  Pre-formatting means that sentence splitting has already occured."
-  [s]
-  (remove string/blank? (string/split-lines s)))
+;; ## Graph and database connective logic
+(defnk insert-sources! [sources file-bases]
+  (db/update-sources! sources file-bases))
 
-(defn paragraph->sentences
-  "Splits one paragraph into multiple sentences.
+(comment "Replaced with functions in sentence-graph above ^^^"
+ (defnk insert-collocations! [collocations]
+   (when (seq collocations)
+     (db/insert-collocations collocations)))
 
-   Since it is hard to use Clojure's regexp functions (string/split)
-  because they consume the matched group, we opt to add newlines to
-  the end of all delimiters.???"
-  [s]
-  (vec
-   (flatten
-    (reduce (fn
-              [accum sentence]
-              (conj accum
-                    (remove string/blank?
-                            (flatten (string/split sentence sentence-split-re)))))
-            []
-            (string/split-lines s)))))
+ (defnk insert-sentence! [sentence-data]
+   (let [sentences-id (:id (db/insert-sentence sentence-data))]
+     (insert-collocations! (merge sentence-data
+                                  {:sentences-id sentences-id})))))
 
-(defn split-on-tab
-  [s]
-  (string/split s #"\t"))
+(defnk insert-paragraphs! [paragraphs sources-id]
+  (loop [paragraphs*       paragraphs
+         sentence-start-id 1         ; ids start with 1 (same as SQL pkeys)
+         paragraph-id      1]
+    (when-let [paragraph (first paragraphs*)]
+      (let [sentence-count (count paragraph)
+            sentence-end-id (+ sentence-start-id sentence-count)]
+        ((comp dorun map) #((graph/eager-compile sentence-graph)
+                            {:sources-id        sources-id
+                             :sentence-order-id %2
+                             :paragraph-id      paragraph-id
+                             :text              %1})
+         paragraph
+         (range sentence-start-id sentence-end-id))
+        (recur (next paragraphs*)
+               sentence-end-id
+               (inc paragraph-id))))))
 
-(defn tsv->vector
-  [filename]
-  (for
-      [line (->> filename slurp string/split-lines (map split-on-tab))]
-    line))
+(defn partition-pmap
+  "Like pmap, but runs n futures (default is number of CPUs + 1) partitions of the data."
+  ([f coll]
+     (partition-pmap (inc (.. Runtime getRuntime availableProcessors)) f coll))
+  ([n f coll]
+     (let [part-size (/ (count coll) n)]
+       (->> coll
+            (partition-all part-size)
+            ((comp dorun pmap) #(cw/with-new-parser ((comp dorun map) f %)))))))
 
-(defn paragraphs->sentences
-  [ps]
-  (map paragraph->sentences ps))
+(defnk insert-sentences! [files]
+  (->> ((comp doall map) #((graph/lazy-compile file-graph) {:filename %}) files)
+       (partition-pmap insert-paragraphs!)))
 
-(defn string->sentences
-  [s]
-  (-> s
-      string->paragraphs
-      paragraphs->sentences))
-
-(defn slurp-with-metadata
-  [f]
-  (let [basename (fs/base-name f true)
-        source-id (db/basename->source_id basename)
-        paragraphs (do (string->sentences (slurp f)))]
-    (log/trace (str "Slurping " f " with source_id " source-id " and # of paragraphs " (count paragraphs)))
-    {:source-id source-id
-     :paragraphs paragraphs}))
-
-;; # Database and readability connective logic
-
-(defn insert-sentences
-  [files-data]
-  (let [source-id (:source-id files-data)
-        paragraphs (:paragraphs files-data)]
-    ;; TODO hook in whole-paragraph readability functions after insertion
-    (reduce (fn [paragraph-id ss]
-              (doseq [sentence ss]
-                (let [sentence-map (merge
-                                    (rd/get-sentence-info sentence)
-                                    {:text         sentence
-                                     :paragraph_id paragraph-id
-                                     :sources_id   source-id})]
-                  (db/insert-sentence sentence-map rd/average-readability)))
-              (do
-                (db/insert-paragraph-readability paragraph-id rd/average-readability)
-                (inc paragraph-id)))
-            (inc (db/last-paragraph-id)) ; previously was just '0'
-            paragraphs)
-    (db/insert-sources-readability source-id rd/average-readability)))
-
-(defn initialize-corpus
-  "Processes given corpus directory."
-  [corpus-dir]
-  ;; (db/update-genres (tsv->vector (str corpus-dir "/genres.tsv")))
-  (let [name (fs/base-name corpus-dir) ;; for debug
-        files (->> corpus-dir
-                   io/file
-                   file-seq
-                   (filter is-text?))]
-    (log/debug (str "Initializing " name " with files " files))
-    (let [basename-set (set (map #(fs/base-name % true) files))]
-      (db/update-sources (tsv->vector (str corpus-dir "/sources.tsv")) basename-set))
-    (do (doseq [sentences (pmap slurp-with-metadata files)] ; compare map and pmap
-          ;; (filter db/basename-in-sources?) ;; this is a roundabout
-          ;; way of filtering, should be integrated with above db
-          ;; update function
-          (do (log/debug "Inserting sentences from initialize-corpus")
-              (insert-sentences sentences)))
-        (db/merge-tokens!) ; TODO fix
-        (db/reset-inmemory-tokens!))))
+(defn process-corpus! [corpus-dir]
+  (let [corpus-results ((graph/par-compile corpus-graph) {:corpus-dir corpus-dir})]
+    (insert-sources! corpus-results)
+    (insert-sentences! corpus-results)))
 
 (defn run
   "Initializes database and processes corpus directories from input.
@@ -145,28 +118,23 @@
   [opts args]
   (log/debug (str "Options:\n" opts "\n"))
   (log/debug (str "Arguments:\n" args "\n"))
-  (do
-    (db/init-database {:destructive 1})
-    (map initialize-corpus (map str args)) ; TODO why map string? fix for multiple dirs
-    ;; post-processing hooks go here
-
-    ;; TODO token_freq table --> this should only be done once, after
-    ;; that we can load it from the database, so make sure we are not
-    ;; doing this every time but as much as possible, save the data
-    ;; between runs
-    ;; TODO how to do this in the REPL with -main? (time (doall (run [] "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT")))
-    )
+  (db/drop-all-cascade)
+  (db/init-database {:destructive 1})
+  (strict-map-discard process-corpus! args)
+  ;; post-processing hooks go here
+  ;; TODO how to do this in the REPL with -main? (time (doall (run [] "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT")))
   )
 
 (defn process-directories
-  "Processes directiors to check if they exist and returns the io/file object with canonical and normalized path.
-  Skips non-existing directories."
+  "Processes directiors to check if they exist and returns io/file directory objects with canonical and normalized paths.
+  Skips non-existing directories and removes duplicates."
   [dirs]
-  (if-not (empty? dirs)
+  (if (seq dirs)
     (->> dirs
-         (map io/file)
-         (map fs/normalized-path)
-         (filter fs/directory?))))
+         (r/map io/file)
+         (r/map fs/normalized-path)
+         (r/filter fs/directory?)
+         (into #{}))))
 
 (defn -main
   "Read files from corpus and do stuff...
@@ -181,19 +149,11 @@
              ["-h" "--help" "Show help" :default false :flag true])]
     (when (:help options)
       (println banner)
-      (System/exit 0)) ;; disable when in REPL!
+      (System/exit 0)) ;; Do not run in REPL!
     (if (:verbose options)
-      (do
-        (println "Turning on verbose logging.")
-        (lc/setup-log log/config :debug))
+      (do (println "Turning on verbose logging.")
+          (lc/setup-log log/config :debug))
       (lc/setup-log log/config :error))
-    (println options)
     (if-let [checked-directories (process-directories arguments)]
-      (do
-        (println "")
-        (run options checked-directories))
+      (run options checked-directories)
       (println banner))))
-
-;; # TODO
-;;
-;; - refactor so that readability is decoupled from the core of natsume -- managing corpus data and extracting collocations.
