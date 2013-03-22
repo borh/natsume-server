@@ -112,30 +112,28 @@ from their JDBC-compatible representation to their wire format representation."
    "DROP INDEX IF EXISTS idx_sources_subgenres_id"
    "DROP INDEX IF EXISTS idx_sources_subsubgenres_id"
    "DROP INDEX IF EXISTS idx_sources_subsubsubgenres_id"
-   "DROP INDEX IF EXISTS idx_npv_noun"
-   "DROP INDEX IF EXISTS idx_npv_particle"
-   "DROP INDEX IF EXISTS idx_npv_verb"))
+   "DROP INDEX IF EXISTS idx_noun_particle_verb_noun"
+   "DROP INDEX IF EXISTS idx_noun_particle_verb_particle"
+   "DROP INDEX IF EXISTS idx_noun_particle_verb_verb"))
 
 (defn drop-all-tables
   "Reset all tables."
   []
   (sql/do-commands
    "DROP TABLE IF EXISTS sources_readability"
-   "DROP TABLE IF EXISTS paragraph_readability"
    "DROP TABLE IF EXISTS sentences_readability"
-   "DROP TABLE IF EXISTS npv_mappings"
+   "DROP TABLE IF EXISTS noun_particle_verb_mappings"
    "DROP TABLE IF EXISTS sentences"
    "DROP TABLE IF EXISTS sources"
    "DROP TABLE IF EXISTS orthbases_genres_freqs"
    "DROP TABLE IF EXISTS orthbases"
    "DROP TABLE IF EXISTS lemmas"
-   "DROP TABLE IF EXISTS npv_positions"
-   "DROP TABLE IF EXISTS npv"
+   "DROP TABLE IF EXISTS noun_particle_verb_positions"
+   "DROP TABLE IF EXISTS noun_particle_verb"
    "DROP TABLE IF EXISTS subsubsubgenres"
    "DROP TABLE IF EXISTS subsubgenres"
    "DROP TABLE IF EXISTS subgenres"
-   "DROP TABLE IF EXISTS genres"
-   ))
+   "DROP TABLE IF EXISTS genres"))
 
 ;; The unit of computation is the file (or one user input). This means
 ;; that each file is processed in memory and only then commited to the
@@ -185,19 +183,19 @@ $$ language plpgsql;"))
    [:unk          "real"]
    [:pn           "real"]
 
-   [:obi2_level   "smallint"]
+   [:obi2-level   "smallint"]
    [:tateishi     "real"]
    [:shibasaki    "real"]
 
-   [:jlpt_level   "real"]
-   [:bccwj_level  "real"]
+   [:jlpt-level   "real"]
+   [:bccwj-level  "real"]
 
    [:tokens       "real"]
    [:chunks       "real"]
    [:predicates   "real"]
 
-   [:link_dist    "real"]
-   [:chunk_depth  "real"]])
+   [:link-dist    "real"]
+   [:chunk-depth  "real"]])
 
 #_(defmacro create-table-vector
     [f name schema]
@@ -213,29 +211,28 @@ $$ language plpgsql;"))
   those require a lot of lookups(?))."
   []
   (do
-
     (sql/create-table
-     "genres"
+     :genres
      [:id   "serial"      "PRIMARY KEY"]
      [:name "varchar(48)" "UNIQUE" "NOT NULL"])
 
     (sql/create-table
-     "subgenres"
+     :subgenres
      [:id   "serial"      "PRIMARY KEY"]
      [:name "varchar(48)" "UNIQUE" "NOT NULL"])
 
     (sql/create-table
-     "subsubgenres"
+     :subsubgenres
      [:id   "serial"      "PRIMARY KEY"]
      [:name "varchar(48)" "UNIQUE" "NOT NULL"])
 
     (sql/create-table
-     "subsubsubgenres"
+     :subsubsubgenres
      [:id   "serial"      "PRIMARY KEY"]
      [:name "varchar(48)" "UNIQUE" "NOT NULL"])
 
     (sql/create-table
-     "lemmas"
+     :lemmas
      [:id        "serial"      "PRIMARY KEY"]
      [:pos       "varchar(8)"  "NOT NULL"]
      [:name      "varchar(32)" "NOT NULL"]
@@ -244,18 +241,18 @@ $$ language plpgsql;"))
     (sql/do-commands "CREATE INDEX idx_lemmas_name ON lemmas (name)")
 
     (sql/create-table
-     "orthbases"
+     :orthbases
      [:id        "serial"      "PRIMARY KEY"]
-     [:lemmas_id "integer"     "NOT NULL" "REFERENCES lemmas(id)"]
+     [:lemmas-id "integer"     "NOT NULL" "REFERENCES lemmas(id)"]
      [:name      "varchar(32)" "NOT NULL"])
     (sql/do-commands "CREATE INDEX idx_orthbases_lemmas_id ON orthbases (lemmas_id)")
     (sql/do-commands "CREATE INDEX idx_orthbases_name      ON orthbases (name)")
 
     (sql/create-table
-     "orthbases_genres_freqs"
+     :orthbases-genres-freqs
      [:id           "serial"   "PRIMARY KEY"]
-     [:orthbases_id "integer"  "NOT NULL" "REFERENCES orthbases(id)"]
-     [:genres_id    "smallint" "NOT NULL" "REFERENCES genres(id)"]
+     [:orthbases-id "integer"  "NOT NULL" "REFERENCES orthbases(id)"]
+     [:genres-id    "smallint" "NOT NULL" "REFERENCES genres(id)"]
      [:freq         "integer"  "NOT NULL"])
     (sql/do-commands "CREATE INDEX idx_orthbases_genres_freqs_orthbases_id ON orthbases_genres_freqs (orthbases_id)")
     (sql/do-commands "CREATE INDEX idx_orthbases_genres_freqs_genres_id    ON orthbases_genres_freqs (genres_id)")
@@ -263,31 +260,28 @@ $$ language plpgsql;"))
     ;; TODO need to add information from CopyRight_Annotation.txt as
     ;; per BCCWJ usage guidelines.
     (sql/create-table
-     "sources"
+     :sources
      [:id                 "serial"       "PRIMARY KEY"]
      [:title              "varchar(256)" "NOT NULL"]
      [:author             "varchar(256)"]
      [:year               "smallint"     "NOT NULL"]
      [:basename           "varchar(256)" "NOT NULL"]
-     [:genres_id          "smallint"     "REFERENCES genres(id)"]
-     [:subgenres_id       "smallint"     "REFERENCES subgenres(id)"]
-     [:subsubgenres_id    "smallint"     "REFERENCES subsubgenres(id)"]
-     [:subsubsubgenres_id "smallint"     "REFERENCES subsubsubgenres(id)"])
+     [:genres-id          "smallint"     "REFERENCES genres(id)"]
+     [:subgenres-id       "smallint"     "REFERENCES subgenres(id)"]
+     [:subsubgenres-id    "smallint"     "REFERENCES subsubgenres(id)"]
+     [:subsubsubgenres-id "smallint"     "REFERENCES subsubsubgenres(id)"])
     (sql/do-commands "CREATE INDEX idx_sources_genres_id ON sources (genres_id)")
     (sql/do-commands "CREATE INDEX idx_sources_subgenres_id ON sources (subgenres_id)")
     (sql/do-commands "CREATE INDEX idx_sources_subsubgenres_id ON sources (subsubgenres_id)")
     (sql/do-commands "CREATE INDEX idx_sources_subsubsubgenres_id ON sources (subsubsubgenres_id)")
 
     (sql/create-table
-     "sentences"
+     :sentences
      [:id           "serial"   "PRIMARY KEY"]
      [:text         "text"     "NOT NULL"]
-     ;; in the future, would it make sense to make a paragraphs table
-     ;; that included readability based on paragraphs; also another
-     ;; table for whole-file readability? (ie, the commas count is
-     ;; already based on paragraph/whole file per-sentence averaging)
-     [:paragraph_id "integer"  "NOT NULL"]
-     [:sources_id   "integer"  "REFERENCES sources(id)"]
+     [:sentence-order-id "integer" "NOT NULL"]
+     [:paragraph-id "integer"  "NOT NULL"]
+     [:sources-id   "integer"  "REFERENCES sources(id)"]
      ;; the following are raw numbers that are needed to calculate readability
      [:length       "smallint"]
      [:hiragana     "smallint"]
@@ -303,68 +297,59 @@ $$ language plpgsql;"))
      [:mixed        "smallint"]
      [:unk          "smallint"]
      [:pn           "smallint"]
-     ;;[:obi2_level   "smallint"]
-     ;;[:tateishi     "real"]
-     ;;[:shibasaki    "real"]
-     [:jlpt_level   "real"]
-     [:bccwj_level  "real"]
+     [:jlpt-level   "real"]
+     [:bccwj-level  "real"]
      [:tokens       "smallint"]
      [:chunks       "smallint"]
      [:predicates   "smallint"]
-     [:link_dist    "real"]
-     [:chunk_depth  "real"])
+     [:link-dist    "real"]
+     [:chunk-depth  "real"])
     (sql/do-commands "CREATE INDEX idx_sentences_sources_id ON sentences (sources_id)")
 
     ;; The following are all average counts
     (apply sql/create-table
-           "sentences_readability"
-           (apply conj [[:sentences_id "integer" "PRIMARY KEY" "REFERENCES sentences(id)"]]
+           :sentences-readability
+           (apply conj [[:sentences-id "integer" "PRIMARY KEY" "REFERENCES sentences(id)"]]
                   readability-fields-schema))
 
     (apply sql/create-table
-           "paragraph_readability"
-           (apply conj [[:paragraph_id "integer" "PRIMARY KEY" #_"REFERENCES sentences(paragraph_id)"]
-                        [:sentences    "smallint"]]
-                  readability-fields-schema))
-
-    (apply sql/create-table
-           "sources_readability"
-           (apply conj [[:sources_id "integer" "PRIMARY KEY" "REFERENCES sources(id)"]
+           :sources-readability
+           (apply conj [[:sources-id "integer" "PRIMARY KEY" "REFERENCES sources(id)"]
                         [:sentences  "smallint"]
                         [:paragraphs "smallint"]]
                   readability-fields-schema))
 
-    (sql/create-table
-     "npv"
+    #_(sql/create-table
+     :noun-particle-verb
      [:id       "serial"      "PRIMARY KEY"]
      [:noun     "varchar(48)" "NOT NULL"]
      [:particle "varchar(4)"  "NOT NULL"]
      [:verb     "varchar(48)" "NOT NULL"])
-    (sql/do-commands
-     "CREATE INDEX idx_npv_noun     ON npv (noun)"
-     "CREATE INDEX idx_npv_particle ON npv (particle)"
-     "CREATE INDEX idx_npv_verb     ON npv (verb)")
+    #_(sql/do-commands
+     "CREATE INDEX idx_noun_particle_verb_noun     ON noun_particle_verb (noun)"
+     "CREATE INDEX idx_noun_particle_verb_particle ON noun_particle_verb (particle)"
+     "CREATE INDEX idx_noun_particle_verb_verb     ON noun_particle_verb (verb)")
 
-    (sql/create-table
-     "npv_positions"
-     [:id      "serial"   "PRIMARY KEY"]
-     [:n_start "smallint" "NOT NULL"]
-     [:n_end   "smallint" "NOT NULL"]
-     [:p_start "smallint" "NOT NULL"]
-     [:p_end   "smallint" "NOT NULL"]
-     [:v_start "smallint" "NOT NULL"]
-     [:v_end   "smallint" "NOT NULL"])
+    #_(sql/create-table
+     :noun-particle-verb-positions
+     [:id             "serial"   "PRIMARY KEY"]
+     [:noun-start     "smallint" "NOT NULL"]
+     [:noun-end       "smallint" "NOT NULL"]
+     [:particle-start "smallint" "NOT NULL"]
+     [:particle-end   "smallint" "NOT NULL"]
+     [:verb-start     "smallint" "NOT NULL"]
+     [:verb-end       "smallint" "NOT NULL"])
 
-    (sql/create-table
-     "npv_mappings"
-     [:id               "serial"  "PRIMARY KEY"]
-     [:npv_id           "integer" "REFERENCES npv(id)"]
-     [:npv_positions_id "integer" "REFERENCES npv_positions(id)"]
-     [:sentences_id     "integer" "REFERENCES sentences(id)"])
-    (sql/do-commands
-     "CREATE INDEX idx_npv_mappings_npv_id           ON npv_mappings (id)"
-     "CREATE INDEX idx_npv_mappings_npv_positions_id ON npv_mappings (id)"
-     "CREATE INDEX idx_npv_mappings_sentences_id     ON npv_mappings (id)")))
+    #_(sql/create-table
+     :noun-particle-verb-mappings
+     [:id                              "serial"  "PRIMARY KEY"]
+     [:noun-particle-verb-id           "integer" "REFERENCES noun_particle_verb(id)"]
+     [:noun-particle-verb-positions-id "integer" "REFERENCES noun_particle_verb_positions(id)"]
+     [:sentences-id                    "integer" "REFERENCES sentences(id)"])
+    #_(sql/do-commands
+     "CREATE INDEX idx_noun_particle_verb_mappings_noun_particle_verb_id           ON noun_particle_verb_mappings (noun_particle_verb_id)"
+     "CREATE INDEX idx_noun_particle_verb_mappings_noun_particle_verb_positions_id ON noun_particle_verb_mappings (noun_particle_verb_positions_id)"
+     "CREATE INDEX idx_noun_particle_verb_mappings_sentences_id                    ON noun_particle_verb_mappings (sentences_id)")))
 
 (declare sentences sources)
 
@@ -389,20 +374,20 @@ $$ language plpgsql;"))
   (entity-fields :pos :name :goshu)
   (has-one orthbases))
 
-(declare orthbases_genres_freqs)
+(declare orthbases-genres-freqs)
 (defentity orthbases
   (entity-fields :name)
   (belongs-to lemmas)
-  (belongs-to orthbases_genres_freqs)
-  (has-one orthbases_genres_freqs))
+  (belongs-to orthbases-genres-freqs)
+  (has-one orthbases-genres-freqs))
 
-(defentity orthbases_genres_freqs
+(defentity orthbases-genres-freqs
   (entity-fields :freq)
   (belongs-to orthbases)
   (belongs-to genres))
 
 (defentity sources
-  (entity-fields :id :title :author :year :basename :genres_id :subgenres_id :subsubgenres_id)
+  (entity-fields :id :title :author :year :basename :genres-id :subgenres-id :subsubgenres-id)
   (has-one sentences)
   (belongs-to genres)
   (belongs-to subgenres)
@@ -420,39 +405,33 @@ $$ language plpgsql;"))
 (defentity sentences
   (entity-fields-vector (flatten
                          (list
-                          :id :text :paragraph_id :sources_id
+                          :id :text :paragraph-id :sources-id
                           (filter
                            (fn [x] (not= x :tateishi :shibasaki))
                            readability-keys))))
   (belongs-to sources))
 
-(defentity sentences_readability
-  (entity-fields-vector (conj readability-keys :sentences_id))
+(defentity sentences-readability
+  (entity-fields-vector (conj readability-keys :sentences-id))
   (belongs-to sentences))
 
-(defentity paragraph_readability
+(defentity sources-readability
   (entity-fields-vector (conj readability-keys
-                              :paragraph_id
-                              :sentences ))
-  (has-one sentences {:fk :paragraph_id}))
-
-(defentity sources_readability
-  (entity-fields-vector (conj readability-keys
-                              :sources_id
+                              :sources-id
                               :sentences
                               :paragraphs))
   (belongs-to sources))
 
-(defentity npv
+#_(defentity npv
   (entity-fields :noun :particle :verb))
 
-(defentity npv_positions
-  (entity-fields :n_start :n_end :p_start :p_end :v_start :v_end))
+#_(defentity npv-positions
+  (entity-fields :n-start :n-end :p-start :p-end :v-start :v-end))
 
-(defentity npv_mappings
+#_(defentity npv-mappings
   (has-one npv)
   (has-one sentences)
-  (has-one npv_positions))
+  (has-one npv-positions))
 
 (defn init-database
   "Initialize Natsume database.
@@ -579,12 +558,12 @@ $$ language plpgsql;"))
       (log/debug (format "lemma-id: %d" lemma-id))
       (doseq [[orthbase freq]    orthbases]
         (let [orthbase-id (get-in (exec-raw ["INSERT INTO orthbases (lemmas_id, name) VALUES (?, ?) RETURNING id" [lemma-id orthbase]] :results) [0 :id])
-              #_(:id (insert orthbases (values [{:name orthbase :lemmas_id lemma-id}])))]
+              #_(:id (insert orthbases (values [{:name orthbase :lemmas-id lemma-id}])))]
           (exec-raw ["INSERT INTO orthbases_genres_freqs (orthbases_id, genres_id, freq) VALUES (?, ?, ?)" [orthbase-id @current-genres-id freq]])
-          #_(insert orthbases_genres_freqs (values {:orthbases_id orthbase-id :genres_id @current-genres-id :freq freq}))))))
+          #_(insert orthbases-genres-freqs (values {:orthbases-id orthbase-id :genres-id @current-genres-id :freq freq}))))))
   #_(let [tokens-parts (partition-all
                       1000 ; if we don't partiton the insert fails because of length issues
-                      (mapv #(do (log/debug %) (assoc-in % [1 :genres_id] @current-genres-id)) ; FIXME/TODO
+                      (mapv #(do (log/debug %) (assoc-in % [1 :genres-id] @current-genres-id)) ; FIXME/TODO
                             (for [[[pos goshu] lemmas] @inmemory-tokens
                                   [lemma orthbases]    lemmas
                                   [orthbase freq]      orthbases]
@@ -601,28 +580,32 @@ $$ language plpgsql;"))
         (log/debug (format "Lemmas id: %s" lemmas-id))
         (insert orthbases
                 (values orthbase-part))
-        (insert orthbases_genres_freqs
+        (insert orthbases-genres-freqs
                 (values orthbase-part))))))
 
 (defn get-genres
   []
   (select genres))
 
+(defn get-progress
+  []
+  (exec-raw ["select genres.name, genres.id, count(DISTINCT sources.id) as done, (select count(DISTINCT so.id) from sources as so, genres as ge where so.id NOT IN (select DISTINCT sources_id from sentences) and ge.id=genres.id and ge.id=so.genres_id) as ongoing from sources, sentences, genres where sources.id=sentences.sources_id and genres.id=sources.genres_id group by genres.id order by genres.id"] :results))
+
 (defn get-genre-token-counts
   []
-  (let [r (select orthbases_genres_freqs
-                  (fields :genres_id)
-                  (aggregate (sum :freq) :total :genres_id))]
-    (into {} (for [row r] [(:genres_id row) (:total row)]))))
+  (let [r (select orthbases-genres-freqs
+                  (fields :genres-id)
+                  (aggregate (sum :freq) :total :genres-id))]
+    (into {} (for [row r] [(:genres-id row) (:total row)]))))
 
 (defn get-token-freqs
   [pos orthbase]
   (select orthbases
           (with lemmas)
-          (with orthbases_genres_freqs)
-          (fields :orthbases_genres_freqs.freq :orthbases_genres_freqs.genres_id)
+          (with orthbases-genres-freqs)
+          (fields :orthbases-genres-freqs.freq :orthbases-genres-freqs.genres-id)
           (where {:name orthbase :lemmas.pos pos})
-          (group :orthbases_genres_freqs.genres_id :orthbases.name :orthbases_genres_freqs.freq)))
+          (group :orthbases-genres-freqs.genres-id :orthbases.name :orthbases-genres-freqs.freq)))
 
 (defn get-norm-token-freqs
   [pos orthbase]
@@ -630,12 +613,15 @@ $$ language plpgsql;"))
         genre-totals (get-genre-token-counts)]
     (into {}
           (map (fn [m]
-                 (let [genre (:genres_id m)
+                 (let [genre (:genres-id m)
                        freq  (:freq m)]
                    [genre (/ freq (get genre-totals genre))]))
                freqs))))
 
 (defn register-score
+  "TODO incanter chisq-test http://incanter.org/docs/api/#member-incanter.stats-chisq-test
+   TODO make the method selectable from the api, ie. difference, chi-sq, etc...
+   TODO for tokens, register score must take into account the lemma, to find which orthBases occurr in which corpora -> possible to filter what orthBases are register-specific, what are generally agreed upon"
   [pos orthbase good-id bad-id]
   (let [r (get-norm-token-freqs pos orthbase)]
     (- (Math/log (get r good-id 1)) (Math/log (get r bad-id 1)))))
@@ -681,20 +667,13 @@ sum(link_dist) AS link_dist, sum(chunk_depth) AS chunk_depth")
                         [id]]
                        :results))))
 
-(defn insert-paragraph-readability
-  [id f]
-  (insert paragraph_readability
-          (values (assoc
-                      (f (paragraph-readability-sums id) (get-paragraph-text id))
-                    :paragraph_id id))))
-
 (defn insert-sources-readability
   [id f]
-  (insert sources_readability
+  (insert sources-readability
           (values
            (assoc
                (f (sources-readability-sums id) (get-sources-text id))
-             :sources_id id))))
+             :sourcesid id))))
 
 ;; # TODO
 ;;
