@@ -389,9 +389,9 @@
 
 ;; TODO: Make pattern matching smarter by dispatching on matching
 ;;       fields in patterns and by saving intermediate results.
-(defprotocol match-dispatch
+(defprotocol IMatchValue
   (match-value [pattern-val token-val]))
-(extend-protocol match-dispatch
+(extend-protocol IMatchValue
 
   java.util.regex.Pattern
   (match-value [pattern-val token-val]
