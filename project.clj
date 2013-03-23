@@ -15,7 +15,7 @@
                                               javax.jms/jms
                                               com.sun.jdmk/jmxtools
                                               com.sun.jmx/jmxri]]
-                 [korma "0.3.0-RC4"]
+                 [korma "0.3.0-RC5"]
                  ;;
 
                  ;; Fulltext search
@@ -27,11 +27,12 @@
                  ;;
 
                  ;; Utils
-                 [org.apache.commons/commons-compress "1.4.1"]
+                 [org.apache.commons/commons-compress "1.5"]
+                 [org.clojure/tools.reader "0.7.3"]
                  [com.taoensso/timbre "1.5.2"]
                  [org.clojure/tools.cli "0.2.2"]
-                 [me.raynes/fs "1.4.0"]
-                 [iota "1.0.2"]
+                 [me.raynes/fs "1.4.1"]
+                 [iota "1.0.3"]
                  [org.clojure/data.csv "0.1.2"]
                  ;;
 
