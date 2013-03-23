@@ -49,7 +49,7 @@
                    ([a x]
                       (let [y (peek a)
                             z (and y (peek (pop a)))]
-                        (if (and (and y z)
+                        (if (and y z
                                  (delimiter-set y)                   ; ...|x |y |z |...
                                  (not (or (and (alphanumerics-set x) ;|   |５|．|０|
                                                (not= \。 y)          ;|mpl|e |. |c |om/
