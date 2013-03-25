@@ -9,12 +9,12 @@
 
             [natsume-server.annotation-middleware :as am]
             [natsume-server.collocations :as collocations]
-            [natsume-server.database :as db]
+            [natsume-server.models.db :as db]
             [natsume-server.text :as txt]
+            [natsume-server.utils :refer [xz-line-seq]]
 
             [taoensso.timbre :as log]
-            [natsume-server.log-config :as lc])
-  (:import [org.apache.commons.compress.compressors.xz XZCompressorInputStream]))
+            [natsume-server.log-config :as lc]))
 
 (lc/setup-log log/config :error)
 
@@ -72,11 +72,6 @@
 ;; In the future, these should be generalized so that log() is
 ;; optional for the functions that only need to act on one morpheme at
 ;; a time.
-(defn xz-line-seq
-  "Utility function that turns XZ compressed text files into a line-seq."
-  [fn]
-  (-> fn io/file io/input-stream XZCompressorInputStream. io/reader line-seq))
-
 (defonce BCCWJ-word-map
   (let [lines (xz-line-seq "data/BCCWJ-LB-pos-lemma-map.tsv.xz")]
     (reduce (fn [BCCWJ-map line]

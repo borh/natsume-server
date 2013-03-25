@@ -1,6 +1,10 @@
 (ns natsume-server.utils
   (:refer-clojure :exclude [partition-by map mapcat filter reduce take-while drop take remove flatten])
-  (:require [clojure.core.reducers :refer :all]))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as string]
+            [clojure.core.reducers :refer :all]
+            [clojure.tools.reader.edn :as edn])
+  (:import [org.apache.commons.compress.compressors.xz XZCompressorInputStream XZCompressorOutputStream]))
 
 ;; Begin reducers utils
 
@@ -56,3 +60,26 @@ param"
 
 (defn strict-map-discard [& args]
   (apply (comp dorun clojure.core/map) args))
+
+;; EDN writer and reader utils
+
+(defn xz-line-seq
+  "Utility function that turns XZ compressed text files into a line-seq."
+  [fn]
+  (-> fn io/file io/input-stream XZCompressorInputStream. io/reader line-seq))
+
+(defn spit-edn-xz [filename data]
+  (with-open [xz-out (-> filename
+                         (string/replace ".txt" ".edn.xz")
+                         io/file
+                         io/output-stream
+                         XZCompressorOutputStream.)]
+    (spit xz-out (prn-str data))))
+
+(defn slurp-edn-xz [filename]
+  (with-open [xz-in (-> filename
+                        (string/replace ".txt" ".edn.xz")
+                        io/file
+                        io/input-stream
+                        XZCompressorInputStream.)]
+    (edn/read-string (slurp xz-in))))

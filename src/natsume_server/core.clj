@@ -112,6 +112,8 @@
     (insert-sources! corpus-results)
     (insert-sentences! corpus-results)))
 
+(def ^:dynamic *write-edn*)
+
 (defn run
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
@@ -119,9 +121,10 @@
   [opts args]
   (log/debug (str "Options:\n" opts "\n"))
   (log/debug (str "Arguments:\n" args "\n"))
-  (db/drop-all-cascade)
-  (db/init-database {:destructive 1})
-  (strict-map-discard process-corpus! args)
+  (when (:destructive opts)
+    (schema/init-database true))
+  (binding [*write-edn* (:cache opts)]
+    (strict-map-discard process-corpus! args))
   ;; post-processing hooks go here
   ;; TODO how to do this in the REPL with -main? (time (doall (run [] "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT")))
   )
@@ -147,6 +150,8 @@
         (cli args
              ["-v" "--verbose" "Turn on verbose logging" :default false :flag true]
              ["-l" "--log-directory" "Set logging directory" :default "./log"]
+             ["-c" "--cache" "Cache CaboCha processing results" :default false]
+             ["-d" "--destructive" "Reset database on run (WARNING: will delete all data)" :default false]
              ["-h" "--help" "Show help" :default false :flag true])]
     (when (:help options)
       (println banner)
