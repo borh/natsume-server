@@ -14,11 +14,12 @@
             [natsume-server.utils :refer [strict-map-discard]]
             [natsume-server.cabocha-wrapper :as cw]
             [natsume-server.readability :as rd]
-            [natsume-server.database :as db]
+            [natsume-server.models.db :as db]
+            [natsume-server.models.schema :as schema]
 
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
-  (:import (java.io.File))
+  (:import [java.io.File])
   (:gen-class))
 
 ;; ## Graph printing helpers

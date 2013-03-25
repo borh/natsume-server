@@ -1,5 +1,5 @@
 (ns natsume-server.server
-  (:require [natsume-server.database :as db]
+  (:require [natsume-server.models.db :as db]
             [natsume-server.readability :as rd]
             [natsume-server.text :refer [string->sentences string->paragraphs paragraph->sentences]]
             [natsume-server.annotation-middleware :refer [sentence->tree]]
