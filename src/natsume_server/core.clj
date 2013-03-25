@@ -48,32 +48,24 @@
    :sources-id (fnk [filename] (db/basename->source-id (fs/base-name filename true)))})
 
 (def sentence-graph
-  {:sentence-features    (fnk [text] (rd/sentence-readability text))
-   :sentence-data        (fnk [sentence-features paragraph-id sentence-order-id sources-id]
-                              (assoc sentence-features
-                                :paragraph-id paragraph-id
-                                :sentence-order-id sentence-order-id
-                                :sources-id   sources-id))
+  {:sentence-features (fnk [text] (rd/sentence-readability text))
+   :sentence-data     (fnk [sentence-features paragraph-id sentence-order-id sources-id]
+                           (assoc sentence-features
+                             :paragraph-id paragraph-id
+                             :sentence-order-id sentence-order-id
+                             :sources-id   sources-id))
    ;; The following are side-effecting persistence graphs
-   :sentences-id         (fnk [sentence-data] (:id (db/insert-sentence sentence-data)))
-   :collocations-id      (fnk [sentence-data sentences-id]
-                              (when-let [collocations (seq (:collocations sentence-data))]
-                                (:id (db/insert-collocations! collocations sentences-id))))})
+   :sentences-id      (fnk [sentence-data] (:id (db/insert-sentence sentence-data)))
+   :collocations-id   (fnk [sentence-data sentences-id]
+                           (when-let [collocations (seq (:collocations sentence-data))]
+                             (:id (db/insert-collocations! collocations sentences-id))))
+   :tokens            (fnk [sentence-data sentences-id]
+                           (db/insert-tokens! (flatten (map :tokens (:tree sentence-data))) sentences-id))})
 ;; TODO Take care with side-effecting functions, might not they be optional?
 
 ;; ## Graph and database connective logic
 (defnk insert-sources! [sources file-bases]
   (db/update-sources! sources file-bases))
-
-(comment "Replaced with functions in sentence-graph above ^^^"
- (defnk insert-collocations! [collocations]
-   (when (seq collocations)
-     (db/insert-collocations collocations)))
-
- (defnk insert-sentence! [sentence-data]
-   (let [sentences-id (:id (db/insert-sentence sentence-data))]
-     (insert-collocations! (merge sentence-data
-                                  {:sentences-id sentences-id})))))
 
 (defnk insert-paragraphs! [paragraphs sources-id]
   (loop [paragraphs*       paragraphs
