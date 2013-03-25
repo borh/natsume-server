@@ -86,7 +86,7 @@
                (inc paragraph-id))))))
 
 (defn partition-pmap
-  "Like pmap, but runs n futures (default is number of CPUs + 1) partitions of the data."
+  "Like pmap, but runs a future on n (default is number of CPUs + 1) partitions of the data."
   ([f coll]
      (partition-pmap (inc (.. Runtime getRuntime availableProcessors)) f coll))
   ([n f coll]
