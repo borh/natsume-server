@@ -370,24 +370,6 @@
        (*  -4.67 (/ commas periods))
        115.79))
 
-;; # Token genre frequency table
-#_(def token-freq-inmemory
-    "Atom data structure: genre -> pos -> lemma -> freq
-  Genre is TODO"
-    (atom {}))
-
-#_(defn update-pos-lemma-freq
-    [t]
-    (doseq [token (am/tree-to-morphemes-flat t)]
-      (swap! token-freq-inmemory update-in [(:pos1 token) (:lemma token)] (fn [f] (if (nil? f) 1 (inc f))))))
-
-(defn update-pos-lemma-freq
-  [t genres-id]
-  (doseq [token (am/tree-to-morphemes-flat t)] ; TODO this should rather be Natsume-style words
-    (db/inmemory-token-inc! (:pos1 token) (:pos2 token) (:goshu token) (:lemma token) (:orthBase token))
-    #_(db/token-incr (:pos1 token) (:lemma token) genres-id)
-    #_(db/upsert-inc (:pos1 token) (:lemma token) genres-id)))
-
 ;; # Readability tables
 ;;
 ;; The problem WRT normalization is that there are several different normalizations required overall.
