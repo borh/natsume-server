@@ -395,34 +395,34 @@
 ;; !!There is a difference between averages of sentence averages and averages of whole texts.!!
 ;; Would be best to not average at this level -- leave it for the upper levels, maybe even in SQL.
 
-(def core-sentence-data-graph
+(def core-sentence-data
   {:tree         (fnk [sentence] (am/sentence->tree sentence))
    :tokens       (fnk [tree] (token-count tree))
    :chunks       (fnk [tree] (chunk-count tree))
    :predicates   (fnk [tree] (predicate-count-shibasaki tree))
    :collocations (fnk [tree] (collocations/extract-collocations tree))})
 
-(def readability-stats-graph
+(def readability-stats
   {:jlpt-level   (fnk [tree] (JLPT-word-level tree))
    :bccwj-level  (fnk [tree] (BCCWJ-word-log-freq tree))
    :link-dist    (fnk [tree] (link-distance tree))
    :chunk-depth  (fnk [tree] (chunk-depth tree))})
 
-(def char-type-stats-graph
+(def char-type-stats
   {:length     (fnk [sentence] (count sentence))
    :char-types (fnk [sentence length] (map-vals #(float (/ % length)) (writing-system-count sentence)))})
 
-(def goshu-stats-graph
+(def goshu-stats
   {:goshu-map (fnk [tree tokens] (map-vals #(float (/ % tokens)) (goshu-map tree)))})
 
-(def composite-sentence-graph
-  (merge core-sentence-data-graph
-         readability-stats-graph
-         char-type-stats-graph
-         goshu-stats-graph))
+(def sentence-stats
+  (merge core-sentence-data
+         readability-stats
+         char-type-stats
+         goshu-stats))
 
 (def sentence-graph
-  (graph/eager-compile composite-sentence-graph))
+  (graph/eager-compile sentence-stats))
 
 ;; Based on: http://blog.jayfields.com/2010/09/clojure-flatten-keys.html
 (defn flatten-keys
