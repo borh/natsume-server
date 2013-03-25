@@ -30,6 +30,7 @@
                  [org.apache.commons/commons-compress "1.5"]
                  [org.clojure/tools.reader "0.7.3"]
                  [com.taoensso/timbre "1.5.2"]
+                 [clj-configurator "0.1.2"]
                  [org.clojure/tools.cli "0.2.2"]
                  [me.raynes/fs "1.4.1"]
                  [iota "1.0.3"]
