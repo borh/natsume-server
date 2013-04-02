@@ -134,10 +134,10 @@
   There are currently two APIs offered. One is a REST-like API that exposes the underlying database.
   The other is a JSON(P)-based API that offers access to several of Natsume's services."
   (context "/corpus" _
-           (GET "/genres" _ (corpus-genres))
-           (GET "/genres/progress" _ (corpus-genres-progress))
-           (GET "/genres/:name" [name] [name])
-           (GET "/genres/:name/npv/:noun/:p/:verb" [name noun p verb] [name noun p verb]))
+    (GET "/genres" _ (corpus-genres))
+    (GET "/genres/progress" _ (corpus-genres-progress))
+    (GET "/genres/:name" [name] [name])
+    (GET "/genres/:name/npv/:noun/:p/:verb" [name noun p verb] [name noun p verb]))
   (GET "/token/*/:pos" [name] #_(token-pos-name name) "Unimplemented.")
   (GET "/token/error"  [pos orthBase positive negative] (token-pos-name pos orthBase positive negative))
   (GET "/sentence/analyze"  [text] (sentence->tree text))
