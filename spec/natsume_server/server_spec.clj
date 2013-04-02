@@ -2,7 +2,7 @@
   (:use [speclj.core]
         [natsume-server.server]
         [ring.mock.request]
-        [natsume-server.cabocha-wrapper :only (sentence->tree)]
+        [natsume-server.annotation-middleware :only (sentence->tree)]
         [natsume-server.text :only (string->paragraphs)])
   (:require [cheshire.core :as json]))
 
