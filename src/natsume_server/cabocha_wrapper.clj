@@ -63,22 +63,22 @@
            position 0
            parsed   []]
       (if (< chunk-id chunks)
-       (let [chunk   (.chunk tree chunk-id)
-             link-id (.getLink chunk)
-             prob    (.getScore chunk)
-             head    (.getHead_pos chunk)
-             tail    (.getFunc_pos chunk)
-             token-count (.getToken_size chunk)
-             token-list  (mapv #(.token tree %) (range token-id (+ token-id token-count)))
-             tokens      (parse-tokens token-list position)]
-         (recur
-          (inc chunk-id)
-          (+ token-id token-count)
-          (int (:end (last tokens)))
-          (conj parsed {:id chunk-id
-                        :link link-id
-                        :head head
-                        :tail tail
-                        :prob prob
-                        :tokens tokens})))
-       parsed))))
+        (let [chunk   (.chunk tree chunk-id)
+              link-id (.getLink chunk)
+              prob    (.getScore chunk)
+              head    (.getHead_pos chunk)
+              tail    (.getFunc_pos chunk)
+              token-count (.getToken_size chunk)
+              token-list  (mapv #(.token tree %) (range token-id (+ token-id token-count)))
+              tokens      (parse-tokens token-list position)]
+          (recur
+           (inc chunk-id)
+           (+ token-id token-count)
+           (int (:end (last tokens)))
+           (conj parsed {:id chunk-id
+                         :link link-id
+                         :head head
+                         :tail tail
+                         :prob prob
+                         :tokens tokens})))
+        parsed))))
