@@ -87,7 +87,9 @@
   :profiles {:dev {:dependencies [[speclj "2.5.0"]
                                   [criterium "0.3.1"]
                                   [ring-mock "0.1.3"]
-                                  [fipp "0.1.0-SNAPSHOT"]]}
+                                  [peridot "0.1.0" :exclusions [org.apache.httpcomponents/httpmime]] ; TODO
+                                  [fipp "0.1.0-SNAPSHOT"]]
+                   :jvm-opts ["-server" "-XX:+UseG1GC" "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts" "-XX:+UseFastAccessorMethods" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-XX:PermSize=64M" "-XX:MaxPermSize=256M" "-Xmx2g" "-XX:+TieredCompilation" "-XX:TieredStopAtLevel=3"]}
              :production {:ring {:open-browser? false
                                  :stacktraces?  false
                                  :auto-reload?  false}}}
