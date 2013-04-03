@@ -100,10 +100,12 @@
     #"^動詞" :verb
     #"^(形(容|状)詞|接尾辞形(容|状)詞的)" :adjective
     #"^(副詞|名詞.+副詞可能)" :adverb
-    #"^助詞接続助詞" (if (= "て" (:lemma m))
-                       :auxiliary-verb
-                       :particle) ; TODO
-    #"^(助|接続)詞" :particle
+    #"^助詞" (if (or (and (= "接続助詞" (:pos2 m))
+                          (re-seq #"^(て|ば)$" (:lemma m)))
+                     (re-seq #"^たり$" (:lemma m)))
+               :auxiliary-verb
+               :particle)
+    #"^接続詞" :particle
     #"^((補助)?記号|空白)" :symbol
     #"^助動詞" (if (re-seq #"^助動詞-(ダ|デス)$" (:cType m))
                  :particle
@@ -143,13 +145,16 @@
      (= (:cType m) "助動詞-タ") (if (re-seq #"仮定形" (:cForm m))
                                   #{:potential}
                                   #{:past})
-     (re-seq #"^助動詞-(ナイ|ヌ)$" (:cType m)) (if (re-seq #"く$" (:orth m))
-                                                 #{:aspect-ku :negative}
-                                                 #{:negative})
+     (re-seq #"^助動詞-(ナイ|ヌ)$" (:cType m))
+     (cond (re-seq #"く$" (:orth m)) #{:aspect-ku :negative}
+           (re-seq #"^仮定形" (:cForm m)) #{:potential}
+           :else #{:negative})
      (re-seq #"^ら?れる$" (:lemma m))            #{:passive}
      (re-seq #"^さ?せる$" (:lemma m))            #{:active}
      (re-seq #"^助動詞-(マス|デス)$" (:cType m)) #{:polite}
      (= (:lemma m) "て")                         #{:aspect}
+     (= (:lemma m) "ば")                         #{:potential}
+     (= (:lemma m) "たり")                       #{:tari}
      :else                                       #{})
     #{}))
 
