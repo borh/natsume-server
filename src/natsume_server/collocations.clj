@@ -1,6 +1,5 @@
 (ns natsume-server.collocations
-  (:require [clojure.string :as string])
-  (:import [com.ibm.icu.text Transliterator Normalizer]))
+  (:require [clojure.string :as string]))
 
 ;; ## Collocation extraction
 
