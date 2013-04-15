@@ -35,3 +35,5 @@ components
 local
 logs/*
 target
+data/models
+data/natane
