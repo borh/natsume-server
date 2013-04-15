@@ -2,7 +2,7 @@
 (ns natsume-server.text
   (:require [clojure.string :as string]
             [clojure.core.reducers :as r]
-            [natsume-server.utils :as u]
+            [natsume-server.utils.reducers :as u]
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc]))
 
