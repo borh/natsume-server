@@ -96,7 +96,7 @@
             new-tag-stack (case next-direction
                             :down (conj tag-stack coded-tag)
                             :same (if (= :br tag) tag-stack (conj (pop tag-stack) coded-tag)) ; :br is an exception as a paragraph break, as it does not increase XML tree depth
-                            (vec (drop-last next-direction tag-stack)))] ; Discard equal to up depth.
+                            ((apply comp (repeat next-direction pop)) tag-stack))] ; Discard equal to up depth.
         (recur
          (or xml-loc-down xml-loc-right (first xml-loc-up)) ; Same as (z/next xml-loc).
          new-tag-stack
