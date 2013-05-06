@@ -62,53 +62,6 @@
        (apply str)
        string/split-lines))
 
-(def paragraph-split-re
-  (re-pattern "([\r\n]{4,}|[\r\n]{2,}　|\n{2,})"))
-
-(def paragraph-split-non-capturing-re
-  (re-pattern "(?<=[\r\n]{4,}|[\r\n]{2,}　|\n{2,})"))
-
-;; This is the first function that deals with the file contents.
-
-(defn string->sentences-annotation
-  [s]
-  (let [])
-  (reduce
-   (fn [accum char]
-     (cond
-      (re-seq opening-quotation char) (update-in accum [:quotation-balance] inc)
-      (re-seq closing-quotation char) (update-in accum [:quotation-balance] dec)
-      (and (re-seq delimiter char) (zero? (:quotation-balance accum))) (update-in accum [:parsed-text] conj (str (:sentence accum)))
-       ))
-   {:text s
-    :sentence '()
-    :parsed-text []
-    :quotation-balance 0}
-   (reverse (vec s))))
-
-(defn re-pos
-  [re s]
-  (loop [m (re-matcher re s)
-         res []]
-    (if (.find m)
-      (recur m (conj res [(.start m) (.group m)]))
-      res)))
-
-(defn text->sentences-annotation
-  [s]
-  (let [paragraph-breaks-no (re-pos paragraph-split-non-capturing-re s)
-        paragraph-breaks (re-pos paragraph-split-re s)
-        paragraphs-no    (string/split s paragraph-split-non-capturing-re)
-        paragraphs       (string/split s paragraph-split-re)
-        sentences        (map #(string/split % sentence-split-re) paragraphs)
-        sentence-breaks  (map #(re-pos sentence-split-re %) paragraphs)]
-    {:text             s
-     :paragraph-breaks paragraph-breaks
-     :paragraphs       paragraphs
-     :sentence-breaks  sentence-breaks
-     :sentences        sentences
-     }))
-
 ;; TODO FIXME make a stand-off interface to the text that keeps the
 ;; original but always returns, on demand (memoized?), paragraphs,
 ;; sentences, etc. The interface is required to provide character
@@ -116,66 +69,27 @@
 ;; This might also pave the way to quotation detection support, or
 ;; even integration with kytea+eda/juman+knp.
 
-
-(defn string->paragraphs
-  "Splits string into paragraphs.
+(defn lines->paragraph-sentences
+  "Splits string into paragraphs and sentences.
    Paragraphs are defined as:
    1) one or more non-empty lines delimited by one empty line or BOF/EOF
    2) lines prefixed with fullwidth unicode space '　'"
-  [s]
-  (log/trace s)
-  (string/split s paragraph-split-re)) ; FIXME
-
-(defn paragraph->sentences-2
-  "Splits one pre-formatted paragraph into multiple sentences.
-  Pre-formatting means that sentence splitting has already occured."
-  [s]
-  (remove string/blank? (string/split-lines s)))
-
-(defn split-sentence-foldable [s]
-  (into [] (r/remove string/blank? (string/split s sentence-split-re))))
-
-(defn paragraph->sentences-2 [s]
-  (println s)
-  (into [] (r/flatten (r/map split-sentence-foldable (string/split-lines s)))))
-
-(defn paragraph->sentences
-  "Splits one paragraph into multiple sentences.
-
-   Since it is hard to use Clojure's regexp functions (string/split)
-  because they consume the matched group, we opt to add newlines to
-  the end of all delimiters.???"
-  [s]
-  (vec
-   (flatten
-    (reduce (fn [accum sentence]
-              (conj accum
-                    (remove string/blank?
-                            (flatten (string/split sentence sentence-split-re)))))
-            []
-            (string/split-lines s)))))
-
-(defn paragraphs->sentences
-  [ps]
-  (mapv paragraph->sentences ps))
-
-(defn string->sentences
-  [s]
-  (->> s
-       string->paragraphs
-       paragraphs->sentences))
-
-(defn lines->paragraph-sentences
   [lines]
   (->> lines
-       (u/partition-by #(or (nil? %) (= (subs % 0 1) "　"))) ; partition by paragraph (empty line or indented line (common in BCCWJ))
+       (u/partition-by #(or (nil? %) (empty? %) (= (subs % 0 1) "　"))) ; Partition by paragraph (empty line or indented line (common in BCCWJ)).
        (r/map (comp (partial into [])
                     (r/flatten)
                     (r/map split-japanese-sentence)
-                    (r/filter identity)))
-       (r/remove empty?) ; remove paragraph boundaries
+                    (r/filter identity)
+                    (r/remove empty?)))
+       (r/remove (partial every? empty?)) ; Remove paragraph boundaries.
        (r/foldcat)))
 
+(defn add-tags [paragraphs]
+  (->> paragraphs
+       (r/map #(hash-map :tags #{}
+                         :sentences %))
+       (into [])))
 
 (comment
   (bench (lines->paragraph-sentences ["フェイスブック（ＦＢ）やツイッターなどソーシャルメディアを使った採用活動が、多くの企業に広がっている。ＦＢでの会社説明会やＯＢ・ＯＧ訪問受け付け、ソーシャルスキルをはかって面接代わりにする動きも出てきた。" "企業側のソーシャル活用法も多様になっている。" nil "「実際、どれくらいの休みが取れるのでしょうか」「女性にとって働きやすい職場ですか」。"])))
