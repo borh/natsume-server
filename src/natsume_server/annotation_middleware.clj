@@ -463,7 +463,7 @@
   (loop [coll []
          chunks tree
          delete-count 0]
-    (if chunks
+    (if (seq chunks)
       (let [chunk (-> (first chunks)
                       (update-in [:id] #(- % delete-count))
                       (update-in [:link] #(if-not (= -1 %) (- % delete-count) %)))
