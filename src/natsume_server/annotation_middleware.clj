@@ -351,7 +351,7 @@
         (let [tags (unify-aspect-tags tags)
               base-string (normalize-to-string pos tags (mapv #(get-in c [%]) (range index l)))]
           (recur (rest m-h-ts)
-                 index
+                 (int index) ; Type hint to make JVM happy.
                  (cond
 
                   (functional-word-classes pos)
