@@ -3,7 +3,8 @@
             [clojure.java.jdbc :as sql]
             [clj-configurator.core :refer [defconfig env props]]
             [clojure.tools.reader.edn :as edn]
-            [spyscope.core])) ;; FIXME
+
+            [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]))
 
 ;; ## Settings
 ;;
