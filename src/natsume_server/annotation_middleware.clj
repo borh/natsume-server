@@ -63,8 +63,6 @@
             :tail-begin tail-begin :tail-end tail-end})))
 
 ;; ## Tagging middleware
-;;
-;; FIXME what about `名詞＋を＋する／名詞＋に＋なる`?
 
 ;; ### Definitions of content and functional word classes
 (def content-word-classes
