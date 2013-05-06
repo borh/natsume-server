@@ -37,29 +37,11 @@
 
 ;; ## JDBC naming strategy
 
-(defn dashes->underscores [str]
-  (let [result (-> str
-                   name
-                   (string/replace \- \_)
-                   string/lower-case)]
-    (if (keyword? str)
-      (keyword result)
-      result)))
-
-(defn underscores->dashes [str]
-  (let [result (-> str
-                   name
-                   (string/replace \_ \-)
-                   string/lower-case)]
-    (if (keyword? str)
-      (keyword result)
-      result)))
-
-(def naming-strategy ; JDBC
+(def naming-strategy ; JDBC.
   {:entity dashes->underscores :keyword underscores->dashes})
 
 ;; ## Database wrapper functions
-
+;; FIXME Currently broken with new clojure.java.jdbc alpha.
 (defn with-db
   [f]
   (sql/with-connection dbspec
