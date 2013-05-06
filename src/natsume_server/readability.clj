@@ -523,7 +523,7 @@
 
 (defn text-readability
   [t]
-  (let [sentences (vec (flatten (txt/string->sentences t)))
+  (let [sentences (vec (flatten (txt/lines->paragraph-sentences t)))
         readability-map (assoc (apply merge-with + (map get-sentence-info sentences))
                           :sentences (count sentences))]
     (assoc (average-readability readability-map t)
