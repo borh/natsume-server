@@ -58,7 +58,7 @@
 
    TODO consider deftype/benchmark"
   [^String s]
-  (let [tree (.parse ^Parser *parser* s)
+  (let [tree   (.parse ^Parser *parser* s)
         chunks (.chunk_size tree)]
     (loop [chunk-id 0
            token-id 0
