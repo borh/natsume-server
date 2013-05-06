@@ -129,7 +129,9 @@
       "仕舞う" #{:simau}
       "ちゃう" #{:simau}
       "来る"   #{:kuru}
-      #{})      ; TODO 貰う、あげる…
+      "貰う"   #{:morau}
+      "上げる" #{:ageru}
+      #{})
     :adjective
     (condp = (:lemma m)
       "無い"      #{:negative}
