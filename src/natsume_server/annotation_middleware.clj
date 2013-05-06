@@ -502,8 +502,24 @@
       convert-half-to-fullwidth  ; 2.
       (string/replace "．" "。") ; 3.
       (string/replace "，" "、") ; 3.
-      cw/parse-sentence          ; 4.
+      cw/parse-sentence-synchronized          ; 4.
       add-pos-tags-to-tokens     ; 5.
       annotate-tree              ; 5.
       modify-tree                ; 5.
       (revert-orth-with s)))     ; 6.
+
+(defn sentence->cabocha [s]
+  (-> s
+      normalize-nfc              ; 2.
+      convert-half-to-fullwidth  ; 2.
+      (string/replace "．" "。") ; 3.
+      (string/replace "，" "、") ; 3.
+      cw/parse-sentence-synchronized          ; 4.
+      ))
+
+(defn cabocha->tree [cabocha-output s]
+  (-> cabocha-output
+      add-pos-tags-to-tokens     ; 5.
+      annotate-tree              ; 5.
+      modify-tree                ; 5.
+      (revert-orth-with s)))
