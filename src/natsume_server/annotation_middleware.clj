@@ -93,8 +93,8 @@
       a)))
 
 (defn- recode-pos [m]
-  (condp #(re-seq %1 %2) (str (:pos1 m) (:pos2 m) (:pos3 m))
-    #"^代?名詞[^副]+" :noun
+  (condp re-seq (str (:pos1 m) (:pos2 m) (:pos3 m))
+    #"^(代?名詞[^副]+|記号文字)" :noun
     #"^動詞" :verb
     #"^(形(容|状)詞|接尾辞形(容|状)詞的)" :adjective
     #"^(副詞|名詞.+副詞可能)" :adverb
