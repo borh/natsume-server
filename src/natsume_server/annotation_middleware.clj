@@ -260,8 +260,8 @@
 
    For example, given 続け + られ + た, it will return 続けられる."
   [pos tags tokens]
-  (letfn [(discard-symbols [token] (re-seq #"^((補助)?記号|空白)$" (:pos1 token)))
-
+  (letfn [(discard-symbols [token] (#{:symbol} (:pos token)))
+          ;; Replace uncommon orthography of lemmas with their more common counterpart (TODO data-driven + genre-driven)
           (normalize-lemma [s]
             (-> s
                 (string/replace #"-.+$" "")
