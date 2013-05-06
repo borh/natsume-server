@@ -442,9 +442,10 @@
         ;; FIXME Should only move the head of b to the tail of a if the tail of b is empty.
         (fn [b*] (-> b*
                     (assoc :head-begin-index (:head-begin-index a))
-                    (assoc :head-end-index   (:head-end-index   a))
-                    (assoc :head-tags        (:head-tags   a))
+                    (assoc :head-end-index   (:head-end-index a))
+                    (assoc :head-tags        (:head-tags a))
                     (assoc :head-string      (:head-string a))
+                    (assoc :head-pos         (:head-pos a))
                     (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
                     (assoc :tail-tags (set/union (:head-tags b*) (:tail-tags a)))
                     (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
