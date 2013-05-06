@@ -378,7 +378,7 @@
 ;; Would be best to not average at this level -- leave it for the upper levels, maybe even in SQL.
 
 (def core-sentence-data
-  {:tree         (fnk [sentence] (am/sentence->tree sentence))
+  {;:tree         (fnk [sentence] (am/sentence->tree sentence))
    :tokens       (fnk [tree] (token-count tree))
    :chunks       (fnk [tree] (chunk-count tree))
    :predicates   (fnk [tree] (predicate-count-shibasaki tree))
@@ -416,8 +416,8 @@
               (assoc a ks m)))]
     (flatten-keys* {} [] m)))
 
-(defn sentence-readability [s]
-  (assoc (flatten-keys (sentence-graph {:sentence s}))
+(defn sentence-readability [tree s]
+  (assoc (flatten-keys (sentence-graph {:tree tree :sentence s}))
     :text s))
 
 #_(def average-readability-graph
