@@ -82,3 +82,23 @@
                          :prob prob
                          :tokens tokens})))
         parsed))))
+
+(defn callable-parse-sentence [^String s]
+  (cast Callable (fn [] (parse-sentence s))))
+(defn cabocha-thread-factory
+  "Returns a new ThreadFactory instance wrapped with a new CaboCha instance."
+  [thread-group]
+  (reify java.util.concurrent.ThreadFactory
+    (newThread [_ f]
+      (with-new-parser
+        (doto (Thread. ^ThreadGroup thread-group ^Runnable f)
+          (.setDaemon true))))))
+(def cabocha-executor
+  (knit/executor :single
+                 ;;:fixed ; -> this deadlocks
+                 ;;:num-threads 6
+                 :thread-factory (cabocha-thread-factory (knit/thread-group "cabocha-thread"))))
+
+(defn parse-sentence-synchronized [^String s]
+  @(knit/execute cabocha-executor
+                 (callable-parse-sentence s)))
