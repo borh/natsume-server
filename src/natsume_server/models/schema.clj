@@ -24,6 +24,10 @@
 ;;     CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD '';
 ;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
 ;;
+;; Then switching to the database as postgres user, add the following extensions:
+;;
+;;     CREATE EXTENSION ltree;
+;;
 ;; :subname, :user and :password should match that found in the following dbspec:
 (def dbspec
   (merge
