@@ -43,6 +43,7 @@
 ;; TODO になる…、ができる？
 ;; TODO add modality test data from 2009 JNLP paper
 ;; TODO "よかろうだろうが" test
+;; TODO :kuru, :morau, etc.
 (def tagged-verbs
   (add-pos-tag "head" :verb
    {"言う"                 #{}
@@ -95,7 +96,8 @@
    "愛しくありませんでした" #{:negative :past :polite} ; 2 chunks, but this is OK
    "愛しかった"             #{:past}
    "転がりやすい"           #{}
-   "我慢強い"               #{}})
+   "我慢強い"               #{}
+   "黒がかった"             #{}})
 
 (def tagged-adjectives (add-pos-tag "head" :adjective test-adjectives))
 
@@ -215,6 +217,8 @@
        npvs          (permute-chunk-tags noun+particle tagged-verbs)]
    (for [npv (take 2 npvs)]
      (check-sentence-tags-helper npv)))
+
+ ;; FIXME what about `名詞＋を＋する／名詞＋に＋なる`?
  )
 
 (describe
