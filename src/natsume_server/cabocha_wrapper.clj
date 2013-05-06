@@ -1,5 +1,6 @@
 (ns natsume-server.cabocha-wrapper
-  (:require [clojure.string :as string])
+  (:require [clojure.string :as string]
+            [qbits.knit :as knit])
   (:import [org.chasen.cabocha Parser FormatType Token]))
 
 ;; # Simple CaboCha JNI Wrapper
