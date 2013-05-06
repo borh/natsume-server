@@ -2,127 +2,165 @@
 (ns natsume-server.core
   (:require [clojure.java.io :as io]
             [clojure.core.reducers :as r]
-
+            [natsume-server.config :as cfg]
             [clojure.tools.cli :refer [cli]]
             [clojure.data.csv :as csv]
             [me.raynes.fs :as fs]
             [iota :as iota]
+            [bigml.sampling.simple :as sampling]
             [plumbing.core :refer :all]
             [plumbing.graph :as graph]
+            [qbits.knit :as knit]
 
-            [natsume-server.text :as txt]
-            [natsume-server.utils :refer [strict-map-discard]]
+            [natsume-server.text :as text]
+            [natsume-server.importers.bccwj :as bccwj]
+            [natsume-server.importers.wikipedia :as wikipedia]
             [natsume-server.cabocha-wrapper :as cw]
+            [natsume-server.annotation-middleware :as am]
             [natsume-server.readability :as rd]
             [natsume-server.models.db :as db]
             [natsume-server.models.schema :as schema]
+            [natsume-server.lm :as lm]
+
+            [natsume-server.api.main :refer [start-server!]]
 
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc])
-  (:import [java.io.File])
+  (:import [java.util.concurrent Executor Executors ExecutorService Callable ThreadFactory])
   (:gen-class))
 
-;; ## Graph printing helpers
-(defn calculate-deps [f]
-  (map (fn [parent] [parent (first f)]) (-> f second meta first second first keys)))
-
-(defn print-dot [graph]
-  (println (clojure.string/join "\n"
-                                (map (fn [r] (str "\""(first r) "\" -> \"" (second r) "\";"))
-                                     (mapcat (fn [k] (calculate-deps k)) (graph/->graph graph))))))
-
-;; ## Miscellaneous filesystem helper utilities.
-(defn is-text?
-  [path]
-  (= (fs/extension path) ".txt"))
-
-;; ## Computation graphs
-(def corpus-graph
-  {:files      (fnk [corpus-dir] (filter is-text? (file-seq corpus-dir)))
-   :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
-   :sources    (fnk [corpus-dir] (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
-                                   (doall (csv/read-csv sources-reader :separator \tab :quote 0))))})
-
-(def file-graph
-  {:paragraphs (fnk [filename] (txt/lines->paragraph-sentences (iota/vec (str filename))))
-   :sources-id (fnk [filename] (db/basename->source-id (fs/base-name filename true)))})
-
+;; ## Computation graphs / pipeline pattern
 (def sentence-graph
-  {:sentence-features (fnk [text] (rd/sentence-readability text))
-   :sentence-data     (fnk [sentence-features paragraph-id sentence-order-id sources-id]
-                           (assoc sentence-features
-                             :paragraph-id paragraph-id
-                             :sentence-order-id sentence-order-id
-                             :sources-id   sources-id))
-   ;; The following are side-effecting persistence graphs
-   :sentences-id      (fnk [sentence-data] (:id (db/insert-sentence sentence-data)))
-   :collocations-id   (fnk [sentence-data sentences-id]
-                           (when-let [collocations (seq (:collocations sentence-data))]
-                             (:id (db/insert-collocations! collocations sentences-id))))
-   :tokens            (fnk [sentence-data sentences-id]
-                           (db/insert-tokens! (flatten (map :tokens (:tree sentence-data))) sentences-id))})
-;; TODO Take care with side-effecting functions, might not they be optional?
+  {:tree     (fnk [text] (am/sentence->tree text))
+   :features (fnk [tree text] (rd/sentence-readability tree text))
+   ;; The following are side-effecting persistence graphs:
+   :sentences-id    (fnk [features tags paragraph-order-id sentence-order-id sources-id]
+                         (:id (db/insert-sentence (assoc features
+                                                    :tags tags
+                                                    :paragraph-order-id paragraph-order-id
+                                                    :sentence-order-id sentence-order-id
+                                                    :sources-id sources-id))))
+   :collocations-id (fnk [features sentences-id]
+                         (when-let [collocations (seq (:collocations features))]
+                           (:id (db/insert-collocations! collocations sentences-id))))
+   :tokens          (fnk [tree sentences-id]
+                         (db/insert-tokens! (flatten (map :tokens tree)) sentences-id))})
+(def sentence-graph-fn (graph/eager-compile sentence-graph))
 
-;; ## Graph and database connective logic
-(defnk insert-sources! [sources file-bases]
-  (db/update-sources! sources file-bases))
-
-(defnk insert-paragraphs! [paragraphs sources-id]
+(defnk insert-paragraphs! [paragraphs sources-id genres-map]
   (loop [paragraphs*       paragraphs
          sentence-start-id 1         ; ids start with 1 (same as SQL pkeys)
          paragraph-id      1]
     (when-let [paragraph (first paragraphs*)]
-      (let [sentence-count (count paragraph)
+      (let [{:keys [sentences tags]} paragraph
+            sentence-count (count sentences)
             sentence-end-id (+ sentence-start-id sentence-count)]
-        ((comp dorun map) #((graph/eager-compile sentence-graph)
-                            {:sources-id        sources-id
-                             :sentence-order-id %2
-                             :paragraph-id      paragraph-id
-                             :text              %1})
-         paragraph
+        ((comp dorun map) #(sentence-graph-fn
+                            {:genres-map         genres-map
+                             :tags               tags
+                             :sources-id         sources-id
+                             :sentence-order-id  %2
+                             :paragraph-order-id paragraph-id
+                             :text               %1})
+         sentences
          (range sentence-start-id sentence-end-id))
         (recur (next paragraphs*)
                sentence-end-id
                (inc paragraph-id))))))
 
-(defn partition-pmap
-  "Like pmap, but runs a future on n (default is number of CPUs + 1) partitions of the data."
-  ([f coll]
-     (partition-pmap (inc (.. Runtime getRuntime availableProcessors)) f coll))
-  ([n f coll]
-     (let [part-size (/ (count coll) n)]
-       (->> coll
-            (partition-all part-size)
-            ((comp dorun pmap) #(cw/with-new-parser ((comp dorun map) f %)))))))
+(def file-graph
+  {:paragraphs (fnk [filename] (-> filename str iota/vec text/lines->paragraph-sentences text/add-tags))
+   :sources-id (fnk [filename] (db/basename->source-id (fs/base-name filename true)))
+   :genres-map (fnk [sources-id] (zipmap [:genres :subgenres :subsubgenres :subsubsubgenres]
+                                         (db/sources-id->genres-map sources-id)))
+   :persist    insert-paragraphs!
+   :models     (fnk [genres-map] #_(if (cfg/opt :models :n-gram)
+                                     (dorun (init-models! genres-map))))})
+(def file-graph-fn (graph/eager-compile file-graph))
 
-(defnk insert-sentences! [files]
-  (->> ((comp doall map) #((graph/lazy-compile file-graph) {:filename %}) files)
-       (partition-pmap insert-paragraphs!)))
+(def bccwj-file-graph
+  (assoc file-graph
+    :paragraphs (fnk [filename]
+                     (case (fs/extension filename)
+                       ".txt" (-> filename str iota/vec text/lines->paragraph-sentences text/add-tags)
+                       ".xml" (bccwj/xml->paragraph-sentences filename)))))
+(def bccwj-file-graph-fn (graph/eager-compile bccwj-file-graph))
 
-(defn process-corpus! [corpus-dir]
-  (let [corpus-results ((graph/par-compile corpus-graph) {:corpus-dir corpus-dir})]
-    (insert-sources! corpus-results)
-    (insert-sentences! corpus-results)))
+(def wikipedia-file-graph-fn (graph/eager-compile (dissoc file-graph :paragraphs)))
 
-(def ^:dynamic *write-edn*)
+;; ## Graph and database connective logic
+(defn sample [{:keys [ratio seed replace]} data]
+  (let [total (count data)]
+    (take (int (* ratio total)) (sampling/sample data :seed seed :replace replace))))
+
+(def corpus-graph
+  ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
+  {:files      (fnk [corpus-dir sampling-options]
+                    (->> corpus-dir
+                         file-seq
+                         (filter #(= ".txt" (fs/extension %)))
+                         (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
+   :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
+   :sources    (fnk [corpus-dir]
+                    (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
+                      (doall (csv/read-csv sources-reader :separator \tab :quote 0))))
+   :persist    (fnk [sources files file-bases]
+                    (db/update-sources! sources file-bases)
+                    (->> ((comp doall map) #(file-graph-fn {:filename %}) files)
+                         ((comp dorun pmap) insert-paragraphs!)))})
+
+(def wikipedia-graph
+  (merge (dissoc corpus-graph :file-bases :sources)
+         {:files   (fnk [corpus-dir sampling-options]
+                        (->> corpus-dir
+                             file-seq
+                             (filter #(= ".xml" (fs/extension %)))
+                             (mapcat wikipedia/doc-seq) ; Should work for split and unsplit Wikipedia dumps.
+                             (take (int (* (:ratio sampling-options) 853975))))) ; 853975 is for Wikipedia as of 2013/03/07.
+          :persist (fnk [files]
+                        (->> files
+                             (partition-all (inc (.. Runtime getRuntime availableProcessors)))
+                             ((comp dorun pmap) #((comp dorun pmap)
+                                                  (fn [file]
+                                                    (let [{:keys [sources paragraphs]} file]
+                                                      (db/update-source! sources)
+                                                      (wikipedia-file-graph-fn {:filename (:basename sources)
+                                                                                :paragraphs paragraphs})))
+                                                  %))))}))
+
+(def bccwj-graph
+  (merge corpus-graph
+         {:files   (fnk [corpus-dir sampling-options]
+                        (->> corpus-dir
+                             file-seq
+                             (filter #(= ".xml" (fs/extension %)))
+                             (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
+          ;; TODO override :sources to add tags as separate genres????? -> this would mean doing genre at the paragraph level!?
+          :persist (fnk [sources files file-bases]
+                        (db/update-sources! sources file-bases)
+                        (->> files
+                             ((comp doall pmap) #(bccwj-file-graph-fn {:filename %}))
+                             ((comp dorun pmap) insert-paragraphs!)))}))
+
+(defn process-corpus!
+  [corpus-dir]
+  (let [corpus-computation (graph/eager-compile
+                            (condp #(re-seq %1 %2) (.getPath corpus-dir)
+                              #"(?i)wiki" wikipedia-graph
+                              #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" bccwj-graph
+                              corpus-graph))]
+    (corpus-computation {:corpus-dir corpus-dir
+                         :sampling-options (cfg/opt :sampling)})))
 
 (defn run
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
-  [opts args]
-  (log/debug (str "Options:\n" opts "\n"))
-  (log/debug (str "Arguments:\n" args "\n"))
-  (when (:destructive opts)
-    (schema/init-database true))
-  (binding [*write-edn* (:cache opts)]
-    (strict-map-discard process-corpus! args))
-  ;; post-processing hooks go here
-  ;; TODO how to do this in the REPL with -main? (time (doall (run [] "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT")))
-  )
+  [args]
+  ((comp dorun map) process-corpus! args))
 
 (defn process-directories
-  "Processes directiors to check if they exist and returns io/file directory objects with canonical and normalized paths.
+  "Processes directories to check if they exist and returns io/file directory objects with canonical and normalized paths.
   Skips non-existing directories and removes duplicates."
   [dirs]
   (if (seq dirs)
@@ -132,26 +170,47 @@
          (r/filter fs/directory?)
          (into #{}))))
 
+(defn- usage []
+  (println "natsume-server version" (System/getProperty "natsume-server.version"))
+  (println "USAGE: ")
+  (println "    lein run </path/to/corpora/> [options]\n")
+  (cfg/print-help)
+  (System/exit 0))
+
 (defn -main
   "Read files from corpus and do stuff...
    `args` contains corpus directory names and (optional) flags.
 
   Example usage from REPL: (-main \"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT\")"
   [& args]
-  (let [[options arguments banner]
-        (cli args
-             ["-v" "--verbose" "Turn on verbose logging" :default false :flag true]
-             ["-l" "--log-directory" "Set logging directory" :default "./log"]
-             ["-c" "--cache" "Cache CaboCha processing results" :default false]
-             ["-d" "--destructive" "Reset database on run (WARNING: will delete all data)" :default false]
-             ["-h" "--help" "Show help" :default false :flag true])]
-    (when (:help options)
-      (println banner)
-      (System/exit 0)) ;; Do not run in REPL!
-    (if (:verbose options)
-      (do (println "Turning on verbose logging.")
+  (let [target-dirs (try (cfg/parse-cli-args! args)
+                         (catch IllegalArgumentException e (do (println e) (usage))))]
+
+    (if (cfg/opt :verbose)
+      (do (println (cfg/opt))
+          (println "Turning on verbose logging.")
           (lc/setup-log log/config :debug))
       (lc/setup-log log/config :error))
-    (if-let [checked-directories (process-directories arguments)]
-      (run options checked-directories)
-      (println banner))))
+
+    (when (and (empty? target-dirs) (not (or (cfg/opt :server :run)
+                                             (cfg/opt :search)
+                                             (cfg/opt :clean))))
+      (usage))
+
+    (when (cfg/opt :server :run)
+      (start-server!))
+
+    (when (cfg/opt :clean)
+      (schema/drop-all-cascade!)
+      (schema/init-database!))
+
+    (when-not (cfg/opt :no-process)
+      (if-let [checked-directories (process-directories target-dirs)]
+        (run checked-directories)
+        (usage)))
+
+    (when (cfg/opt :search)
+      (schema/create-search-tables!))
+
+    (when (cfg/opt :models :n-gram)
+      (lm/compile-all-models!))))
