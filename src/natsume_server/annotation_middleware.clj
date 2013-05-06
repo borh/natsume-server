@@ -15,7 +15,7 @@
 
 (lc/setup-log log/config :trace)
 
-;; With processing of user text we have to take care in repecting the
+;; With processing of user text we have to take care in respecting the
 ;; users preferences, such as the type of periods and commas he/she
 ;; prefers, or preferences between full/half-width characters. In
 ;; essence, all user input should be returned the way it was input in.
@@ -29,7 +29,7 @@
 ;; should be converted to full-width, etc.
 ;; Most importantly all instances of the delimiters `．，` should be
 ;; replace with `。、`.
-;; The original string should be kept and preferrably its contents
+;; The original string should be kept and preferably its contents
 ;; written back into the CaboCha output morpheme's `orth` field.
 
 (defn normalize-nfc
