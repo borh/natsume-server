@@ -29,6 +29,7 @@
       (assoc token-map
         :lemma    surface
         :orthBase surface
+        :pronBase surface ; FIXME
         :goshu    "不明"
         :ne       ne
         :begin    position
