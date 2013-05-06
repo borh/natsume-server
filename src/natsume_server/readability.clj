@@ -11,7 +11,7 @@
             [natsume-server.collocations :as collocations]
             [natsume-server.models.db :as db]
             [natsume-server.text :as txt]
-            [natsume-server.utils :refer [xz-line-seq]]
+            [natsume-server.utils.xz :refer [xz-line-seq]]
 
             [taoensso.timbre :as log]
             [natsume-server.log-config :as lc]))
