@@ -111,7 +111,9 @@
     #"^連体詞" :preposition
     #"^感動詞" :utterance
     #"^接頭辞" :prefix
-    #"^接尾辞" :suffix
+    #"^接尾辞" (cond (= (:pos2 m) "動詞的") :adjective ; ~がかった
+                    (= (:pos2 m) "名詞的") :noun ; ~ら
+                    :else :suffix)
     :unknown-pos))
 
 (defn- add-pos [tokens]
