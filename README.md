@@ -18,14 +18,10 @@ Currently all testing is done on the new 9.2 release.
 
 ### Free-floating jars
 
-Unfortunately, 3 free-floating jars need to be downloaded and installed into a local maven repo:
+Unfortunately, the following free-floating jars need to be downloaded and installed into a local maven repo:
 
 ```bash
 mvn install:install-file -DgroupId=com.aliasi -DartifactId=lingpipe -Dpackaging=jar -Dversion=4.1.0 -Dfile=lingpipe-4.1.0.jar -DgeneratePom=true
-```
-
-```bash
-mvn install:install-file -DgroupId=postgresql -DartifactId=postgresql -Dpackaging=jar -Dversion=9.2-1002.jdbc4 -Dfile=postgresql-9.2-1002.jdbc4.jar -DgeneratePom=true
 ```
 
 ```bash
