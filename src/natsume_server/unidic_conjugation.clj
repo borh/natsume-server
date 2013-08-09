@@ -69,9 +69,9 @@
   "Conjugates verb lemmas from 終止形 to 連用形.
   TODO compare speed of `string/join` vs. `str`.
   TODO the bungo stuff should be thoroughly debugged."
-  [{:keys [lemma cType cForm]}]
-  (let [[type-main type-sub] (string/split cType #"-")
-        [form-main form-sub] (string/split cForm #"-")
+  [{:keys [lemma c-type c-form]}]
+  (let [[type-main type-sub] (string/split c-type #"-")
+        [form-main form-sub] (string/split c-form #"-")
         lemma-stem (subs lemma 0 (dec (count lemma)))]
     ;;(println type-main type-sub form-main form-sub lemma lemma-stem)
     (cond
