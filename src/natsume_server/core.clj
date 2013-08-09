@@ -87,21 +87,42 @@
   (let [total (count data)]
     (take (int (* ratio total)) (sampling/sample data :seed seed :replace replace))))
 
+(defn dorunconc
+  [f coll]
+  ((comp dorun (partial pmap f)) coll))
+
 (def corpus-graph
   ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
+  ;; FIXME this default graph fails to get called when loading STJC on server! Find out why.
   {:files      (fnk [corpus-dir sampling-options]
+                    (doall (println ":files")) ;; FIXME this is not reached!!! why??
                     (->> corpus-dir
                          file-seq
-                         (filter #(= ".txt" (fs/extension %)))
+                         (r/filter #(= ".txt" (fs/extension %)))
+                         (into #{})
                          (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
    :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
    :sources    (fnk [corpus-dir]
-                    (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
-                      (doall (csv/read-csv sources-reader :separator \tab :quote 0))))
+                    (map
+                     (fn [[title author year basename genres-name subgenres-name
+                          subsubgenres-name subsubsubgenres-name permission]]
+                       {:title    title
+                        :author   author
+                        :year     (Integer/parseInt year)
+                        :basename basename
+                        :genre    [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]})
+                     (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
+                       (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
    :persist    (fnk [sources files file-bases]
-                    (db/update-sources! sources file-bases)
-                    (->> ((comp doall map) #(file-graph-fn {:filename %}) files)
-                         ((comp dorun pmap) insert-paragraphs!)))})
+                    ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
+                    (let [sources-basenames (set (map :basename sources))]
+                      (println "basenames missing from sources.tsv: ")
+                      (doseq [f (set/difference file-bases sources-basenames)]
+                        (println f))
+                      (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases)))
+                    (db/insert-sources! sources file-bases)
+                    (->> files
+                         (dorunconc #(file-graph-fn {:filename %}))))})
 
 (def wikipedia-graph
   (merge (dissoc corpus-graph :file-bases :sources)
@@ -110,17 +131,14 @@
                              file-seq
                              (filter #(= ".xml" (fs/extension %)))
                              (mapcat wikipedia/doc-seq) ; Should work for split and unsplit Wikipedia dumps.
-                             (take (int (* (:ratio sampling-options) 853975))))) ; 853975 is for Wikipedia as of 2013/03/07.
+                             (?>> (not= (:ratio sampling-options) 0.0) take (int (* (:ratio sampling-options) 853975))))) ; 853975 is for Wikipedia as of 2013/03/07.
           :persist (fnk [files]
                         (->> files
-                             (partition-all (inc (.. Runtime getRuntime availableProcessors)))
-                             ((comp dorun pmap) #((comp dorun pmap)
-                                                  (fn [file]
-                                                    (let [{:keys [sources paragraphs]} file]
-                                                      (db/update-source! sources)
-                                                      (wikipedia-file-graph-fn {:filename (:basename sources)
-                                                                                :paragraphs paragraphs})))
-                                                  %))))}))
+                             (dorunconc (fn [file]
+                                          (let [{:keys [sources paragraphs]} file]
+                                            (db/insert-source! sources)
+                                            (wikipedia-file-graph-fn {:filename (:basename sources)
+                                                                      :paragraphs paragraphs}))))))}))
 
 (def bccwj-graph
   (merge corpus-graph
@@ -129,12 +147,39 @@
                              file-seq
                              (filter #(= ".xml" (fs/extension %)))
                              (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
-          ;; TODO override :sources to add tags as separate genres????? -> this would mean doing genre at the paragraph level!?
           :persist (fnk [sources files file-bases]
-                        (db/update-sources! sources file-bases)
+                        (db/insert-sources! sources file-bases)
                         (->> files
-                             ((comp doall pmap) #(bccwj-file-graph-fn {:filename %}))
-                             ((comp dorun pmap) insert-paragraphs!)))}))
+                             (dorunconc #(bccwj-file-graph-fn {:filename %}))))}))
+
+(defn simple-process!
+  "Alternative simple processing for the STJC."
+  [corpus-dir]
+  (let [sampling-options (cfg/opt :sampling)
+        files (->> corpus-dir
+                   file-seq
+                   (r/filter #(= ".txt" (fs/extension %)))
+                   (into #{})
+                   (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options)))
+        file-bases (set (map #(fs/base-name % true) files))
+        sources    (map
+                    (fn [[title author year basename genres-name subgenres-name
+                         subsubgenres-name subsubsubgenres-name permission]]
+                      {:title    title
+                       :author   author
+                       :year     (Integer/parseInt year)
+                       :basename basename
+                       :genre    [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]})
+                    (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
+                      (doall (csv/read-csv sources-reader :separator \tab :quote 0))))]
+    (let [sources-basenames (set (map :basename sources))]
+      (println "basenames missing from sources.tsv: ")
+      (doseq [f (set/difference file-bases sources-basenames)]
+        (println f))
+      (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases)))
+    (db/insert-sources! sources file-bases)
+    (->> files
+         (dorunconc #(file-graph-fn {:filename %})))))
 
 (defn process-corpus!
   [corpus-dir]
