@@ -55,12 +55,11 @@
             sentence-count (count sentences)
             sentence-end-id (+ sentence-start-id sentence-count)]
         ((comp dorun map) #(sentence-graph-fn
-                            {:genres-map         genres-map
-                             :tags               tags
-                             :sources-id         sources-id
-                             :sentence-order-id  %2
-                             :paragraph-order-id paragraph-id
-                             :text               %1})
+                         {:tags               tags
+                          :sources-id         sources-id
+                          :sentence-order-id  %2
+                          :paragraph-order-id paragraph-id
+                          :text               %1})
          sentences
          (range sentence-start-id sentence-end-id))
         (recur (next paragraphs*)
@@ -68,13 +67,9 @@
                (inc paragraph-id))))))
 
 (def file-graph
-  {:paragraphs (fnk [filename] (-> filename str iota/vec text/lines->paragraph-sentences text/add-tags))
+  {:paragraphs (fnk [filename] (-> filename str #_iota/vec iota/seq text/lines->paragraph-sentences text/add-tags))
    :sources-id (fnk [filename] (db/basename->source-id (fs/base-name filename true)))
-   :genres-map (fnk [sources-id] (zipmap [:genres :subgenres :subsubgenres :subsubsubgenres]
-                                         (db/sources-id->genres-map sources-id)))
-   :persist    insert-paragraphs!
-   :models     (fnk [genres-map] #_(if (cfg/opt :models :n-gram)
-                                     (dorun (init-models! genres-map))))})
+   :persist    insert-paragraphs!})
 (def file-graph-fn (graph/eager-compile file-graph))
 
 (def bccwj-file-graph
