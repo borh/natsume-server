@@ -12,21 +12,12 @@
   "Standalone dev/prod mode."
   [& [opts]]
   (alter-var-root #'service-instance
-                  (constantly (bootstrap/create-server (merge service/service opts {:env :dev})))))
+                  (constantly (bootstrap/create-server (merge service/service opts)))))
 
 ;; Replacing -main
 (defn start-server! [& args]
   (create-server)
   (bootstrap/start service-instance))
-
-(defn stop-server!
-  []
-  (bootstrap/stop service-instance))
-
-(defn restart-server!
-  []
-  (stop-server!)
-  (start-server!))
 
 ;; Container prod mode for use with the io.pedestal.servlet.ClojureVarServlet class.
 
