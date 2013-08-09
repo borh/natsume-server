@@ -91,8 +91,8 @@
     (if (zero? (count tokens))
       0.0
       (->> tokens
-           (map #(select-keys % [:pos1 :lemma]))
-           (map #(get-in BCCWJ-word-map [(:pos1 %) (:lemma %)] 0)) ; value for missing calculated using Good-Turing
+           (map #(select-keys % [:pos-1 :lemma]))
+           (map #(get-in BCCWJ-word-map [(:pos-1 %) (:lemma %)] 0)) ; value for missing calculated using Good-Turing
            (map (partial + 1))
            (map #(Math/log10 %))
            (apply +)))))
@@ -122,7 +122,7 @@
   ;; filter away word classes that are not represented in the JLPT word lists
   ;; TODO whitelist
   (let [content-tokens (filter
-                        (fn [x] (re-seq #"(名詞|形容詞|動詞|副詞|形状詞|接頭辞|助動詞|接尾辞)" (:pos1 x)))
+                        (fn [x] (re-seq #"(名詞|形容詞|動詞|副詞|形状詞|接頭辞|助動詞|接尾辞)" (:pos-1 x)))
                         (am/tree-to-morphemes-flat t))
         content-tokens-count (count content-tokens)]
     (float
@@ -130,7 +130,7 @@
        0                              ; or 1?
        (/
         (->> content-tokens
-             (map #(select-keys % [:orthBase :lemma]))
+             (map #(select-keys % [:orth-base :lemma]))
              (map vals)
              (map #(select-keys JLPT-word-map %))
              (map (fn [x] (let [xval (vals x)] (if (nil? xval) '(0) xval))))
@@ -167,11 +167,11 @@
 
 (defn predicate-count
   "Predicate count （述語数）.
-  A predicate is either a verb, adjective or copula with :cForm of '終止形-一般'."
+  A predicate is either a verb, adjective or copula with :c-form of '終止形-一般'."
   [t]
   (reduce
    (fn [predicates chunk]
-     (if (some #(= (:cForm %) "終止形-一般") (:tokens chunk))
+     (if (some #(= (:c-form %) "終止形-一般") (:tokens chunk))
        (inc predicates)
        predicates))
    0
@@ -179,7 +179,7 @@
 
 ;; ### Shibasaki's predicate count
 ;; 1. 出現した全部の動詞（ただし、複合動詞は１としてカウントする）
-;; 2. 「形容詞＋名詞」（例：赤い花）の形で出現しない形容詞（例：空は青く，山は緑だ．父の手は大きい．）({:cType 連用形-一般} {:pos1 読点})
+;; 2. 「形容詞＋名詞」（例：赤い花）の形で出現しない形容詞（例：空は青く，山は緑だ．父の手は大きい．）({:cType 連用形-一般} {:pos-1 読点})
 ;; 3. 「形容動詞＋名詞」（例：偉大な仕事）の形で出現しない形容動詞（その男は正直で、誠実だった．）
 ;; 4. 「名詞＋判定詞」（例：明日は良い天気でしょう．これは母の鏡だ．次は渋谷ですか．（判定詞＝助動詞）
 ;; 5. 「名詞＋句点」すなわち体言止め（例：空からふる白いものは雪．）(i.e. last token is noun or noun + period)
@@ -194,13 +194,13 @@
      (if (some
           (fn [token]
             (or
-             (= (:cForm token) "終止形-一般")
-             (= (:pos1  token) "動詞")
-             (and (=    (:pos1 token) "助動詞")
+             (= (:c-form token) "終止形-一般")
+             (= (:pos-1  token) "動詞")
+             (and (=    (:pos-1 token) "助動詞")
                   (not= (:orth token) "な")
                   (re-seq #"(だ|です)" (:lemma token)))
-             (= (:pos2  token) "終助詞")
-             (= (:pos2  token) "句点")))
+             (= (:pos-2  token) "終助詞")
+             (= (:pos-2  token) "句点")))
           (:tokens chunk))
        (inc predicates)
        predicates))
