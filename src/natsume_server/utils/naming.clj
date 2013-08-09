@@ -9,7 +9,7 @@
 ;;
 ;; ## Clojure <-> JSON
 
-(defn dash->lower-camel
+(defn dashes->lower-camel
   "Converts Clojure kebab-case keyword to JSON camel-case string."
   [s]
   (->> s
