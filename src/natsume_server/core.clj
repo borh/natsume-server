@@ -237,8 +237,9 @@
       (usage))
 
     (when (cfg/opt :server :run)
-      (start-server!))
+      (api/start-server!))
 
+    ;; FIXME bug when :clean not set, no tables get created!
     (when (cfg/opt :clean)
       (schema/drop-all-cascade!)
       (schema/init-database!))
