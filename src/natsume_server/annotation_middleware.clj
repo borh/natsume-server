@@ -94,26 +94,26 @@
       a)))
 
 (defn- recode-pos [m]
-  (condp re-seq (str (:pos1 m) (:pos2 m) (:pos3 m))
-    #"^(代?名詞[^副]+|記号文字)" :noun
+  (condp re-seq (str (:pos-1 m) (:pos-2 m) (:pos-3 m))
     #"^動詞" :verb
-    #"^(形(容|状)詞|接尾辞形(容|状)詞的)" :adjective
     #"^(副詞|名詞.+副詞可能)" :adverb
-    #"^助詞" (if (or (and (= "接続助詞" (:pos2 m))
+    #"^(代?名詞[^副]+|記号文字)" :noun
+    #"^(形(容|状)詞|接尾辞形(容|状)詞的)" :adjective
+    #"^助詞" (if (or (and (= "接続助詞" (:pos-2 m))
                           (re-seq #"^(て|ば)$" (:lemma m)))
                      (re-seq #"^たり$" (:lemma m)))
                :auxiliary-verb
                :particle)
     #"^接続詞" :particle
     #"^((補助)?記号|空白)" :symbol
-    #"^助動詞" (if (re-seq #"^助動詞-(ダ|デス)$" (:cType m))
+    #"^助動詞" (if (re-seq #"^助動詞-(ダ|デス)$" (:c-type m))
                  :particle
                  :auxiliary-verb)
     #"^連体詞" :preposition
     #"^感動詞" :utterance
     #"^接頭辞" :prefix
-    #"^接尾辞" (cond (= (:pos2 m) "動詞的") :adjective ; ~がかった
-                    (= (:pos2 m) "名詞的") :noun ; ~ら
+    #"^接尾辞" (cond (= (:pos-2 m) "動詞的") :adjective ; ~がかった
+                    (= (:pos-2 m) "名詞的") :noun ; ~ら
                     :else :suffix)
     :unknown-pos))
 
@@ -145,16 +145,16 @@
       #{})
     :auxiliary-verb
     (cond
-     (= (:cType m) "助動詞-タ") (if (re-seq #"仮定形" (:cForm m))
+     (= (:c-type m) "助動詞-タ") (if (re-seq #"仮定形" (:c-form m))
                                   #{:potential}
                                   #{:past})
-     (re-seq #"^助動詞-(ナイ|ヌ)$" (:cType m))
+     (re-seq #"^助動詞-(ナイ|ヌ)$" (:c-type m))
      (cond (re-seq #"く$" (:orth m)) #{:aspect-ku :negative}
-           (re-seq #"^仮定形" (:cForm m)) #{:potential}
+           (re-seq #"^仮定形" (:c-form m)) #{:potential}
            :else #{:negative})
      (re-seq #"^ら?れる$" (:lemma m))            #{:passive}
      (re-seq #"^さ?せる$" (:lemma m))            #{:active}
-     (re-seq #"^助動詞-(マス|デス)$" (:cType m)) #{:polite}
+     (re-seq #"^助動詞-(マス|デス)$" (:c-type m)) #{:polite}
      (= (:lemma m) "て")                         #{:aspect}
      (= (:lemma m) "ば")                         #{:potential}
      (= (:lemma m) "たり")                       #{:tari}
@@ -209,8 +209,8 @@
       ;; Manual transitions
       ;;       B               A           C
       (assoc [:verb           :noun]      :verb
-             [:adjective      :noun]      :adjective
-             [:adjective      :verb]      :verb
+             [:adjective      :noun]      :adjective ;; TODO here? make test case for 静的型検査
+             [:adjective      :verb]      :adjective ;; 転がりやすい
              [:noun           :adjective] :noun
              [:verb           :adjective] :verb
              [:verb           :prefix]    :verb
@@ -253,7 +253,7 @@
       xs)))
 
 ;; Lemma-based normalization is experimental.
-(def ^:dynamic *display-pos* #_:lemma :orthBase)
+(def ^:dynamic *display-pos* #_:lemma :orth-base)
 
 (defn- normalize-to-string
   "Given a chunk and begin and end token indexes, compounds the orthographic representations of
@@ -274,15 +274,15 @@
                   goshu (:goshu token)]
               (if (or (= goshu "記号")
                       (= goshu "外"))
-                (:orthBase token) ; Keep original for foreign scripts and AA
+                (:orth-base token) ; Keep original for foreign scripts and AA
                 (case pos
                   :particle (:orth token)
-                  :symbol   (:orthBase token)
+                  :symbol   (:orth-base token)
                   (normalize-lemma (*display-pos* token))))))
 
           (normalize-token-with-conjugation [token] ; specialization of above for verb-like tokens
             (if (and (#{:verb :adjective :auxiliary-verb} (:pos token))
-                     (re-seq #"(未然形|連用形|仮定形)" (:cForm token)))
+                     (re-seq #"(未然形|連用形|仮定形)" (:c-form token)))
               (if (= *display-pos* :lemma)
                 (unidic/conjugate (update-in token [:lemma] normalize-lemma))
                 (:orth token))
@@ -296,7 +296,7 @@
                          (drop-while #(#{:auxiliary-verb :particle} (:pos %)))
                          reverse)
               :verb (take-while #(and (not (re-seq #"^(ます|てる?|ちゃう)$" (:lemma %)))
-                                      (not (re-seq #"助動詞-(タ|ダ|ナイ|ヌ|デス|ラシイ)" (:cType %))) ; FIXME should be whitelist
+                                      (not (re-seq #"助動詞-(タ|ダ|ナイ|ヌ|デス|ラシイ)" (:c-type %))) ; FIXME should be whitelist
                                       (not (= :particle (:pos %))))
                                 tokens)
               :adjective (take-while #(not (or (#{:auxiliary-verb :particle} (:pos %))
@@ -389,11 +389,79 @@
       (update-in [:prob] #(/ (+ % (:prob a)) 2)) ;; CHECK
       (update-in [:tokens] #(apply conj (:tokens a) %))))
 
+;; TODO Pattern matching definitions as data: allow chunk type and
+;; relation filtering, optional tokens, wildcards, variable windows,
+;; AND/OR support...
+;; Inspiration: http://emdros.org/mql.html
+;;              http://corpora.dslo.unibo.it/TCORIS/QueryLanguage.html
+;;              http://www.lrec-conf.org/proceedings/lrec2012/pdf/800_Paper.pdf
+;; TODO efficient pattern match dispatch/compilation (kind of like
+;; regular expressions). Look at: https://github.com/jclaggett/seqex
+;; include one pattern in another by name
+;; TODO Pattern rewriting/transformation in the definition. The
+;; Tsutsuji dictionary patterns could be used as a test case.
+(comment
+
+  ;; more MQL-like
+  [:chunk
+   :ni-naru
+   [[:token {:orth "に"}]
+    [:token {:lemma #"[な成]る"}]]]
+
+  ;; simpler data format (all levels (tokens, chunks) have the same
+  ;; basic fields??)
+  {:type :chunk
+   :filter {:type :tokens
+            :filter [{:orth "に"} {:lemma #"[な成]る"}]}
+   :name :ni-naru}
+
+  ;; Tsutsuji example:
+  ;; . 	. 	. 	. 	. 	. 	s 	01 	こと.に.なっ.て.い.ます 	J21 	A2 	敬体 	0 	2391M.1xx.46s01
+
+  ;; FIXME These transformations/matches must be run in a certain order. For example: The Tsutsuji matches must take precedence over the more general noun+noun->noun type transformations. Should the longest match win? And should we iterate until no more transformations are found? Also, what about just simple 'transformations' that add tags?
+  ;; FIXME Also, we might want to differentiate between transformations that should be merged back into the original/base sentence, or just used on their own to be converted to collocations, etc. This is important for the tokens search -- i.e. what unit do we want to capture -- and do we want tags and other contextual information too?
+  {:name :nouns
+   :transform-ops [:compact]
+   :match {:type :sequence
+           :data [{:type :token :match {:pos :noun} :repeat :+}]}}
+  {:name :noun->verb
+   :transform-ops [:compact]}
+
+  {:name :chunk-normalization
+   :transform-ops [:chunk-normalization]
+   :match {:type :chunk
+           :data [{:type :chunk}]}}
+  (comment :dont-do-this-vvvvv
+    {:name :noun-particle-verb
+     :transform-ops [:extract]
+     :match {:type :link-sequence
+             :data [{:type :chunk :match {:head-pos :noun :tail-pos :particle}}
+                    {:type :chunk :match {:head-pos :verb}}]}})
+  ;; FIXME What is the right ordering c.f. POS tagging and other kinds of tagging.
+  {:name :verb-tags
+   :tags some-function
+   :transform-ops [:add-tags]
+   :match {:type :single
+           :data [{:type :token :match {:pos [:or #{:verb :auxiliary-verb}]}}]}}
+
+  {:name "こと.に.なっ.て.い.ます"
+   :jlpt-level 1
+   :tags #{:polite}
+   :transform-ops [:compact :add-tags] ;; Ordering matters. Add tags to what?
+   :match {:type :sequence ;; The below token vector would be automatically generated from Tsutsuji XML
+           :data [{:type :token :match {:orth  "こと" :pos :noun}}
+                  {:type :token :match {:orth  "に" :pos :particle}}
+                  {:type :token :match {:lemma "成る" :c-form "連用形-促音便" :pos :verb}}
+                  {:type :token :match [:orth  "て" :pos :auxiliary-verb]}
+                  {:type :token :match {:orth  "居る" :pos :verb}}
+                  {:type :token :match {:orth  "ます" :pos :auxiliary-verb}}]}}
+  )
+
 (def patterns
   {[{:orth "に"} {:lemma #"^成る"}] :ni-naru
    [{:orth "を"} {:lemma #"^為る"}] :wo-suru ; サ変名詞＋を＋する <＝> サ変名詞する
-   [{:orth "に"} {:lemma #"^(つく|因る|於く|対する)$" :cForm #"^(連用形|仮定形)"}] :fukugoujosi
-   [{:orth "に"} {:lemma #"^於く$" :cForm #"^命令形"} {:orth #"^る$"}] :fukugoujosi})
+   [{:orth "に"} {:lemma #"^(つく|因る|於く|対する)$" :c-form #"^(連用形|仮定形)"}] :fukugoujosi
+   [{:orth "に"} {:lemma #"^於く$" :c-form #"^命令形"} {:orth #"^る$"}] :fukugoujosi})
 
 ;; TODO: Make pattern matching smarter by dispatching on matching
 ;;       fields in patterns and by saving intermediate results.
