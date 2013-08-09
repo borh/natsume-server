@@ -32,19 +32,21 @@
    :features (fnk [tree text] (rd/sentence-readability tree text))
    ;; The following are side-effecting persistence graphs:
    :sentences-id    (fnk [features tags paragraph-order-id sentence-order-id sources-id]
-                         (:id (db/insert-sentence (assoc features
-                                                    :tags tags
-                                                    :paragraph-order-id paragraph-order-id
-                                                    :sentence-order-id sentence-order-id
-                                                    :sources-id sources-id))))
+                         (-> (db/insert-sentence (assoc features
+                                                   :tags tags
+                                                   :paragraph-order-id paragraph-order-id
+                                                   :sentence-order-id sentence-order-id
+                                                   :sources-id sources-id))
+                             first
+                             :id))
    :collocations-id (fnk [features sentences-id]
                          (when-let [collocations (seq (:collocations features))]
-                           (:id (db/insert-collocations! collocations sentences-id))))
+                           (map :id (db/insert-collocations! collocations sentences-id))))
    :tokens          (fnk [tree sentences-id]
                          (db/insert-tokens! (flatten (map :tokens tree)) sentences-id))})
 (def sentence-graph-fn (graph/eager-compile sentence-graph))
 
-(defnk insert-paragraphs! [paragraphs sources-id genres-map]
+(defnk insert-paragraphs! [paragraphs sources-id]
   (loop [paragraphs*       paragraphs
          sentence-start-id 1         ; ids start with 1 (same as SQL pkeys)
          paragraph-id      1]
