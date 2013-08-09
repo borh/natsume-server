@@ -391,11 +391,10 @@
    :chunk-depth  (fnk [tree] (chunk-depth tree))})
 
 (def char-type-stats
-  {:length     (fnk [sentence] (count sentence))
-   :char-types (fnk [sentence length] (map-vals #(float (/ % length)) (writing-system-count sentence)))})
+  {:char-types (fnk [sentence] (writing-system-count sentence))})
 
 (def goshu-stats
-  {:goshu-map (fnk [tree tokens] (map-vals #(float (/ % tokens)) (goshu-map tree)))})
+  {:goshu-map (fnk [tree] (goshu-map tree))})
 
 (def sentence-stats
   (merge core-sentence-data
