@@ -72,12 +72,14 @@ lein run /path/to/corpus/dir/
 
 0.4.0 - token and collocation information offered as API
 
+0.6.0 - pattern matching and transformation rule engine/state machine inspired by CQL/MQL
+
 ...
 
 1.0.0 - working release ready to replace current main site
 
 ## License
 
-Copyright © 2012 Bor Hodošček
+Copyright © 2012, 2013 Bor Hodošček
 
 Distributed under the Eclipse Public License, the same as Clojure.
