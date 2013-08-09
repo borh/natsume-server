@@ -28,7 +28,7 @@
   :aliases  ["-no-process"])
 
 (defopt :search
-  :default true
+  :default false
   :bool    true
   :help-string "Create search-optimized tables"
   :aliases ["-search"])
