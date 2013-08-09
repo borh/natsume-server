@@ -57,10 +57,25 @@
     :aliases ["-sampling-hold-out"]))
 
 (defopts :models
-  (defopt :n-gram
-    :default false
-    :bool    true
-    :aliases ["-n-gram"])
+  (defopts :n-gram
+    (defopt :type
+      :default  :token
+      :parse    keyword
+      :validate (fn [input] (#{:token :char} input))
+      :help-string "N-Gram model type (:char or :token)"
+      :aliases  ["-models-n-gram-type"])
+    (defopt :n
+      :default  3
+      :parse    #(Integer/parseInt %)
+      :validate #(and (integer? %) (pos? %))
+      :help-string "N-Gram order (n)"
+      :aliases  ["-models-n-gram-n"]))
+  (defopt :mode
+    :default  :load
+    :parse    keyword
+    :validate (fn [input] (#{:noop :build :load}))
+    :help-string "Build, load (or do nothing -- default) models"
+    :aliases  ["-models-mode"])
   (defopt :directory
     :default  "./data/models/"
     :validate #(.isFile (clojure.java.io/file %))
