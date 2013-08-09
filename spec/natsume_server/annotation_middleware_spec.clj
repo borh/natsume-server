@@ -95,7 +95,7 @@
    "愛しくなかった"         #{:negative :past}
    "愛しくありませんでした" #{:negative :past :polite} ; 2 chunks, but this is OK
    "愛しかった"             #{:past}
-   "転がりやすい"           #{}
+   "転がりやすい"           #{:teido}
    "我慢強い"               #{}
    "黒がかった"             #{}})
 
