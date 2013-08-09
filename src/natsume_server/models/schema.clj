@@ -1,84 +1,99 @@
 (ns natsume-server.models.schema
   (:require [clojure.string :as string]
-            [clojure.java.jdbc :as sql]
-            [clj-configurator.core :refer [defconfig env props]]
-            [clojure.tools.reader.edn :as edn]
+            [clojure.java.jdbc :as j]
+            [clojure.java.jdbc.sql :as sql]
+            [honeysql.core :as h]
+            [honeysql.format :as fmt]
+            [honeysql.helpers :refer :all]
 
+            [plumbing.core :refer [for-map]]
+            [natsume-server.models.sql-helpers :refer :all]
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]))
 
-;; ## Settings
-;;
-;; Settings are read from local-config.clj, Java properties and from
-;; environmental variables.
-
-(defconfig settings
-  :defaults {:subname  "//localhost:5432/natsumedev"
-             :user     "natsumedev"
-             :password ""}
-  :sources [(edn/read-string (slurp "local-config.clj")) env props])
-
-;; ## PostgreSQL setup.
-;;
-;; Needs the following to be set up on the PostgreSQL server:
-;;
-;;     CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD '';
-;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
-;;
-;; Then switching to the database as postgres user, add the following extensions:
-;;
-;;     CREATE EXTENSION ltree;
-;;
-;; :subname, :user and :password should match that found in the following dbspec:
-(def dbspec
-  (merge
-   {:classname   "org.postgresql.Driver"
-    :subprotocol "postgresql"}
-   settings))
-
 ;; ## JDBC naming strategy
-
 (def naming-strategy ; JDBC.
   {:entity dashes->underscores :keyword underscores->dashes})
 
-;; ## Database wrapper functions
-;; FIXME Currently broken with new clojure.java.jdbc alpha.
-(defn with-db
-  [f]
-  (sql/with-connection dbspec
-    (sql/with-naming-strategy naming-strategy
-      (f))))
+(defn create-table [name & specs]
+  (e! [(string/replace (apply j/create-table-ddl name specs) #"-" "_")]))
 
-(defn with-db-tx
-  [f]
-  (sql/with-connection dbspec
-    (sql/with-naming-strategy naming-strategy
-      (sql/transaction (f)))))
-
-(defn with-db-tx-ex
-  [f]
-  (try (sql/with-connection dbspec
-         (sql/with-naming-strategy naming-strategy
-           (sql/transaction (f))))
-       (catch Exception e)))
-
-(defmacro with-dbmacro-ex
-  "Allow custom function to handle exception.
-  Common use case: #(println (.getNextException %))"
-  [exception-handle-fn & body]
-  `(try (sql/with-connection dbspec
-          (sql/with-naming-strategy naming-strategy
-            (sql/transaction
-             (do ~@body))))
-        (catch Exception e# (~exception-handle-fn e#))))
-
-(defmacro with-dbmacro
-  [& body]
-  `(sql/with-connection dbspec
-     (sql/with-naming-strategy naming-strategy
-       (sql/transaction
-        (do ~@body)))))
+(defn schema-keys [schema]
+  (->> schema
+       next
+       (map first)))
 
 ;; ## Database schema
+
+(def sources-schema
+  [:sources
+   [:id       :serial   "PRIMARY KEY"]
+   [:title    :text     "NOT NULL"]
+   [:author   :text]
+   [:year     :smallint "NOT NULL"]
+   [:basename :text     "NOT NULL"]
+   [:genre    :ltree    "NOT NULL"]])
+
+(def sentences-schema
+  [:sentences
+   [:id                "serial"  "PRIMARY KEY"]
+   [:text              "text"    "NOT NULL"]
+   [:sentence-order-id "integer" "NOT NULL"]
+   [:paragraph-order-id "integer" "NOT NULL"]
+   [:sources-id        "integer" "REFERENCES sources(id)"]
+   [:tags              "text[]"]
+   ;; The following are the raw numbers needed to calculate readability at the sentence, paragraph or document scale
+   ;; FIXME readability should really be calculated after the whole corpus is processed: in this way, it should be possible to compute bccwj-level straight from the data, though this again depends on the existence of the tokens table as we don't want to re-parse all the data. And this might actually be really slow in SQL.
+   ;; But for cleanliness reasons, separate the following from sentences for now. FIXME
+   [:length      :smallint]
+   [:hiragana    :smallint]
+   [:katakana    :smallint]
+   [:kanji       :smallint]
+   [:romaji      :smallint]
+   [:symbols     :smallint]
+   [:commas      :smallint]
+   [:japanese    :smallint]
+   [:chinese     :smallint]
+   [:gairai      :smallint]
+   [:symbolic    :smallint]
+   [:mixed       :smallint]
+   [:unk         :smallint]
+   [:pn          :smallint]
+   [:jlpt-level  :real]
+   [:bccwj-level :real]
+   [:tokens      :smallint]
+   [:chunks      :smallint]
+   [:predicates  :smallint]
+   [:link-dist   :real]
+   [:chunk-depth :real]])
+
+(def tokens-schema
+  ;; TODO: It would be better to remove '*', allow NULLs and add partial indexes.
+  [:tokens
+   [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
+   [:pos-1        :text    "NOT NULL"]
+   [:pos-2        :text    "NOT NULL"]
+   [:pos-3        :text    "NOT NULL"]
+   [:pos-4        :text    "NOT NULL"]
+   [:c-type       :text    "NOT NULL"]
+   [:c-form       :text    "NOT NULL"]
+   [:lemma        :text    "NOT NULL"]
+   [:orth         :text    "NOT NULL"]
+   [:pron         :text]
+   [:orth-base    :text    "NOT NULL"]
+   [:pron-base    :text]
+   [:goshu        :text    "NOT NULL"]])
+
+(def n-gram-schemas
+  (let [sentences-column [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
+        gram-columns (for [order (range 1 5)]
+                       [[(str "string_" order) :text     "NOT NULL"]
+                        [(str "pos_"    order) :text     "NOT NULL"]
+                        [(str "tags_"   order) "text[]"  "NOT NULL"] ;; consider HSTORE? (for aggregate frequencies)
+                        [(str "begin_"  order) :smallint "NOT NULL"]
+                        [(str "end_"    order) :smallint "NOT NULL"]])]
+    (for-map [n (range 2 5)]
+             (keyword (str "gram-" n))
+             (concat [(keyword (str "gram-" n))] (conj (apply concat (take n gram-columns)) sentences-column)))))
 
 (defn- create-tables-and-indexes!
   "Create tables and indexes for Natsume.
