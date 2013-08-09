@@ -2,6 +2,7 @@
 (ns natsume-server.core
   (:require [clojure.java.io :as io]
             [clojure.core.reducers :as r]
+            [clojure.set :as set]
             [natsume-server.config :as cfg]
             [clojure.tools.cli :refer [cli]]
             [clojure.data.csv :as csv]
@@ -15,19 +16,15 @@
             [natsume-server.text :as text]
             [natsume-server.importers.bccwj :as bccwj]
             [natsume-server.importers.wikipedia :as wikipedia]
-            [natsume-server.cabocha-wrapper :as cw]
             [natsume-server.annotation-middleware :as am]
             [natsume-server.readability :as rd]
             [natsume-server.models.db :as db]
             [natsume-server.models.schema :as schema]
             [natsume-server.lm :as lm]
-
-            [natsume-server.api.main :refer [start-server!]]
+            [natsume-server.api.main :as api]
 
             [taoensso.timbre :as log]
-            [natsume-server.log-config :as lc])
-  (:import [java.util.concurrent Executor Executors ExecutorService Callable ThreadFactory])
-  (:gen-class))
+            [natsume-server.log-config :as lc]))
 
 ;; ## Computation graphs / pipeline pattern
 (def sentence-graph
