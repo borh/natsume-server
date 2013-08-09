@@ -79,7 +79,8 @@
 
 (defn- keywordize-ne
   [s]
-  (keyword (string/lower-case (string/replace s #"[BI]-" ""))))
+  (if s
+    (keyword (string/lower-case (string/replace s #"[BI]-" "")))))
 
 (defn- unify-aspect-tags
   "Unifies the separate :aspect and #{:iru :simau :kuru ...} tags into one :aspect-* tag."
