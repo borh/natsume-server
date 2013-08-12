@@ -25,7 +25,7 @@
 
                  ;; Fulltext search
                  [org.elasticsearch/elasticsearch "0.90.3"]
-                 [clojurewerkz/elastisch "1.2.0-beta1"]
+                 [clojurewerkz/elastisch "1.2.0"]
                  ;;
 
                  ;; Utils
