@@ -11,7 +11,6 @@
             [bigml.sampling.simple :as sampling]
             [plumbing.core :refer :all]
             [plumbing.graph :as graph]
-            [qbits.knit :as knit]
 
             [natsume-server.text :as text]
             [natsume-server.importers.bccwj :as bccwj]
