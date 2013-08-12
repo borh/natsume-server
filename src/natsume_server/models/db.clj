@@ -323,6 +323,7 @@
                                 ((measure stats/association-measures-graph) contingency-table))))))
           (?> (= :log-dice measure) stats/log-dice (if (:string-1 query) :string-3 :string-1))
           ((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) dissoc :count)) rs)))
+          (?> (and (not= measure :count) compact-numbers) (fn [rs] (map #(update-in % [measure] compact-number) rs)))
           (seq-to-tree :merge-keys [measure] #_(keys stats/association-measures-graph) :merge-fn (case measure :count + #(if %1 %1 %2)))
           (?> (= measure :count) #(normalize-tree (get @gram-totals type) % :clean-up-fn (if compact-numbers compact-number identity)))))))
 
