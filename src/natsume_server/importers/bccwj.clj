@@ -1,8 +1,7 @@
 (ns natsume-server.importers.bccwj
   (:require [clojure.zip :as z]
             [clojure.xml :as xml]
-            [clojure.java.io :as io]
-            [me.raynes.fs :as fs]))
+            [clojure.java.io :as io]))
 
 ;; # Importer for BCCWJ-Formatted C-XML Data
 ;;
