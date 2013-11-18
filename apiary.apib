@@ -20,12 +20,42 @@ Returns general information on the corpora and documents included in Natsume.
 
 + Parameters
 
-    + id (required, string, `123`) ... The id of the Person.
+    + norm (optional, string, `sentences|paragraphs|sources`) ... The normalization level used for counts.
 
 + Model (application/json)
 
     ```
-    {}
+    {
+      "children" : [
+      {
+         "count" : 252,
+         "name" : "韻文",
+         "children" : [
+            {
+               "count" : 100,
+               "name" : "詩"
+            },
+            {
+               "count" : 60,
+               "name" : "短歌"
+            },
+            {
+               "count" : 92,
+               "name" : "俳句"
+            }
+         ]
+      },
+      {
+        ...
+      },
+      {
+         "name" : "Wikipedia",
+         "count" : 853975
+      }
+   ],
+   "count" : 1027389,
+   "name" : "Genres"
+}
     ```
 
 ### Similarity [GET /api/sources/genre/similarity]
