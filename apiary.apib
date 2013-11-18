@@ -1,0 +1,68 @@
+FORMAT: 1A
+HOST: http://wombat.ryu.titech.ac.jp/natsume-server
+
+# natsume-server
+natsume-serverはユーザ入力を解析し、一般的にJSONで返答する。
+
+# Group Sources
+
+
+
+## Sources summary [GET /api/sources]
+
+Returns general information on the corpora and documents included in Natsume.
+
++ Request (application/json)
+
++ Response 200 (application/json)
+
+### Genre [GET /api/sources/genre]
+
++ Parameters
+
+    + id (required, string, `123`) ... The id of the Person.
+
++ Model (application/json)
+
+    ```
+    {}
+    ```
+
+### Similarity [GET /api/sources/genre/similarity]
+
+
+# Group Tokens [GET /api/tokens]
+
++ Parameters
+
+    + id (required, string, `123`) ... The id of the Person.
+
++ Model (application/json)
+
+    ```
+    {}
+    ```
+
+# Group Collocations [GET /api/collocations]
+
++ Parameters
+
+    + id (required, string, `123`) ... The id of the Person.
+
++ Model (application/json)
+
+    ```
+    {}
+    ```
+
+## Collocation tree [GET /api/collocations/tree]
+
++ Parameters
+
+    + id (required, string, `123`) ... The id of the Person.
+
++ Model (application/json)
+
+    ```
+    {}
+    ```
