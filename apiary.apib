@@ -63,38 +63,52 @@ Returns general information on the corpora and documents included in Natsume.
 ### Similarity [GET /api/sources/genre/similarity]
 
 
-# Group Tokens [GET /api/tokens]
+# Group Tokens
+
+Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検索が行える。
+
+## Token search [GET /api/tokens{?orth}]
 
 + Parameters
 
-    + id (required, string, `123`) ... The id of the Person.
+    + orth (optional, string, `おもう`) ... 形態素の表層型
 
 + Model (application/json)
 
-    ```
-    {}
-    ```
+    + Body
 
-# Group Collocations [GET /api/collocations]
+        ```
+        {}
+        ```
+
+# Group Collocations
+
+Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
+
+## Collocations search [GET /api/collocations{?string_1,string_2,string_3}]
 
 + Parameters
 
-    + id (required, string, `123`) ... The id of the Person.
+    + string_1 (optional, string, `車`) ... 最初の語
 
 + Model (application/json)
 
-    ```
-    {}
-    ```
+    + Body
+    
+        ```
+        {}
+        ```
 
-## Collocation tree [GET /api/collocations/tree]
+## Collocation tree [GET /api/collocations/tree{?string_1,string_2,string_3}]
 
 + Parameters
 
-    + id (required, string, `123`) ... The id of the Person.
+    + string_1 (optional, string, `車`) ... 最初の語
 
 + Model (application/json)
 
-    ```
-    {}
-    ```
+    + Body
+    
+        ```
+        {}
+        ```
