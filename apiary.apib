@@ -16,7 +16,7 @@ Returns general information on the corpora and documents included in Natsume.
 
 + Response 200 (application/json)
 
-### Genre [GET /api/sources/genre]
+### Genre [GET /api/sources/genre{?norm}]
 
 + Parameters
 
@@ -24,39 +24,41 @@ Returns general information on the corpora and documents included in Natsume.
 
 + Model (application/json)
 
-    ```
-    {
-      "children" : [
-      {
-         "count" : 252,
-         "name" : "韻文",
-         "children" : [
-            {
-               "count" : 100,
-               "name" : "詩"
-            },
-            {
-               "count" : 60,
-               "name" : "短歌"
-            },
-            {
-               "count" : 92,
-               "name" : "俳句"
-            }
-         ]
-      },
-      {
-        ...
-      },
-      {
-         "name" : "Wikipedia",
-         "count" : 853975
-      }
-   ],
-   "count" : 1027389,
-   "name" : "Genres"
-}
-    ```
+    + Body
+
+        ```
+        {
+              "children" : [
+              {
+                 "count" : 252,
+                 "name" : "韻文",
+                 "children" : [
+                    {
+                       "count" : 100,
+                       "name" : "詩"
+                    },
+                    {
+                       "count" : 60,
+                       "name" : "短歌"
+                    },
+                    {
+                       "count" : 92,
+                       "name" : "俳句"
+                    }
+                 ]
+              },
+              {
+                ...
+              },
+              {
+                 "name" : "Wikipedia",
+                 "count" : 853975
+              }
+           ],
+           "count" : 1027389,
+           "name" : "Genres"
+        }
+        ```
 
 ### Similarity [GET /api/sources/genre/similarity]
 
