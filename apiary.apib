@@ -92,27 +92,83 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
 
 ## Collocations search [GET /api/collocations{?string_1,string_2,string_3}]
 
-+ Parameters
-
-    + string_1 (optional, string, `車`) ... 最初の語
-    + string_2 (optional, string, `を`) ... 次の語
-    + string_3 (optional, string, `運転する`) ... 最後の語
-    + type (optional, string, `noun-particle-verb`) ... noun-particle-verb
-    + measure (optional, string, `count`) ...  count
-    + offset (optional, int, `0`) ...  0
-    + limit (optional, int, `80`) ...  80
-    + relation-limit (optional, int, `8`) ...  8
-    + compact-numbers (optional, boolean, `true|1`) ...  true
-    + scale (optional, boolean, `false|0`) ...  false
-    + debug (optional, boolean, `false|0`) ...  false
++ Request
+    + Parameters
+        + string_1 (optional, string, `車`) ... 最初の語
+        + string_2 (optional, string, `を`) ... 次の語
+        + string_3 (optional, string, `運転する`) ... 最後の語
+        + type (optional, string, `noun-particle-verb`) ... noun-particle-verb
+        + measure (optional, string, `count`) ...  count|dice|t-score|mi-score
+        + offset (optional, int, `0`) ...  0
+        + limit (optional, int, `80`) ...  80
+        + relation-limit (optional, int, `8`) ...  8
+        + compact-numbers (optional, boolean, `true|1`) ...  true
+        + scale (optional, boolean, `false|0`) ...  false
+        + debug (optional, boolean, `false|0`) ...  false
 
 + Model (application/json)
-
+    `string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3`
     + Body
     
         ```
-        {}
+        [
+           {
+              "data" : [
+                 {
+                    "string3" : "行う",
+                    "count" : 1266
+                 },
+                 {
+                    "count" : 160,
+                    "string3" : "行なう"
+                 },
+                 {
+                    "count" : 90,
+                    "string3" : "繰り返す"
+                 }
+              ],
+              "string2" : "を"
+           },
+           {
+              "data" : [
+                 {
+                    "string3" : "用いる",
+                    "count" : 117
+                 },
+                 {
+                    "count" : 113,
+                    "string3" : "よる"
+                 },
+                 {
+                    "string3" : "成功する",
+                    "count" : 66
+                 }
+              ],
+              "string2" : "に"
+           },
+           {
+              "data" : [
+                 {
+                    "count" : 350,
+                    "string3" : "行われる"
+                 },
+                 {
+                    "count" : 28,
+                    "string3" : "ある"
+                 },
+                 {
+                    "count" : 25,
+                    "string3" : "行なわれる"
+                 }
+              ],
+              "string2" : "が"
+           }
+        ]
         ```
+
++ Response 200
+
+    [Genre][]
 
 ## Collocation tree [GET /api/collocations/tree{?string_1,string_2,string_3}]
 
