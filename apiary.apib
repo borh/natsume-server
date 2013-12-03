@@ -72,21 +72,171 @@ Returns general summary information on the corpora and documents included in Nat
 
 Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検索が行える。
 
-## Token search [/api/tokens{?orthBase,lemma,pos1,pos2}]
+## Token search [/api/tokens{?orthBase,lemma,pos1,pos2,norm}]
 + Parameters
 
     + orthBase (optional, string, `おもう`) ... 形態素の表層型
     + lemma (optional, string, `思う`) ... 形態素の語彙素型
     + pos1 (optional, string, `動詞`) ... 形態素の品詞（MeCabの最初の品詞）
     + pos2 (optional, string, `一般`) ... 形態素の品詞（MeCabの2番目の品詞）
+    + norm = `sources` (optional, string, `sources`) ... The normalization level used for counts (one of `sources`, `paragraphs`, or `sentences`).
     
 ### [GET]
 
 + Response 200 (application/json)
 
-        ```
-        {}
-        ```
+        [
+           {
+              "results" : {
+                 "count" : 1.78,
+                 "name" : "Genres",
+                 "children" : [
+                    {
+                       "count" : 16.83,
+                       "name" : "韻文",
+                       "children" : [
+                          {
+                             "count" : 50.46,
+                             "name" : "短歌"
+                          },
+                          {
+                             "name" : "俳句",
+                             "count" : 15.25
+                          }
+                       ]
+                    },
+                    ...
+                    {
+                       "count" : 1.48,
+                       "name" : "Wikipedia"
+                    }
+                 ]
+              },
+              "token" : {
+                 "pos1" : "動詞",
+                 "lemma" : "思う",
+                 "pos2" : "一般",
+                 "orthBase" : "思る"
+              }
+           },
+           {
+              "token" : {
+                 "pos2" : "一般",
+                 "lemma" : "思う",
+                 "pos1" : "動詞",
+                 "orthBase" : "おもう"
+              },
+              "results" : {
+                 "name" : "Genres",
+                 "children" : [
+                    ...,
+                    {
+                       "children" : [
+                          {
+                             "count" : 2.7,
+                             "name" : "総合",
+                             "children" : [
+                                {
+                                   "children" : [
+                                      {
+                                         "name" : "出版_読書_図書館",
+                                         "count" : 18.22
+                                      }
+                                   ],
+                                   "name" : "総記_マスコミ",
+                                   "count" : 6.69
+                                },
+                                ...
+                             ]
+                          },
+                          ...
+                       ],
+                       "name" : "雑誌",
+                       "count" : 7.23
+                    },
+                    ...
+                 ],
+                 "count" : 6.68
+              }
+           },
+           ...
+        ]
+        [
+           {
+              "results" : {
+                 "count" : 1.78,
+                 "name" : "Genres",
+                 "children" : [
+                    {
+                       "count" : 16.83,
+                       "name" : "韻文",
+                       "children" : [
+                          {
+                             "count" : 50.46,
+                             "name" : "短歌"
+                          },
+                          {
+                             "name" : "俳句",
+                             "count" : 15.25
+                          }
+                       ]
+                    },
+                    ...
+                    {
+                       "count" : 1.48,
+                       "name" : "Wikipedia"
+                    }
+                 ]
+              },
+              "token" : {
+                 "pos1" : "動詞",
+                 "lemma" : "思う",
+                 "pos2" : "一般",
+                 "orthBase" : "思る"
+              }
+           },
+           {
+              "token" : {
+                 "pos2" : "一般",
+                 "lemma" : "思う",
+                 "pos1" : "動詞",
+                 "orthBase" : "おもう"
+              },
+              "results" : {
+                 "name" : "Genres",
+                 "children" : [
+                    ...,
+                    {
+                       "children" : [
+                          {
+                             "count" : 2.7,
+                             "name" : "総合",
+                             "children" : [
+                                {
+                                   "children" : [
+                                      {
+                                         "name" : "出版_読書_図書館",
+                                         "count" : 18.22
+                                      }
+                                   ],
+                                   "name" : "総記_マスコミ",
+                                   "count" : 6.69
+                                },
+                                ...
+                             ]
+                          },
+                          ...
+                       ],
+                       "name" : "雑誌",
+                       "count" : 7.23
+                    },
+                    ...
+                 ],
+                 "count" : 6.68
+              }
+           },
+           ...
+        ]
 
 # Group Collocations
 
