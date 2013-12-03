@@ -1,7 +1,7 @@
 FORMAT: 1A
 HOST: http://wombat.ryu.titech.ac.jp/natsume-server
 
-# natsume-server
+# Natsume Server API
 
 natsume-serverはユーザ入力を解析し、一般的にJSONで返答する。
 
@@ -9,82 +9,80 @@ natsume-serverはユーザ入力を解析し、一般的にJSONで返答する�
 
 Natsumeに含まれるすべてのコーパス（ジャンル）に関する情報、またはコーパス間の類似度を提供する。
 
-## Sources summary [GET /api/sources]
+## Sources summary [/api/sources]
 
 Returns general summary information on the corpora and documents included in Natsume.
 
-+ Request
+### Summary of corpus [GET]
 
 + Response 200 (application/json)
 
-    "TODO"
+        "TODO"
 
-### Genre [GET /api/sources/genre{?norm}]
+## Genre [/api/sources/genre{?norm}]
 
+### Summary of genre [GET] 
 + Parameters
 
     + norm = `sources` (optional, string, `sources`) ... The normalization level used for counts (one of `sources`, `paragraphs`, or `sentences`).
 
-+ Model (application/json)
++ Response 200 (application/json)
 
-```
-{
-   "children" : [
-      {
-         "count" : 252,
-         "name" : "韻文",
-         "children" : [
+        {
+        "children" : [
             {
-               "count" : 100,
-               "name" : "詩"
+                "count" : 252,
+                "name" : "韻文",
+                "children" : [
+                    {
+                        "count" : 100,
+                        "name" : "詩"
+                    },
+                    {
+                        "count" : 60,
+                        "name" : "短歌"
+                    },
+                    {
+                        "count" : 92,
+                        "name" : "俳句"
+                    }
+                ]
             },
             {
-               "count" : 60,
-               "name" : "短歌"
+                ...
             },
             {
-               "count" : 92,
-               "name" : "俳句"
+                "name" : "Wikipedia",
+                "count" : 853975
             }
-         ]
-      },
-      {
-        ...
-      },
-      {
-         "name" : "Wikipedia",
-         "count" : 853975
-      }
-   ],
-   "count" : 1027389,
-   "name" : "Genres"
-}
-```
+        ],
+        "count" : 1027389,
+        "name" : "Genres"
+        }
 
-+ Response 200
+### Similarity [/api/sources/genre/similarity]
+## Similarity [GET] 
 
-    [Genre][]
++ Response 200 (application/json)
 
-
-### Similarity [GET /api/sources/genre/similarity]
+        {}
 
 
 # Group Tokens
 
 Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検索が行える。
 
-## Token search [GET /api/tokens{?orthBase,lemma,pos1,pos2}]
-
+## Token search [/api/tokens{?orthBase,lemma,pos1,pos2}]
 + Parameters
 
     + orthBase (optional, string, `おもう`) ... 形態素の表層型
     + lemma (optional, string, `思う`) ... 形態素の語彙素型
     + pos1 (optional, string, `動詞`) ... 形態素の品詞（MeCabの最初の品詞）
     + pos2 (optional, string, `一般`) ... 形態素の品詞（MeCabの2番目の品詞）
+    
+### [GET]
 
-+ Model (application/json)
-
-    + Body
++ Response 200 (application/json)
 
         ```
         {}
@@ -94,29 +92,28 @@ Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検
 
 Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
 
-## Collocations search [GET /api/collocations{?string_1,string_2,string_3}]
+## Collocations search [/api/collocations{?string_1,string_2,string_3,type,measure,offset,limit,relation-limit,compact-numbers,scale,debug}]
 
++ Parameters
+    + string_1 (optional, string, `車`) ... 最初の語
+    + string_2 (optional, string, `を`) ... 次の語
+    + string_3 (optional, string, `運転する`) ... 最後の語
+    + type (optional, string, `noun-particle-verb`) ... noun-particle-verb
+    + measure (optional, string, `count`) ...  count|dice|t-score|mi-score
+    + offset (optional, int, `0`) ...  0
+    + limit (optional, int, `80`) ...  80
+    + relation-limit (optional, int, `8`) ...  8
+    + compact-numbers (optional, boolean, `true|1`) ...  true
+    + scale (optional, boolean, `false|0`) ...  false
+    + debug (optional, boolean, `false|0`) ...  false
+
+### [GET]
 + Request
 
-    `string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3`
+        `string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3`
 
-    + Parameters
-        + string_1 (optional, string, `車`) ... 最初の語
-        + string_2 (optional, string, `を`) ... 次の語
-        + string_3 (optional, string, `運転する`) ... 最後の語
-        + type (optional, string, `noun-particle-verb`) ... noun-particle-verb
-        + measure (optional, string, `count`) ...  count|dice|t-score|mi-score
-        + offset (optional, int, `0`) ...  0
-        + limit (optional, int, `80`) ...  80
-        + relation-limit (optional, int, `8`) ...  8
-        + compact-numbers (optional, boolean, `true|1`) ...  true
-        + scale (optional, boolean, `false|0`) ...  false
-        + debug (optional, boolean, `false|0`) ...  false
++ Response 200 (application/json)
 
-+ Model (application/json)
-    
-    + Body
-    
         ```
         [
            {
@@ -173,19 +170,15 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
         ]
         ```
 
-+ Response 200
-
-    [Genre][]
-
-## Collocation tree [GET /api/collocations/tree{?string_1,string_2,string_3}]
-
+## Collocation tree [/api/collocations/tree{?string_1,string_2,string_3}]
 + Parameters
 
     + string_1 (optional, string, `車`) ... 最初の語
+    
+### [GET]
 
-+ Model (application/json)
++ Response 200 (application/json)
 
-    + Body
     
         ```
         {}
