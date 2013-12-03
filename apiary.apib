@@ -1,7 +1,8 @@
-FORMAT: 1A
+FORMAT: X-1A
 HOST: http://wombat.ryu.titech.ac.jp/natsume-server
 
 # natsume-server
+
 natsume-serverはユーザ入力を解析し、一般的にJSONで返答する。
 
 # Group Sources
@@ -20,7 +21,7 @@ Returns general information on the corpora and documents included in Natsume.
 
 + Parameters
 
-    + norm (optional, string, `sentences|paragraphs|sources`) ... The normalization level used for counts.
+    + norm = `sources` (optional, string, `sources`) ... The normalization level used for counts (one of `sources`, `paragraphs`, or `sentences`).
 
 + Model (application/json)
 
