@@ -15,6 +15,8 @@ Returns general information on the corpora and documents included in Natsume.
 
 + Request (application/json)
 
+        
+
 + Response 200 (application/json)
 
 ### Genre [GET /api/sources/genre{?norm}]
@@ -73,11 +75,14 @@ Returns general information on the corpora and documents included in Natsume.
 
 Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検索が行える。
 
-## Token search [GET /api/tokens{?orth}]
+## Token search [GET /api/tokens{?orthBase,lemma,pos1,pos2}]
 
 + Parameters
 
-    + orth (optional, string, `おもう`) ... 形態素の表層型
+    + orthBase (optional, string, `おもう`) ... 形態素の表層型
+    + lemma (optional, string, `思う`) ... 形態素の語彙素型
+    + pos1 (optional, string, `動詞`) ... 形態素の品詞（MeCabの最初の品詞）
+    + pos2 (optional, string, `一般`) ... 形態素の品詞（MeCabの2番目の品詞）
 
 + Model (application/json)
 
@@ -94,6 +99,9 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
 ## Collocations search [GET /api/collocations{?string_1,string_2,string_3}]
 
 + Request
+
+    `string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3`
+
     + Parameters
         + string_1 (optional, string, `車`) ... 最初の語
         + string_2 (optional, string, `を`) ... 次の語
@@ -108,7 +116,7 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
         + debug (optional, boolean, `false|0`) ...  false
 
 + Model (application/json)
-    `string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3`
+    
     + Body
     
         ```
