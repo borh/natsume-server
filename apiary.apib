@@ -250,10 +250,10 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
     + string_3 (optional, string, `運転する`) ... 最後の語
     + type = `noun-particle-verb` (optional, string, `noun-particle-verb`) ... noun-particle-verb
     + measure = `count` (optional, string, `count`) ...  count|dice|t-score|mi-score
-    + offset = `0` (optional, int, `0`) ...  0
-    + limit = `80` (optional, int, `80`) ...  80
-    + relation-limit = `8` (optional, int, `8`) ...  8
-    + compact-numbers = `true` (optional, boolean, `true|1`) ...  true
+    + offset = `0` (optional, int, `0`) ...  検索結果を指定offsetで返す
+    + limit = `80` (optional, int, `80`) ...  検索結果を指定limitまで返す
+    + relation-limit = `8` (optional, int, `8`) ...  検索結果の各助詞（relation）数に限定する
+    + compact-numbers = `true` (optional, boolean, `true|1`) ...  詳細な数値を省略（1.22121... -> 1.22）
     + scale = `false` (optional, boolean, `false|0`) ...  false
     + debug = `false` (optional, boolean, `false|0`) ...  false
 
