@@ -98,19 +98,19 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
     + string_1 (optional, string, `車`) ... 最初の語
     + string_2 (optional, string, `を`) ... 次の語
     + string_3 (optional, string, `運転する`) ... 最後の語
-    + type (optional, string, `noun-particle-verb`) ... noun-particle-verb
-    + measure (optional, string, `count`) ...  count|dice|t-score|mi-score
-    + offset (optional, int, `0`) ...  0
-    + limit (optional, int, `80`) ...  80
-    + relation-limit (optional, int, `8`) ...  8
-    + compact-numbers (optional, boolean, `true|1`) ...  true
-    + scale (optional, boolean, `false|0`) ...  false
-    + debug (optional, boolean, `false|0`) ...  false
+    + type = `noun-particle-verb` (optional, string, `noun-particle-verb`) ... noun-particle-verb
+    + measure = `count` (optional, string, `count`) ...  count|dice|t-score|mi-score
+    + offset = `0` (optional, int, `0`) ...  0
+    + limit = `80` (optional, int, `80`) ...  80
+    + relation-limit = `8` (optional, int, `8`) ...  8
+    + compact-numbers = `true` (optional, boolean, `true|1`) ...  true
+    + scale = `false` (optional, boolean, `false|0`) ...  false
+    + debug = `false` (optional, boolean, `false|0`) ...  false
 
 ### [GET]
 + Request
 
-        `string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3`
+        string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3
 
 + Response 200 (application/json)
 
