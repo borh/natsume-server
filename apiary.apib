@@ -342,16 +342,11 @@ Returns positions of errors by error type and confidence.
 
 現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。
 
-## Register error identification [api/errors/register{?debug}]
+## Register error identification [/api/errors/register]
 
 POSTされたテキスト文章の誤り箇所を返す。
 
 curl 'http://wombat.ryu.titech.ac.jp/natsume-server/api/errors/register' -d '実験をやる'
-
-+ Parameters
-
-    + debug = `false` (optional, boolean, `false|0`) ...  false
-
 
 ### [POST]
 
