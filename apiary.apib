@@ -339,3 +339,22 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
 # Group Error Identification
 
 Returns positions of errors by error type and confidence.
+
+現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。
+
+## Register error identification [api/errors/register{?debug}]
+
+POSTされたテキスト文章の誤り箇所を返す。
+
++ Parameters
+
+    + debug = `false` (optional, boolean, `false|0`) ...  false
+
+
+### [POST]
+
++ Response 200 (application/json)
+
+        ```
+        {}
+        ```
