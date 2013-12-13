@@ -346,6 +346,8 @@ Returns positions of errors by error type and confidence.
 
 POSTされたテキスト文章の誤り箇所を返す。
 
+curl 'http://wombat.ryu.titech.ac.jp/natsume-server/api/errors/register' -d '実験をやる'
+
 + Parameters
 
     + debug = `false` (optional, boolean, `false|0`) ...  false
@@ -355,6 +357,36 @@ POSTされたテキスト文章の誤り箇所を返す。
 
 + Response 200 (application/json)
 
-        ```
-        {}
-        ```
+        {
+          "results": [
+            {
+              "type": "token",
+              "registerScore": -1,
+              "begin": 3,
+              "end": 5,
+              "string": "やる"
+            },
+            {
+              "string": "実験をやる",
+              "type": "collocation",
+              "registerScore": -1,
+              "parts": [
+                {
+                  "begin": 0,
+                  "end": 2,
+                  "string": "実験"
+                },
+                {
+                  "begin": 2,
+                  "end": 3,
+                  "string": "を"
+                },
+                {
+                  "begin": 3,
+                  "end": 5,
+                  "string": "やる"
+                }
+              ]
+            }
+          ]
+        }
