@@ -3,21 +3,30 @@
             [io.pedestal.service.http.route :as route]
             [io.pedestal.service.http.body-params :as body-params]
             [io.pedestal.service.http.route.definition :refer [defroutes]]
-            [io.pedestal.service.interceptor :refer [#_defhandler #_definterceptor defon-response defon-request]]
+            [io.pedestal.service.interceptor :refer [defhandler #_definterceptor defon-response defon-request]]
 
             [ring.util.response :as rr]
             [cheshire.core :as json]
 
             [me.raynes.fs :as fs]
             [clojure.java.io :as io]
+            [clojure.core.reducers :as r]
             [plumbing.core :refer [?> map-keys for-map]]
             [validateur.validation :as v]
+
+            [taoensso.timbre :as timbre]
 
             [natsume-server.utils.naming :refer [dashes->lower-camel underscores->dashes]]
             [natsume-server.config :as cfg]
             [natsume-server.models.db :as db]
-            [natsume-server.stats :refer [association-measures-graph]]
+            [natsume-server.stats :refer [association-measures-graph] :as stats]
+            [natsume-server.text :as text]
+            [natsume-server.annotation-middleware :as anno]
             [natsume-server.lm :as lm]))
+
+;; (timbre/set-config! [:appenders :spit :enabled?] true)
+;; (timbre/set-config! [:shared-appender-config :spit-filename] "log/service.log")
+;; (timbre/refer-timbre)
 
 ;; TODO Optionally do JSON-RPC 2.0
 
@@ -30,6 +39,8 @@
       #_(bootstrap/json-response)
       (update-in [:body] json/generate-string {:key-fn dashes->lower-camel})
       (rr/content-type "application/json;charset=UTF-8")))
+;; See: io/pedestal/service/http/body_params.clj
+(def custom-body-params (body-params/body-params (body-params/default-parser-map :json-options {:key-fn dashes->lower-camel})))
 
 ;; FIXME validate input parameters.
 (defn clean-params [m]
