@@ -197,6 +197,84 @@
   ;; validate: html sort order
   (rr/response (db/query-sentences query-params)))
 
+(defn score-sentence [sentence]
+  (let [tree (anno/sentence->tree sentence)
+        tokens (->> tree
+                    (r/mapcat :tokens)
+                    (r/remove (fn [{:keys [pos pos-1 pos-2]}] (or (= pos :symbol) (and (= pos-1 "助詞") (or (= pos-2 "格助詞") (= pos-2 "係助詞"))))))
+                    (r/map (fn [m]
+                             (future
+                               {:type :token
+                                :register-score (db/token-register-score m) ;; TODO look for better orthographic variations given same lemma!
+                                :tags (remove nil? (:tags m))
+                                :pos (:pos m)
+                                :begin (:begin m)
+                                :end (:end m)
+                                :string (:orth m)})))
+                    (r/map deref)
+                    (into []))
+        collocations (->> tree
+                          natsume-server.collocations/extract-collocations
+                          (r/map (fn [m]
+                                   (let [record
+                                         {:type :collocation
+                                          :pos  (:type m)
+                                          :tags (:tags m)
+                                          :register-score #_(dec (- (rand-int 3))) (db/collocation-register-score m)
+                                          :parts (->> m
+                                                      :data
+                                                      (r/map (fn [part]
+                                                               (let [begin (or (:head-begin part) (:tail-begin part))
+                                                                     end   (or (:head-end part)   (:tail-end part))
+                                                                     pos   (or (:head-pos part)   (:tail-pos part))
+                                                                     tags  (or (:head-tags part)  (:tail-tags part))]
+                                                                 {:begin begin
+                                                                  :end end
+                                                                  :pos pos
+                                                                  :tags (remove nil? tags)
+                                                                  :string (subs sentence begin end) #_(:head-string part) #_(:tail-string part)})))
+                                                      (into []))}]
+                                     (assoc record :string (clojure.string/join " " (map :string (:parts record)))))))
+                          (into []))]
+    (concat tokens collocations)))
+(defn get-text-register [request]
+  ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence) .
+  (let [body (->> request :body slurp)]
+    (if-let [paragraphs (->> body vector text/lines->paragraph-sentences)]
+      (let [update-positions (fn [m offset] (-> m (update-in [:begin] + offset) (update-in [:end] + offset)))
+            scored-sentences (loop [ss (for [paragraph paragraphs sentence paragraph] sentence)
+                                    offset 0
+                                    results []]
+                               (if-let [s (first ss)]
+                                 (let [scored-s (score-sentence s)
+                                       length-s (count s)
+                                       new-offset (+ offset length-s)
+                                       nl? (and (< new-offset (count body)) (= \newline (first (subs body new-offset (inc new-offset)))))]
+                                   (recur (next ss)
+                                          (+ new-offset (if nl? 1 0))
+                                          (concat results
+                                                  (map (fn [m] (case (:type m)
+                                                                :token (update-positions m offset)
+                                                                :collocation (update-in m [:parts]
+                                                                                        (fn [parts]
+                                                                                          (mapv (fn [part]
+                                                                                                  (update-positions part offset))
+                                                                                                parts)))))
+                                                               scored-s))))
+                                 results))
+            bad-morphemes (->> scored-sentences
+                               (r/filter #(== -1 (:register-score %)))
+                               (into []))]
+        (rr/response (if (:debug (:query-params request))
+                       {:results bad-morphemes :debug {:body body :parsed paragraphs}}
+                       {:results bad-morphemes})))
+      (rr/response {:results nil :message "invalid request"}))))
+
+(comment (e! (get-text-register {:body "実験をやるよ。"}))
+         (e! (get-text-register {:body "第１節　介護保険法の概要"}))
+         (pprint (get-text-register {:body "人々の行動はそれぞれの国の文化や慣習、考え方によって違うことがあります。"}))
+         (pprint (get-text-register {:body "実験をやる。そうですね。"})))
+
 #_(defn get-collocations-register [request]
   (if-let [text (-> request :query-params)]))
 
@@ -226,7 +304,7 @@
 
 (defroutes routes
   [[["/api" {:get identity}
-     ^:interceptors [(body-params/body-params) json-interceptor] ; All responses under /api should be in JSON format.
+     ^:interceptors [#_(body-params/body-params) #_custom-body-params json-interceptor] ; All responses under /api should be avaliable in JSON format.
      ["/sources" {:get view-sources-api}
       ["/genre" {:get view-sources-genre}
        ["/similarity" {:get view-genre-similarity}]]]
@@ -235,11 +313,13 @@
       ["/collocations" ^:interceptors [custom-decode-params] {:get view-sentences-by-collocation}]]
      ["/collocations" {:get view-collocations}
       ["/tree" {:get view-collocations-tree}]]
-     #_["/register" TODO {:post get-register-scores :get get-register-scores}]]
+     ["/errors"
+      ["/register" {:post get-text-register}]]]
     ;; FIXME look into chat client app/templates loading! https://github.com/pedestal/samples/blob/master/chat/chat-client/project.clj
     ["/:file" {:get get-file :post list-resources}
      ;; TODO: ClojureScript + d3 visualizations utilizing the full API
-     ^:interceptors [(body-params/body-params) bootstrap/html-body #_json-interceptor]]]])
+     ;; Set default interceptors for paths under /
+     ^:interceptors [(body-params/body-params) bootstrap/html-body]]]])
 
 ;; You can use this fn or a per-request fn via io.pedestal.service.http.route/url-for
 (def url-for (route/url-for-routes routes))
