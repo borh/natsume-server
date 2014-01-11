@@ -32,7 +32,10 @@
 ;; Needs the following to be set up on the PostgreSQL server:
 ;;
 ;;     CREATE USER natsumedev WITH NOSUPERUSER NOCREATEDB ENCRYPTED PASSWORD '';
-;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE';
+;;     CREATE TABLESPACE fastspace LOCATION '/media/ssd-fast/postgresql/data';
+;;     CREATE DATABASE natsumedev WITH OWNER natsumedev ENCODING 'UNICODE' TABLESPACE fastspace;
+;;
+;; Setting the tablespace is optional.
 ;;
 ;; Then switching to the database as postgres user, add the following extensions:
 ;;
@@ -144,6 +147,14 @@
        (fmt/to-sql pred)))
 (defhelper create-table-as [m args]
   (assoc m :create-table-as args))
+
+(defmethod fmt/format-clause :create-unlogged-table-as [[_ [tbl-name pred]] sql-map]
+  (str "CREATE UNLOGGED TABLE "
+       (fmt/to-sql tbl-name)
+       " AS "
+       (fmt/to-sql pred)))
+(defhelper create-unlogged-table-as [m args]
+  (assoc m :create-unlogged-table-as args))
 
 (defmethod fmt/format-clause :rename-table [[_ [prev new]] sql-map]
   (<< "ALTER TABLE ~(fmt/to-sql prev) RENAME TO ~(fmt/to-sql new)"))
