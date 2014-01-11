@@ -92,7 +92,9 @@
     (rr/response (db/get-search-tokens query-params :norm (keyword norm)))))
 
 (defn inclusion-of
-  "Returns a function that, when given a map, will validate that the value of the attribute in that map is one of the given.
+  "Modified version of inclusion-of of validateur.
+
+   Returns a function that, when given a map, will validate that the value of the attribute in that map is one of the given.
 
    Accepted options:
 
@@ -140,6 +142,7 @@
     (v/inclusion-of :measure :in allowed-measures #_(:FIXME :message (str "must be a String: " (clojure.string/join ", " (map dashes->lower-camel allowed-measures)))))
     (v/inclusion-of :type :in @allowed-types #_(:message (str "must be a String: " (clojure.string/join ", " (map dashes->lower-camel @allowed-types)))))]))
 
+;; TODO Any way to standardize this query in, results out step w/ perhaps custom function/macro?
 ;; FIXME Follow JSON API recommendations: http://jsonapi.org/format/#url-based-json-api as well as d3 use-cases.
 ;; TODO Add links to sentence view queries etc. (with link-for Pedestal equiv.)
 ;; FIXME Collocation view: we want genre to be settable -> default to top-level only (we don't need the genre tree?) and never return genre information (except perhaps as a separate field in the response.)
