@@ -198,8 +198,7 @@
   ((comp dorun map) process-corpus! args))
 
 (defn process-directories
-  "Processes directories to check if they exist and returns io/file directory objects with canonical and normalized paths.
-  Skips non-existing directories and removes duplicates."
+  "Processes directories to check if they exist and returns a set of io/file directory objects with canonical and normalized paths."
   [dirs]
   (if (seq dirs)
     (->> dirs
