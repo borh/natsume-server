@@ -3,7 +3,6 @@
             [honeysql.format :as fmt]
             [honeysql.helpers :refer :all]
             [clojure.java.jdbc :as j]
-            [clojure.java.jdbc.sql :as sql]
             [clojure.string :as string]
             [clojure.set :as set]
             [clojure.core.strint :refer [<<]]
@@ -65,8 +64,9 @@
 (defmacro with-db
   [& body]
   `(try
-     (j/with-connection (druid-db-connection)
-       (j/with-naming-strategy {:entity dashes->underscores :keyword underscores->dashes}
+     (j/with-db-connection (druid-db-connection)
+       (do ~@body)
+       #_(j/with-naming-strategy {:entity dashes->underscores :keyword underscores->dashes}
          (do ~@body)))
      (catch java.sql.SQLException e# (j/print-sql-exception-chain e#))))
 
@@ -253,7 +253,7 @@
                       ;; assume generated keys is unsupported and return counts instead:
                       counts))))]
         (if transaction?
-          (j/db-transaction [t-db (j/add-connection db (.getConnection stmt))]
+          (j/with-db-transaction [t-db (j/add-connection db (.getConnection stmt))]
                           (exec-and-return-keys))
           (try
             (exec-and-return-keys)
@@ -276,7 +276,7 @@
   (if (string? (first stmts))
     (apply j/db-do-prepared db transaction? (first stmts) (rest stmts))
     (if transaction?
-      (j/db-transaction [t-db db] (multi-insert-helper t-db stmts))
+      (j/with-db-transaction [t-db db] (multi-insert-helper t-db stmts))
       (multi-insert-helper db stmts))))
 (defn insert!*
   "Given a database connection, a table name and either maps representing rows or
@@ -286,7 +286,7 @@
   [db table & options]
   ;;(println db)
   (let [[transaction? maps-or-cols-and-values-etc] (extract-transaction? options)
-        stmts (apply sql/insert table maps-or-cols-and-values-etc)]
+        stmts (apply j/insert-sql table maps-or-cols-and-values-etc)]
     (if-let [con (j/db-find-connection db)]
       (insert-helper db transaction? stmts)
       (with-open [^java.sql.Connection con (j/get-connection db)]
@@ -319,18 +319,18 @@
   (j/execute! (druid-db-connection)
               (map (if trans trans identity) sql-params)))
 
-(defn seq-execute-tx!
-  [& sql-stmts]
-  (with-db
-    (apply j/do-commands (mapcat #(mapcat h/format %)
-                                 sql-stmts))))
+(comment
+ (defn seq-execute-tx!
+   [& sql-stmts]
+   (with-db
+     (apply j/db-do-commands (mapcat #(mapcat h/format %)
+                                     sql-stmts)))))
 
 (defn seq-execute!
   [& sql-stmts]
   (doseq [stmt (mapcat #(mapcat h/format %)
                        sql-stmts)]
-    (with-db
-      (j/do-commands stmt))))
+    (e! [stmt])))
 
 (defn seq-print-sql
   [& sql-stmts]
