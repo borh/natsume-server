@@ -1,0 +1,403 @@
+FORMAT: 1A
+HOST: http://wombat.ryu.titech.ac.jp/natsume-server
+
+# Natsume Server API
+
+natsume-serverはユーザ入力を解析し、一般的にJSONで返答する。
+
+# Group Sources
+
+Natsumeに含まれるすべてのコーパス（ジャンル）に関する情報、またはコーパス間の類似度を提供する。
+
+## Sources summary [/api/sources]
+
+Returns general summary information on the corpora and documents included in Natsume.
+
+### Summary of corpus [GET]
+
++ Response 200 (application/json)
+
+        "TODO"
+
+## Genre [/api/sources/genre{?norm}]
+
+### Summary of genre [GET] 
++ Parameters
+
+    + norm = `sources` (optional, string, `sources`) ... The normalization level used for counts (one of `sources`, `paragraphs`, or `sentences`).
+
++ Response 200 (application/json)
+
+        {
+        "children" : [
+            {
+                "count" : 252,
+                "name" : "韻文",
+                "children" : [
+                    {
+                        "count" : 100,
+                        "name" : "詩"
+                    },
+                    {
+                        "count" : 60,
+                        "name" : "短歌"
+                    },
+                    {
+                        "count" : 92,
+                        "name" : "俳句"
+                    }
+                ]
+            },
+            {
+                ...
+            },
+            {
+                "name" : "Wikipedia",
+                "count" : 853975
+            }
+        ],
+        "count" : 1027389,
+        "name" : "Genres"
+        }
+
+### Similarity [/api/sources/genre/similarity]
+## Similarity [GET] 
+
++ Response 200 (application/json)
+
+        {}
+
+
+# Group Tokens
+
+Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検索が行える。
+
+## Token search [/api/tokens{?orthBase,lemma,pos1,pos2,norm}]
++ Parameters
+
+    + orthBase (optional, string, `おもう`) ... 形態素の表層型
+    + lemma (optional, string, `思う`) ... 形態素の語彙素型
+    + pos1 (optional, string, `動詞`) ... 形態素の品詞（MeCabの最初の品詞）
+    + pos2 (optional, string, `一般`) ... 形態素の品詞（MeCabの2番目の品詞）
+    + norm = `sources` (optional, string, `sources`) ... The normalization level used for counts (one of `sources`, `paragraphs`, or `sentences`).
+    
+### [GET]
+
++ Response 200 (application/json)
+
+        [
+           {
+              "results" : {
+                 "count" : 1.78,
+                 "name" : "Genres",
+                 "children" : [
+                    {
+                       "count" : 16.83,
+                       "name" : "韻文",
+                       "children" : [
+                          {
+                             "count" : 50.46,
+                             "name" : "短歌"
+                          },
+                          {
+                             "name" : "俳句",
+                             "count" : 15.25
+                          }
+                       ]
+                    },
+                    ...
+                    {
+                       "count" : 1.48,
+                       "name" : "Wikipedia"
+                    }
+                 ]
+              },
+              "token" : {
+                 "pos1" : "動詞",
+                 "lemma" : "思う",
+                 "pos2" : "一般",
+                 "orthBase" : "思る"
+              }
+           },
+           {
+              "token" : {
+                 "pos2" : "一般",
+                 "lemma" : "思う",
+                 "pos1" : "動詞",
+                 "orthBase" : "おもう"
+              },
+              "results" : {
+                 "name" : "Genres",
+                 "children" : [
+                    ...,
+                    {
+                       "children" : [
+                          {
+                             "count" : 2.7,
+                             "name" : "総合",
+                             "children" : [
+                                {
+                                   "children" : [
+                                      {
+                                         "name" : "出版_読書_図書館",
+                                         "count" : 18.22
+                                      }
+                                   ],
+                                   "name" : "総記_マスコミ",
+                                   "count" : 6.69
+                                },
+                                ...
+                             ]
+                          },
+                          ...
+                       ],
+                       "name" : "雑誌",
+                       "count" : 7.23
+                    },
+                    ...
+                 ],
+                 "count" : 6.68
+              }
+           },
+           ...
+        ]
+        [
+           {
+              "results" : {
+                 "count" : 1.78,
+                 "name" : "Genres",
+                 "children" : [
+                    {
+                       "count" : 16.83,
+                       "name" : "韻文",
+                       "children" : [
+                          {
+                             "count" : 50.46,
+                             "name" : "短歌"
+                          },
+                          {
+                             "name" : "俳句",
+                             "count" : 15.25
+                          }
+                       ]
+                    },
+                    ...
+                    {
+                       "count" : 1.48,
+                       "name" : "Wikipedia"
+                    }
+                 ]
+              },
+              "token" : {
+                 "pos1" : "動詞",
+                 "lemma" : "思う",
+                 "pos2" : "一般",
+                 "orthBase" : "思る"
+              }
+           },
+           {
+              "token" : {
+                 "pos2" : "一般",
+                 "lemma" : "思う",
+                 "pos1" : "動詞",
+                 "orthBase" : "おもう"
+              },
+              "results" : {
+                 "name" : "Genres",
+                 "children" : [
+                    ...,
+                    {
+                       "children" : [
+                          {
+                             "count" : 2.7,
+                             "name" : "総合",
+                             "children" : [
+                                {
+                                   "children" : [
+                                      {
+                                         "name" : "出版_読書_図書館",
+                                         "count" : 18.22
+                                      }
+                                   ],
+                                   "name" : "総記_マスコミ",
+                                   "count" : 6.69
+                                },
+                                ...
+                             ]
+                          },
+                          ...
+                       ],
+                       "name" : "雑誌",
+                       "count" : 7.23
+                    },
+                    ...
+                 ],
+                 "count" : 6.68
+              }
+           },
+           ...
+        ]
+
+# Group Collocations
+
+Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
+
+## Collocations search [/api/collocations{?string_1,string_2,string_3,type,measure,offset,limit,relation-limit,compact-numbers,scale,debug}]
+
++ Parameters
+    + string_1 (optional, string, `車`) ... 最初の語
+    + string_2 (optional, string, `を`) ... 次の語
+    + string_3 (optional, string, `運転する`) ... 最後の語
+    + type = `noun-particle-verb` (optional, string, `noun-particle-verb`) ... noun-particle-verb
+    + measure = `count` (optional, string, `count`) ...  count|dice|t-score|mi-score
+    + offset = `0` (optional, int, `0`) ...  検索結果を指定offsetで返す
+    + limit = `80` (optional, int, `80`) ...  検索結果を指定limitまで返す
+    + relation-limit = `8` (optional, int, `8`) ...  検索結果の各助詞（relation）数に限定する
+    + compact-numbers = `true` (optional, boolean, `true|1`) ...  詳細な数値を省略（1.22121... -> 1.22）
+    + scale = `false` (optional, boolean, `false|0`) ...  false
+    + debug = `false` (optional, boolean, `false|0`) ...  false
+
+### [GET]
+<!--
++ Request
+
+        string_1=実験&type=noun_particle_verb&limit=3&relation_limit=3
+-->
+
++ Response 200 (application/json)
+
+        ```
+        [
+           {
+              "data" : [
+                 {
+                    "string3" : "行う",
+                    "count" : 1266
+                 },
+                 {
+                    "count" : 160,
+                    "string3" : "行なう"
+                 },
+                 {
+                    "count" : 90,
+                    "string3" : "繰り返す"
+                 }
+              ],
+              "string2" : "を"
+           },
+           {
+              "data" : [
+                 {
+                    "string3" : "用いる",
+                    "count" : 117
+                 },
+                 {
+                    "count" : 113,
+                    "string3" : "よる"
+                 },
+                 {
+                    "string3" : "成功する",
+                    "count" : 66
+                 }
+              ],
+              "string2" : "に"
+           },
+           {
+              "data" : [
+                 {
+                    "count" : 350,
+                    "string3" : "行われる"
+                 },
+                 {
+                    "count" : 28,
+                    "string3" : "ある"
+                 },
+                 {
+                    "count" : 25,
+                    "string3" : "行なわれる"
+                 }
+              ],
+              "string2" : "が"
+           }
+        ]
+        ```
+
+## Collocation tree [/api/collocations/tree{?string_1,string_2,string_3}]
++ Parameters
+
+    + string_1 (optional, string, `車`) ... 最初の語
+    
+### [GET]
+
++ Response 200 (application/json)
+
+    
+        ```
+        {}
+        ```
+
+# Group Sentences
+
+## Collocation sentence Search [/api/sentences/collocations{?string_1,string_2,string_3}]
++ Parameters
+
+    + string_1 (optional, string, `車`) ... 最初の語
+    
+### [GET]
+
++ Response 200 (application/json)
+
+    
+        ```
+        {}
+        ```
+
+# Group Error Identification
+
+Returns positions of errors by error type and confidence.
+
+現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。
+
+## Register error identification [/api/errors/register]
+
+POSTされたテキスト文章の誤り箇所を返す。
+
+curl 'http://wombat.ryu.titech.ac.jp/natsume-server/api/errors/register' -d '実験をやる'
+
+### [POST]
+
++ Response 200 (application/json)
+
+        {
+          "results": [
+            {
+              "type": "token",
+              "registerScore": -1,
+              "begin": 3,
+              "end": 5,
+              "string": "やる"
+            },
+            {
+              "string": "実験をやる",
+              "type": "collocation",
+              "registerScore": -1,
+              "parts": [
+                {
+                  "begin": 0,
+                  "end": 2,
+                  "string": "実験"
+                },
+                {
+                  "begin": 2,
+                  "end": 3,
+                  "string": "を"
+                },
+                {
+                  "begin": 3,
+                  "end": 5,
+                  "string": "やる"
+                }
+              ]
+            }
+          ]
+        }
