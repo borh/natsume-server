@@ -1,6 +1,7 @@
 (ns natsume-server.stats
   (:require [plumbing.core :refer [defnk for-map]]
-            [plumbing.graph :as graph]))
+            [plumbing.graph :as graph]
+            [incanter.stats :as stats]))
 
 ;; # Statistical Measures and Utility Functions
 
@@ -277,6 +278,17 @@
   [f-ii f-xx f-df] ;; How do keywords map to collocations?
   ())
 
+;; FIXME needs average document length
+(defnk okapi-tf
+  [f-ii f-xx f-df k1 b]
+  )
+
+;; ## Similarity measures
+
+;; These measures are learned from the whole vocabulary.
+;; https://news.ycombinator.com/item?id=6216044
+;; -   Vector space
+
 ;; ### Sketch Engine's Thesaurus Score
 
 ;; FIXME not sure we can do this (low priority):
@@ -375,6 +387,13 @@
 (def compute-association-measures ; FIXME: eager faster than lazy? should move to simple functions for perf perhaps
   (graph/eager-compile association-measures-graph))
 
+;; ## Summary Measure
+
+;; When dealing with several measures, we can take the mean reciprocal rank (MRR) to get a summary rank.
+
+(defn mean-reciprocal-rank
+  [])
+
 ;; ## Measures that Operate on a Text
 
 ;; ### Yule's K
@@ -433,11 +452,17 @@
 
 ;; ## Register measures
 
+(defn sd [xs]
+  (stats/sd xs))
 
-(defn register-simple
-  "Old formula, but include measures other than chi-sq."
-  [query]
-  )
+(defn mean [xs]
+  (stats/mean xs))
+
+(defn chisq-thresh [n]
+  (first (stats/sample-chisq 0.05 :df n)))
+
+(defn chisq-test [xs]
+  (:X-sq (stats/chisq-test :x xs)))
 
 (defn register
   "Based on tree similarities."
