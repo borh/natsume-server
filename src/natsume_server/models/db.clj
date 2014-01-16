@@ -194,6 +194,17 @@
   (not= (get-search-tokens {:orth-base "こと"} :norm :sentences)
         (get-search-tokens {:orth-base "こと"})))
 
+(defn get-one-search-token [query-map & {:keys [norm] :or {norm :tokens}}]
+  (->> (qm {:select [:*]
+            :from [:search-tokens]
+            :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
+          genre-ltree-transform)
+       seq-to-tree
+       ;; Optionally normalize results if :norm key is set and available.
+       (?>> (contains? @norm-map norm) #(normalize-tree (norm @norm-map) % :clean-up-fn compact-number))
+       ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
+       ))
+
 (comment
   (defn get-gram-counts [& {:keys [n aggregates return-fields query-map]
                             :or {n 3 aggregates [:count] query-map {}}}]
