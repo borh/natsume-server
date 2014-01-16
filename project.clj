@@ -14,7 +14,7 @@
                  [org.postgresql/postgresql "9.2-1003-jdbc4"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.0"]
                  [java-jdbc/dsl "0.1.0"]
-                 [com.alibaba/druid "1.0.1"]
+                 [com.alibaba/druid "1.0.2"]
                  [honeysql "0.4.3"]
                  ;;
 
@@ -26,10 +26,10 @@
                  [org.slf4j/log4j-over-slf4j "1.7.5"]
                  ;;
 
-                 ;; Fulltext search
-                 [org.elasticsearch/elasticsearch "1.0.0.Beta2"]
-                 [clojurewerkz/elastisch "1.3.0"]
-                 ;;
+                 ;;;; Fulltext search
+                 ;;[org.elasticsearch/elasticsearch "1.0.0.Beta2"]
+                 ;;[clojurewerkz/elastisch "1.4.0"]
+                 ;;;;
 
                  ;; Utils
                  [org.apache.commons/commons-compress "1.6"]
@@ -59,12 +59,14 @@
                  [io.pedestal/pedestal.service-tools "0.2.2"]
                  [io.pedestal/pedestal.jetty "0.2.2"]
                  ;; [io.pedestal/pedestal.tomcat "0.2.1"]
-                 [cheshire "5.3.0"]
+                 [cheshire "5.3.1"]
                  ;;[org.blancas/kern "0.7.0"]
                  [camel-snake-kebab "0.1.2"]
-                 [com.novemberain/validateur "1.6.0"]
+                 [com.novemberain/validateur "1.7.0"]
                  [org.clojure/core.cache "0.6.3"]
                  ;; Authentication TODO: friend & https://github.com/osbert/persona-kit
+                 [org.clojure/clojurescript "0.0-2138"]
+                 [om "0.1.7"]
                  ;;
 
                  ;; ClojureScript
@@ -79,7 +81,7 @@
                  [com.aliasi/lingpipe "4.1.0"]
                  ;; [clj-liblinear "0.0.1-SNAPSHOT"] ; TODO https://github.com/lynaghk/clj-liblinear
                  [bigml/sampling "2.1.0"]
-                 [prismatic/plumbing "0.1.1"]
+                 [prismatic/plumbing "0.2.0"]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.2.1"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -125,9 +127,9 @@
                                   [criterium "0.4.2"]
                                   [ring-mock "0.1.5"]
                                   [org.clojure/tools.namespace "0.2.4"]
-                                  [org.clojure/java.classpath "0.2.1"]
+                                  [org.clojure/java.classpath "0.2.2"]
                                   [peridot "0.2.2" :exclusions [org.apache.httpcomponents/httpmime]] ; TODO
                                   ]}
              :server     {:jvm-opts ["-server" "-XX:+UseG1GC" "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts" "-XX:+UseFastAccessorMethods" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-XX:MaxGCPauseMillis=20"]} ;; FIXME benchmark
-             :production {:jvm-opts ["-server" "-XX:+UseG1GC" "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts" "-XX:+UseFastAccessorMethods" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-XX:PermSize=64M" "-XX:MaxPermSize=512M" "-Xmx4g"]}}
+             :production {:jvm-opts ["-server" "-XX:+UseG1GC" "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts" "-XX:+UseFastAccessorMethods" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-XX:PermSize=64M" "-XX:MaxPermSize=512M" "-Xmx8g"]}}
   :pedantic :warn)
