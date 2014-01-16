@@ -245,8 +245,8 @@
          compact-numbers true
          scale false}
     :as m}]
-  (let [aggregates [:count :f-ix :f-xi]
-        n (count (string/split (name type) #"-"))
+  (let [n (count (string/split (name type) #"-"))
+        aggregates (if (= n 1) [:count] [:count :f-ix :f-xi])
         query (select-keys m [:string-1 :string-2 :string-3 :string-4])
         measure (keyword measure)
         select-fields (->> [:string-1 :string-2 :string-3 :string-4] (take n) (into #{}))
@@ -268,7 +268,7 @@
                    :where where-clause}
                   (?> (not-empty selected) assoc :group-by selected)))
              #_(map genre-ltree-transform)
-             (map #(let [contingency-table (stats/expand-contingency-table
+             (?>> (> n 1) map #(let [contingency-table (stats/expand-contingency-table
                                             {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
                                              :f-xx (-> @gram-totals type :count)})] ;; FIXME Should add :genre filtering to gram-totals when we specify some genre filter!
                      (case measure
@@ -299,10 +299,10 @@
     :or {type :noun-particle-verb
          measure :count
          compact-numbers true
-         scale true}
+         scale true} ;; FIXME scale unused
     :as m}]
-  (let [aggregates [:count :f-ix :f-xi]
-        n (count (string/split (name type) #"-"))
+  (let [n (count (string/split (name type) #"-"))
+        aggregates (if (= n 1) [:count] [:count :f-ix :f-xi])
         query (select-keys m [:string-1 :string-2 :string-3 :string-4])
         measure (keyword measure)
         select-fields (->> [:string-1 :string-2 :string-3 :string-4] (take n) (into #{}))
