@@ -100,16 +100,22 @@
   :plugins [[lein-cljsbuild "0.3.3"]]
   :test-paths ["spec/"]
   :resources-paths ["config" "public"]
-  :source-paths ["src" "src/cljs" "public"]
+  :source-paths ["src" "public"]
   :aliases {"run-dev" ["trampoline" "run" "-m" "natsume-server.api.service/run-dev"]}
   ;;:hooks [leiningen.cljsbuild]
-  :cljsbuild {:builds
-              [{:source-paths ["src/cljs"]
-                :jar true
-                :compiler {:pretty-print false
-                           :output-to "public/natsume.js"
-                           :source-map "public/natsume.js.map"
-                           :optimizations :advanced}}]}
+  :cljsbuild {:builds [{:id "dev"
+                        :source-paths ["src/cljs"]
+                        :compiler {:output-to "public/main.js"
+                                   :output-dir "public/out"
+                                   :optimizations :none
+                                   :source-map true}}
+                       {:id "release"
+                        :source-paths ["src/cljs"]
+                        :compiler {:output-to "public/main.js"
+                                   :optimizations :advanced
+                                   :pretty-print false
+                                   :preamble ["react/react.min.js"]
+                                   :externs ["react/externs/react.js"]}}]}
   #_:repl-options  #_{:init-ns user
                   :init (try
                           (use 'io.pedestal.service-tools.dev)
