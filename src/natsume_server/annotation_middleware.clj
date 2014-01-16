@@ -163,8 +163,10 @@
 
 (defn- add-tags [tokens]
   (->> tokens
-       (mapv #(assoc % :tags (set/union (recode-tags % (:pos %))
-                                        (if (not= "O" (:ne %)) #{(keywordize-ne (:ne %))} #{}))))))
+       (mapv #(assoc % :tags (->> (set/union (recode-tags % (:pos %))
+                                             (if (not= "O" (:ne %)) #{(keywordize-ne (:ne %))} #{}))
+                                  (r/remove nil?)
+                                  (into #{}))))))
 
 (defn- recode-token
   "Recodes tokens in given chunk c into meta-information tags.
