@@ -207,7 +207,7 @@
 
 ;; Memoized q using LRU (Least Recently Used) strategy.
 (def query-cache
-  (atom (cache/lru-cache-factory {} :threshold 1000)))
+  (atom (cache/lru-cache-factory {} :threshold 10000)))
 (defn qm
   [query & trans]
   (if (cache/has? @query-cache query)
