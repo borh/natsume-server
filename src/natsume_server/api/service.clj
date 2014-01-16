@@ -197,9 +197,8 @@
   ;; validate: html sort order
   (rr/response (db/query-sentences query-params)))
 
-(defn score-sentence [sentence]
-  (let [tree (anno/sentence->tree sentence)
-        tokens (->> tree
+(defn score-sentence [tree sentence]
+  (let [tokens (->> tree
                     (r/mapcat :tokens)
                     (r/remove (fn [{:keys [pos pos-1 pos-2]}] (or (= pos :symbol) (and (= pos-1 "助詞") (or (= pos-2 "格助詞") (= pos-2 "係助詞"))))))
                     (r/map (fn [m]
@@ -210,31 +209,35 @@
                                 :pos (:pos m)
                                 :begin (:begin m)
                                 :end (:end m)
+                                :lemma (:lemma m)
                                 :string (:orth m)})))
                     (r/map deref)
                     (into []))
         collocations (->> tree
                           natsume-server.collocations/extract-collocations
+                          (r/remove (fn [m] (= (:type m) [:verb :verb])))
                           (r/map (fn [m]
                                    (let [record
                                          {:type :collocation
                                           :pos  (:type m)
                                           :tags (:tags m)
-                                          :register-score #_(dec (- (rand-int 3))) (db/collocation-register-score m)
+                                          :register-score (db/collocation-register-score m)
                                           :parts (->> m
                                                       :data
                                                       (r/map (fn [part]
                                                                (let [begin (or (:head-begin part) (:tail-begin part))
                                                                      end   (or (:head-end part)   (:tail-end part))
                                                                      pos   (or (:head-pos part)   (:tail-pos part))
-                                                                     tags  (or (:head-tags part)  (:tail-tags part))]
+                                                                     tags  (or (:head-tags part)  (:tail-tags part))
+                                                                     lemma (or (:head-string part) (:tail-string part))]
                                                                  {:begin begin
                                                                   :end end
                                                                   :pos pos
                                                                   :tags (remove nil? tags)
+                                                                  :lemma lemma
                                                                   :string (subs sentence begin end) #_(:head-string part) #_(:tail-string part)})))
                                                       (into []))}]
-                                     (assoc record :string (clojure.string/join " " (map :string (:parts record)))))))
+                                     (assoc record :string (clojure.string/join (map :string (:parts record)))))))
                           (into []))]
     (concat tokens collocations)))
 (defn get-text-register [request]
@@ -242,33 +245,40 @@
   (let [body (->> request :body slurp)]
     (if-let [paragraphs (->> body vector text/lines->paragraph-sentences)]
       (let [update-positions (fn [m offset] (-> m (update-in [:begin] + offset) (update-in [:end] + offset)))
-            scored-sentences (loop [ss (for [paragraph paragraphs sentence paragraph] sentence)
-                                    offset 0
-                                    results []]
-                               (if-let [s (first ss)]
-                                 (let [scored-s (score-sentence s)
-                                       length-s (count s)
-                                       new-offset (+ offset length-s)
-                                       nl? (and (< new-offset (count body)) (= \newline (first (subs body new-offset (inc new-offset)))))]
-                                   (recur (next ss)
-                                          (+ new-offset (if nl? 1 0))
-                                          (concat results
-                                                  (map (fn [m] (case (:type m)
-                                                                :token (update-positions m offset)
-                                                                :collocation (update-in m [:parts]
-                                                                                        (fn [parts]
-                                                                                          (mapv (fn [part]
-                                                                                                  (update-positions part offset))
-                                                                                                parts)))))
-                                                               scored-s))))
-                                 results))
+
+            [scored-sentences parsed-tokens]
+            (loop [ss (for [paragraph paragraphs sentence paragraph] sentence)
+                   offset 0
+                   parsed-tokens []
+                   results []]
+              (if-let [s (first ss)]
+                (let [tree (anno/sentence->tree s)
+                      token-seq (mapv #(select-keys % [:orth :orth-base :lemma :pos-1 :pos-2 :c-form :c-type]) (mapcat :tokens tree))
+                      scored-s (score-sentence tree s)
+                      length-s (count s)
+                      new-offset (+ offset length-s)
+                      nl? (and (< new-offset (count body)) (= \newline (first (subs body new-offset (inc new-offset)))))]
+                  (recur (next ss)
+                         (+ new-offset (if nl? 1 0))
+                         (concat parsed-tokens (if nl? (conj token-seq {:orth "\n" :orth-base "\n" :lemma "\n" :pos-1 "補助記号" :pos-2 "*" :c-form "*" :c-type "*"}) token-seq))
+                         (concat results
+                                 (map (fn [m] (case (:type m)
+                                               :token (update-positions m offset)
+                                               :collocation (update-in m [:parts]
+                                                                       (fn [parts]
+                                                                         (mapv (fn [part]
+                                                                                 (update-positions part offset))
+                                                                               parts)))))
+                                      scored-s))))
+                [results (vec parsed-tokens)]))
+
             bad-morphemes (->> scored-sentences
-                               (r/filter #(== -1 (:register-score %)))
+                               (r/filter #(map? (:register-score %)))
                                (into []))]
-        (rr/response (if (:debug (:query-params request))
-                       {:results bad-morphemes :debug {:body body :parsed paragraphs}}
-                       {:results bad-morphemes})))
-      (rr/response {:results nil :message "invalid request"}))))
+        (rr/response (if (:debug (:query-params (clean-params request)))
+                       {:results bad-morphemes :parsed-tokens parsed-tokens :debug {:body body :parsed paragraphs}}
+                       {:results bad-morphemes :parsed-tokens parsed-tokens})))
+      (rr/response {:results nil :message "invalid request" :request request}))))
 
 (comment (e! (get-text-register {:body "実験をやるよ。"}))
          (e! (get-text-register {:body "第１節　介護保険法の概要"}))
