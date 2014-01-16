@@ -157,15 +157,36 @@
     :chunks     (seq-to-tree (q (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
     :tokens     (seq-to-tree (q (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))}))
 
+(def ^:private decimal-format (java.text.DecimalFormat. "#.00"))
+(defprotocol ICompactNumber
+  (compact-number [num]))
+(extend-protocol ICompactNumber
+
+  java.lang.Double
+  (compact-number [x]
+    (Double/parseDouble (.format ^java.text.DecimalFormat decimal-format x)))
+
+  clojure.lang.Ratio
+  (compact-number [x]
+    (Double/parseDouble (.format ^java.text.DecimalFormat decimal-format x)))
+
+  java.lang.Long
+  (compact-number [x] x)
+
+  clojure.lang.BigInt
+  (compact-number [x] x))
+
+;; FIXME TODO add compact-numbers
+;; TODO add natsume-units version
 (defn get-search-tokens [query-map & {:keys [norm] :or {norm :tokens}}]
-  (->> (q {:select [:*]
-           :from [:search-tokens]
-           :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
+  (->> (qm {:select [:*]
+            :from [:search-tokens]
+            :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
           genre-ltree-transform)
        (group-by #(select-keys % [:lemma :orth-base :pos-1 :pos-2]))
        (map-vals seq-to-tree)
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (contains? @norm-map norm) map-vals (partial normalize-tree (norm @norm-map)))
+       (?>> (contains? @norm-map norm) map-vals #(normalize-tree (norm @norm-map) % :clean-up-fn compact-number))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        vec
        (map #(hash-map :token (first %) :results (second %)))))
@@ -196,25 +217,6 @@
 
 (def gram-types
   (delay (set (q (-> (select :type) (from :gram-norm)) underscores->dashes :type))))
-
-(def ^:private decimal-format (java.text.DecimalFormat. "#.00"))
-(defprotocol ICompactNumber
-  (compact-number [num]))
-(extend-protocol ICompactNumber
-
-  java.lang.Double
-  (compact-number [x]
-    (Double/parseDouble (.format ^java.text.DecimalFormat decimal-format x)))
-
-  clojure.lang.Ratio
-  (compact-number [x]
-    (Double/parseDouble (.format ^java.text.DecimalFormat decimal-format x)))
-
-  java.lang.Long
-  (compact-number [x] x)
-
-  clojure.lang.BigInt
-  (compact-number [x] x))
 
 ;; TODO custom-query to supplement and-query type queries (i.e. text match LIKE "%考え*%")
 ;; TODO break function into two for streamlined API: general collocation query and tree-seq query
