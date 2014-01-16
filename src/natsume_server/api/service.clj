@@ -89,7 +89,7 @@
 (defn view-tokens [{:keys [query-params]}]
   (let [{:keys [genre norm] :or {norm :tokens}} query-params] ; TODO :norm should include other measures like tf-idf, dice, etc.
     ;; FIXME actually, norm should not be settable, but only indirectly available through other measures like tf-idf, etc.
-    (rr/response (db/get-search-tokens query-params :norm (keyword norm)))))
+    (rr/response (db/get-one-search-token (clean-params query-params) :norm (keyword norm)))))
 
 (defn inclusion-of
   "Modified version of inclusion-of of validateur.
