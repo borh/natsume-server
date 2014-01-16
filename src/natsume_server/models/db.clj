@@ -40,12 +40,12 @@
 (defn insert-sentence [sentence-values]
   (i! :sentences
       (-> sentence-values
-          #_(update-in [:tags] make-jdbc-array)
+          #_(update-in [:s] make-jdbc-array)
           (select-keys (schema/schema-keys schema/sentences-schema)))))
 
 ;; ### Collocations
 (defn insert-collocations! [collocations sentences-id]
-  (doseq [collocation (filter #(> (count (:type %)) 1) collocations)]
+  (doseq [collocation (filter identity #_#(> (count (:type %)) 1) collocations)]
     (let [grams (count (:type collocation))
           record-map (apply merge (for [i (range 1 (inc grams))]
                                     (let [record (nth (:data collocation) (dec i))]
