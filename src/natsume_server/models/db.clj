@@ -418,3 +418,54 @@
 (comment
   (query-sentences {:string-1 "こと" :type :noun-particle-verb})
   (query-sentences {:string-1 "こと" :type :noun-particle-verb-particle :genre ["書籍" "*"] :limit 10 :html true}))
+
+
+(defn sigma-score [pos tree]
+  (if-let [freqs (->> tree :children (map (juxt :name :count)) (into {}) seq)]
+    (let [mean (stats/mean (vals freqs))
+          sd (stats/sd (vals freqs))
+          ;; FIXME / TODO: make the test different for different POSs: 0.01 for nouns, 0.05 for everything else?
+          ;; df = 11
+          ;; 0.10      	0.05 	0.025 	0.01 	0.005
+          ;; 17.275 	19.675 	21.920 	24.725 	26.757
+          chisq-line (case pos
+                       :noun 26.757
+                       :particle 26.757
+                       :auxiliary-verb 26.757
+                       19.675) ;; for df = 12 #_(stats/chisq-thresh (count freqs)) ;; FIXME broken for now...
+          ;;chi-score (stats/chisq-test (vals freqs))
+          chisq-fn #(let [chi (/ (Math/pow (- % mean) 2.0) mean)]
+                      (if (> chi chisq-line)
+                        (- % mean)
+                        0.0))
+          chisq-filtered (map-vals chisq-fn freqs)
+          ;; sigma-fn (fn [x] (/ (- x mean) sd))
+          ;; sigma-filtered (->> freqs (map-vals sigma-fn) (r/filter #(>= 3 (val %))) (into {}))
+          good-sum (/ (or (reduce + (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))) 0.0) 3.0)
+          bad-sum (/ (or (reduce + (vals (select-keys  chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))) 0.0) 3.0)]
+      (if (and (>= good-sum 0.0) (neg? bad-sum))
+        1
+        (if (and (<= good-sum 0.0) (pos? bad-sum) #_(< (+ mean good-sum) 10000))
+          {:good (compact-number good-sum) :bad (compact-number bad-sum) :mean (compact-number mean)}
+          0)))
+    -2))
+
+(defn token-register-score
+  "Old formula, but include measures other than chi-sq."
+  [query]
+  (let [results (get-one-search-token query)]
+    (sigma-score (:pos query) results)))
+
+(defn collocation-register-score [query]
+  ;;(println query)
+  (if (= 1 (count (:data query)))
+    -2
+    (let [transformed-keys (zipmap [:string-1 :string-2 :string-3 :string-4]
+                                   (mapcat (fn [part] (remove nil? [(:head-string part) (:tail-string part)]))
+                                           (:data query)))]
+      (sigma-score :collocation
+                   (query-collocations-tree (assoc transformed-keys
+                                              :type (->> (:type query)
+                                                         (map name)
+                                                         (clojure.string/join "-")
+                                                         keyword)))))))
