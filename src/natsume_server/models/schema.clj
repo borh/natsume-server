@@ -347,8 +347,9 @@ return the DDL string for creating that unlogged table."
   ;; TODO: find right place to filter rare collocations, especially on Wikipedia data (probably filter with HAVING clause).
   ;; TODO: should the token search table include computed measures like tf-idf?
   ;; TODO: cast counts as integer
+  ;; FIXME 助動詞 (everything but 動詞?) should have c-form added to pos-2(1?) to differentiate between だ、な、に etc.
   [(create-table-as :search-tokens
-                    {:select [:pos-1 :pos-2 :orth-base :lemma :genre
+                    {:select [:pos-1 :pos-2 :c-form :orth-base :lemma :genre
                               [(h/call :count :pos-1) :count]
                               [(h/call :count-distinct :sentences.id) :sentences-count]
                               [(h/call :count-distinct :sentences.paragraph-order-id) :paragraphs-count]
@@ -357,8 +358,8 @@ return the DDL string for creating that unlogged table."
                      :where [:and
                              [:= :tokens.sentences-id :sentences.id]
                              [:= :sentences.sources-id :sources.id]]
-                     :group-by [:pos-1 :pos-2 :orth-base :lemma :genre]
-                     :order-by [:lemma :orth-base :pos-1 :pos-2 :genre :count]})
+                     :group-by [:pos-1 :pos-2 :c-form :orth-base :lemma :genre]
+                     :order-by [:lemma :orth-base :pos-1 :pos-2 :c-form :genre :count]})
    (create-index :search-tokens :genre :gist)
    (create-index :search-tokens :genre)
    (create-index :search-tokens :pos-1)
