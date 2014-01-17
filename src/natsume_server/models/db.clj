@@ -157,6 +157,8 @@
     :chunks     (seq-to-tree (q (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
     :tokens     (seq-to-tree (q (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))}))
 
+(def genre-names (delay (->> @norm-map :sources :children (map :name) set)))
+
 (def ^:private decimal-format (java.text.DecimalFormat. "#.00"))
 (defprotocol ICompactNumber
   (compact-number [num]))
@@ -419,30 +421,47 @@
   (query-sentences {:string-1 "こと" :type :noun-particle-verb})
   (query-sentences {:string-1 "こと" :type :noun-particle-verb-particle :genre ["書籍" "*"] :limit 10 :html true}))
 
+(comment
+  ;;chisq-p (case pos
+  ;;          :noun 0.001
+  ;;          :verb 0.001
+  ;;          :particle 0.005
+  ;;          :auxiliary-verb 0.005
+  ;;          0.01)
+  ;; for df = 12 #_(stats/chisq-thresh (count freqs)) ;; FIXME broken for now...
+  ;; chi-score #spy/d (stats/chisq-test (vals freqs))
+  ;; sigma-fn (fn [x] (/ (- x mean) sd))
+  ;; sigma-filtered (->> freqs (map-vals sigma-fn) (r/filter #(>= 3 (val %))) (into {}))
+  )
 
 (defn sigma-score [pos tree]
   (if-let [freqs (->> tree :children (map (juxt :name :count)) (into {}) seq)]
-    (let [mean (stats/mean (vals freqs))
+    (let [freqs (let [diff (- (count @genre-names) (count freqs))]
+                  (if (pos? diff)
+                    (concat freqs (seq (zipmap (clojure.set/difference @genre-names (set (map first freqs))) (repeat diff 0.0))))
+                    freqs))
+          mean (stats/mean (vals freqs))
           sd (stats/sd (vals freqs))
-          ;; FIXME / TODO: make the test different for different POSs: 0.01 for nouns, 0.05 for everything else?
-          ;; df = 11
+          ;; df = 11 (BCCWJ + STJC + Wikipedia?)
           ;; 0.10      	0.05 	0.025 	0.01 	0.005
           ;; 17.275 	19.675 	21.920 	24.725 	26.757
           chisq-line (case pos
                        :noun 26.757
+                       :verb 26.757
                        :particle 26.757
                        :auxiliary-verb 26.757
-                       19.675) ;; for df = 12 #_(stats/chisq-thresh (count freqs)) ;; FIXME broken for now...
-          ;;chi-score (stats/chisq-test (vals freqs))
+                       19.675)
           chisq-fn #(let [chi (/ (Math/pow (- % mean) 2.0) mean)]
                       (if (> chi chisq-line)
                         (- % mean)
                         0.0))
-          chisq-filtered (map-vals chisq-fn freqs)
-          ;; sigma-fn (fn [x] (/ (- x mean) sd))
-          ;; sigma-filtered (->> freqs (map-vals sigma-fn) (r/filter #(>= 3 (val %))) (into {}))
-          good-sum (/ (or (reduce + (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))) 0.0) 3.0)
-          bad-sum (/ (or (reduce + (vals (select-keys  chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))) 0.0) 3.0)]
+          chisq-filtered #spy/d (map-vals chisq-fn (remove #(zero? (second %)) freqs))
+          good-sum (if-let [good-vals (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))]
+                     (/ (reduce + good-vals) (count good-vals))
+                     0.0)
+          bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
+                    (/ (reduce + bad-vals) (count bad-vals))
+                    0.0)]
       (if (and (>= good-sum 0.0) (neg? bad-sum))
         1
         (if (and (<= good-sum 0.0) (pos? bad-sum) #_(< (+ mean good-sum) 10000))
