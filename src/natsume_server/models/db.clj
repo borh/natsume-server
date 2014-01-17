@@ -455,7 +455,7 @@
                       (if (> chi chisq-line)
                         (- % mean)
                         0.0))
-          chisq-filtered #spy/d (map-vals chisq-fn (remove #(zero? (second %)) freqs))
+          chisq-filtered (map-vals chisq-fn (remove #(zero? (second %)) freqs))
           good-sum (if-let [good-vals (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))]
                      (/ (reduce + good-vals) (count good-vals))
                      0.0)
