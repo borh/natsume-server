@@ -106,17 +106,19 @@
                         [:= :sentences.sources_id :sources.id]
                         [:tilda :sources.genre query]]))))))
 
-(defn tokens-by-genre [q & {:keys [field] :or {field :lemma}}]
-  (let [query (string/join "." (if (< (count q) 4) (conj q "*") q))]
+(defn tokens-by-genre [genre & {:keys [field] :or {field :lemma}}]
+  (let [query (if (< (count genre) 4) (conj genre "*") genre)]
     (println query)
     (mapcat vals
-            (q (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
+            (q #_(h/raw (str "SELECT string_agg(tokens.orth, ' ') FROM tokens, sentences, sources WHERE tokens.sentences_id=sentences.id AND sentences.sources_id=sources.id AND sources.genre ~ '" query "' GROUP BY tokens.sentences_id"))
+               (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
                    (from :tokens :sentences :sources)
                    (where [:and
                            [:= :tokens.sentences-id :sentences.id]
-                           [:= :sentences.sources_id :sources.id]
-                           [:tilda :sources.genre query]])
-                   (group-by :tokens.sentences-id))))))
+                           [:= :sentences.sources-id :sources.id]
+                           [:tilda :sources.genre genre]])
+                   (group :tokens.sentences-id))))))
+
 
 (defn all-sentences-with-genre []
   (q (-> (select :text :sources.genre)
@@ -124,8 +126,8 @@
          (where [:= :sentences.sources_id :sources.id])
          (group :sources.genre :sentences.id))))
 
-(defn sources-ids-by-genre [q]
-  (let [query (string/join "." (if (< (count q) 4) (conj q "*") q))]
+(defn sources-ids-by-genre [genre]
+  (let [query (if (< (count genre) 4) (conj genre "*") genre)]
     (map :id
          (q (-> (select :id)
                 (from :sources)
@@ -196,14 +198,14 @@
   (not= (get-search-tokens {:orth-base "こと"} :norm :sentences)
         (get-search-tokens {:orth-base "こと"})))
 
-(defn get-one-search-token [query-map & {:keys [norm] :or {norm :tokens}}]
+(defn get-one-search-token [query-map & {:keys [norm compact-numbers] :or {norm :tokens compact-numbers true}}]
   (->> (qm {:select [:*]
             :from [:search-tokens]
             :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
           genre-ltree-transform)
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (contains? @norm-map norm) #(normalize-tree (norm @norm-map) % :clean-up-fn compact-number))
+       (?>> (contains? @norm-map norm) #(normalize-tree (norm @norm-map) % :clean-up-fn (if compact-numbers compact-number identity)))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        ))
 
