@@ -231,7 +231,8 @@
 
     (when (and (empty? target-dirs) (not (or (cfg/opt :server :run)
                                              (cfg/opt :search)
-                                             (cfg/opt :clean))))
+                                             (cfg/opt :clean)
+                                             (= :build (cfg/opt :models :mode)))))
       (usage))
 
     (when (cfg/opt :server :run)
@@ -251,4 +252,9 @@
       (schema/create-search-tables!))
 
     (when (cfg/opt :models :n-gram)
-      (lm/compile-all-models!))))
+      (when (= :build (cfg/opt :models :mode))
+        (let [t (cfg/opt :models :n-gram :type)
+              n (cfg/opt :models :n-gram :n)]
+          (lm/compile-all-models! t :n n)
+          (lm/save-similarity-table! (lm/get-genre-lm-similarities :type t)
+                                     :type t :n n))))))
