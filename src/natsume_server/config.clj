@@ -71,9 +71,9 @@
       :help-string "N-Gram order (n)"
       :aliases  ["-models-n-gram-n"]))
   (defopt :mode
-    :default  :load
+    :default  :noop
     :parse    keyword
-    :validate (fn [input] (#{:noop :build :load}))
+    :validate (fn [input] (#{:noop :build :load} input))
     :help-string "Build, load (or do nothing -- default) models"
     :aliases  ["-models-mode"])
   (defopt :directory
