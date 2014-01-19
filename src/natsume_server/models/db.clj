@@ -456,25 +456,25 @@
           chisq-fn #(let [chi (/ (Math/pow (- % mean) 2.0) mean)]
                       (if (> chi chisq-line)
                         (- % mean)
-                        0.0))
-          chisq-filtered (map-vals chisq-fn (remove #(zero? (second %)) freqs))
+                        nil))
+          chisq-filtered (into {} (r/remove #(nil? (second %)) (map-vals chisq-fn freqs)))
           good-sum (if-let [good-vals (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))]
-                     (/ (reduce + good-vals) (count good-vals))
-                     0.0)
+                     (/ (reduce + good-vals) (count good-vals)))
           bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
-                    (/ (reduce + bad-vals) (count bad-vals))
-                    0.0)]
-      (if (and (>= good-sum 0.0) (neg? bad-sum))
+                    (/ (reduce + bad-vals) (count bad-vals)))]
+      (if (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum)))
         1
-        (if (and (<= good-sum 0.0) (pos? bad-sum) #_(< (+ mean good-sum) 10000))
-          {:good (compact-number good-sum) :bad (compact-number bad-sum) :mean (compact-number mean)}
+        (if (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum)))
+          {:good (if (number? good-sum) (compact-number good-sum) 0.0)
+           :bad  (compact-number bad-sum)
+           :mean (compact-number mean) #_:chisq-filtered #_chisq-filtered}
           0)))
     -2))
 
 (defn token-register-score
   "Old formula, but include measures other than chi-sq."
   [query]
-  (let [results (get-one-search-token query)]
+  (let [results (get-one-search-token query :compact-numbers false)]
     (sigma-score (:pos query) results)))
 
 (defn collocation-register-score [query]
@@ -486,6 +486,7 @@
                                            (:data query)))]
       (sigma-score :collocation
                    (query-collocations-tree (assoc transformed-keys
+                                              :compact-numbers false
                                               :type (->> (:type query)
                                                          (map name)
                                                          (clojure.string/join "-")
