@@ -81,23 +81,23 @@
                                (order-by :genre))))))
 
 (defn get-genre-counts []
-  (q (-> {:select [:genre [(h/call :count :*) :count]]
-          :from [:sources]
-          :group-by [:genre]})))
+  (q {:select [:genre [(h/call :count :*) :count]]
+      :from [:sources]
+      :group-by [:genre]}))
 
 (defn genres->tree []
   (-> (get-genre-counts)
       seq-to-tree))
 
 (defn sources-id->genres-map [sources-id]
-  (->> (q (-> {:select [:genre]
-               :from [:sources]
-               :where [:= :id sources-id]}))
+  (->> (q {:select [:genre]
+           :from [:sources]
+           :where [:= :id sources-id]})
        (map :genre)
        distinct))
 
-(defn sentences-by-genre [q]
-  (let [query (string/join "." (if (< (count q) 4) (conj q "*") q))]
+(defn sentences-by-genre [genre]
+  (let [query (if (< (count genre) 4) (conj genre "*") genre)]
     (println query)
     (map :text
          (q (-> (select :text)
