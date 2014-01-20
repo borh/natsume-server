@@ -50,6 +50,5 @@
                             (for [n (range (let [order (count path)]
                                              (if (> order max-order) max-order order)))]
                               (make-collocation (subvec path 0 (inc n))))))
-                    [])
-          distinct)) ;; FIXME: そうですね。
+                    [])))
   ([tree] (extract-collocations tree 4)))
