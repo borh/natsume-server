@@ -41,6 +41,9 @@
   [^String s]
   (.transliterate ^Transliterator half-to-fullwidth s))
 
+(defn set-union-safe [& sets]
+  (into #{} (r/remove nil? (apply set/union sets))))
+
 (defn tree-to-morphemes-flat
   [t]
   (->> t (map :tokens) flatten))
@@ -163,10 +166,8 @@
 
 (defn- add-tags [tokens]
   (->> tokens
-       (mapv #(assoc % :tags (->> (set/union (recode-tags % (:pos %))
-                                             (if (not= "O" (:ne %)) #{(keywordize-ne (:ne %))} #{}))
-                                  (r/remove nil?)
-                                  (into #{}))))))
+       (mapv #(assoc % :tags (set-union-safe (recode-tags % (:pos %))
+                                             (if (not= "O" (:ne %)) #{(keywordize-ne (:ne %))} #{}))))))
 
 (defn- recode-token
   "Recodes tokens in given chunk c into meta-information tags.
@@ -177,7 +178,7 @@
      (let [pos-code (recode-pos m)
            tags     (recode-tags m pos-code)
            ne       (if (not= "O" (:ne m)) #{(keywordize-ne (:ne m))} #{})]
-       (conj r {:pos pos-code :tags (set/union tags ne)})))
+       (conj r {:pos pos-code :tags (set-union-safe tags ne)})))
    []
    c))
 
@@ -235,7 +236,7 @@
             prev-token (peek results)
             ;; 1.
             new-pos (get transitions [(:pos prev-token) pos])
-            new-tags (set/union tags (:tags prev-token))]
+            new-tags (set-union-safe tags (:tags prev-token))]
         (recur (rest tokens*)
                (if (nil? new-pos)
                  (conj results token) ; Add token
@@ -249,7 +250,7 @@
                        (map #(let [[a b c] %]
                                (if (= (:pos a) (:pos c) :particle)
                                  #{a b})))
-                       (apply set/union))]
+                       (apply set-union-safe))]
     (if to-remove
       (remove to-remove xs)
       xs)))
@@ -503,7 +504,7 @@
         ;; Merge a into b: add a head to b head and a tail to b head a先生+に|bなる -> b>先生<+>に<なる|
         (fn [b*] (-> b*
                     (update-in [:head-string] #(str (:head-string a) (:tail-string a) %))
-                    (update-in [:head-tags]   #(set/union (:head-tags a) (:tail-tags a) %))
+                    (update-in [:head-tags]   #(set-union-safe (:head-tags a) (:tail-tags a) %))
                     (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
                     (update-in [:tail-end-index]   #(if % (+ % (count (:tokens a))) nil))
                     (assoc      :head-begin-index (:head-begin-index a))
@@ -518,7 +519,7 @@
                     (assoc :head-string      (:head-string a))
                     (assoc :head-pos         (:head-pos a))
                     (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
-                    (assoc :tail-tags (set/union (:head-tags b*) (:tail-tags a)))
+                    (assoc :tail-tags (set-union-safe (:head-tags b*) (:tail-tags a)))
                     (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
                     (update-in [:tail-end-index]   #(if % (+ % (count (:tokens a))) nil))))
         nil))))
