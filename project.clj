@@ -100,6 +100,7 @@
   :min-lein-version "2.0.0"
   :plugins [[lein-cljsbuild "0.3.3"]]
   :test-paths ["spec/"]
+  :plugins [[speclj "2.9.1"]]
   :resources-paths ["config" "public"]
   :source-paths ["src" "public"]
   :aliases {"run-dev" ["trampoline" "run" "-m" "natsume-server.api.service/run-dev"]}
