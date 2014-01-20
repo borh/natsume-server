@@ -94,6 +94,7 @@
                  ;; Text processing
                  [org.chasen/cabocha "0.66"]
                  [com.ibm.icu/icu4j "52.1"]
+                 [d3-compat-tree "0.0.2"]
                  ;;
                  ]
   :min-lein-version "2.0.0"
