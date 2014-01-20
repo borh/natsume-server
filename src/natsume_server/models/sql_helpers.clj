@@ -12,7 +12,6 @@
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]
             [plumbing.core :refer [?> ?>> map-keys]])
   (:import [org.postgresql.util PGobject]
-           [org.postgresql.jdbc4 Jdbc4Array]
            [java.sql PreparedStatement]
            [com.alibaba.druid.pool DruidDataSource]))
 
