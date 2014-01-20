@@ -50,7 +50,7 @@
 
 (defn- repair-ids [tree removed-id]
   (mapv #(let [link (:link %)]
-           (if (> link removed-id)
+           (if (>= link removed-id)
              (assoc % :link (dec link))
              %))
         tree))
