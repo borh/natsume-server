@@ -42,7 +42,7 @@
   (.transliterate ^Transliterator half-to-fullwidth s))
 
 (defn set-union-safe [& sets]
-  (into #{} (r/remove nil? (apply set/union sets))))
+  (into #{} (r/remove nil? (apply set/union (map #(if (set? %) % (set %)) sets)))))
 
 (defn tree-to-morphemes-flat
   [t]
