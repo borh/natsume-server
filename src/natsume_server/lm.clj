@@ -1,11 +1,13 @@
 (ns natsume-server.lm
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
+            [clojure.core.reducers :as r]
             [me.raynes.fs :as fs]
             [plumbing.core :refer :all]
             [incanter.stats :as stats]
             [natsume-server.models.db :as db]
-            [natsume-server.models.tree :as tree]
+            [fast-zip.core :as z]
+            [d3-compat-tree.tree :as tree]
             [natsume-server.utils.naming :as naming]
             [natsume-server.config :as cfg])
   (:import [com.aliasi.lm LanguageModel NGramProcessLM CompiledNGramProcessLM TokenizedLM #_LanguageModel$Tokenized]
@@ -202,6 +204,14 @@
         factor (/ span 2)]
     (map #(* 2 (- 0.5 (/ (- % min-v) span))) v)))
 
+(defn traverse-zipper [tree]
+  (loop [loc (tree/tree-zipper tree)
+         r []]
+    (if (z/end? loc)
+      r
+      (recur (z/next loc)
+             (conj r ((juxt :name :count) (z/node loc)))))))
+
 (defn get-genre-similarities-all [genre]
   (let [values (get genre-lm-similarities genre)
         values (let [k (keys values) v (vals values)] (zipmap k (make-score v)))
@@ -211,16 +221,18 @@
                (conj init {:genre k :count v}))
              []
              similarities)
-     :root-values {:count 0}
+     :root-values {:count 0.0}
      :merge-keys [:count]
      :merge-fn #(if %1 %1 %2))))
 (def stjc-similarities (delay (get-genre-similarities-all ["科学技術論文"])))
 (defn similarity-score [pos tree]
-  (let [computed-tree (tree/normalize-tree @stjc-similarities tree :boost-factor 1 :update-field :count :update-fn (fnil * 0.0))]
+  (let [computed-tree (tree/normalize-tree @stjc-similarities tree :boost-factor 1 :update-field :count :update-fn *)]
     computed-tree))
 
 (comment
   (similarity-score :a (db/get-one-search-token {:orth-base "て" :lemma "て"} :compact-numbers false))
+  (->> (similarity-score :a (db/get-one-search-token {:orth-base "て" :lemma "て"} :compact-numbers false)) traverse-zipper (r/filter #(neg? (second %))) (into []))
+  (->> (similarity-score :a (db/get-one-search-token {:orth-base "て" :lemma "て"} :compact-numbers false)) traverse-zipper (r/remove #(= "Genres" (first %))) (r/map second) (r/reduce +))
   )
 
 
