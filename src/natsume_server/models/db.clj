@@ -2,7 +2,7 @@
   (:require [honeysql.core :as h]
             [honeysql.format :as fmt]
             [honeysql.helpers :refer :all]
-            [natsume-server.models.tree :refer :all]
+            [d3-compat-tree.tree :refer :all]
             [natsume-server.models.sql-helpers :refer :all]
             [natsume-server.models.schema :as schema]
 
