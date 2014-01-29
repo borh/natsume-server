@@ -74,6 +74,8 @@
       (or (if-let [r (z/right (z/up p))] [r (inc depth)]) (recur (z/up p) (inc depth)))
       [[(z/node p) :end] depth])))
 
+;; FIXME break into emitter and consume-sequence-and-build-sentences functions; naming: next-direction conflates direction and depth
+
 (defn walk-and-emit
   "Traverses xml-data (parsed with clojure.xml/parse or clojure.data.xml/parse) using a zipper and incrementally builds up and returns the document as a vector of maps (representing paragraphs), each element of which contains tags and a vector of sentences."
   [xml-data]
