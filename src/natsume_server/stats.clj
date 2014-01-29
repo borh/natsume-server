@@ -193,7 +193,7 @@
   ;; Below is faster according to criterium bench.
   (if (zero? f-ii)
     0
-    (letfn [(xlx [freq] (if (zero? freq) 0 (* freq (Math/log freq))))]
+    (letfn [(xlx [freq] (if-not (pos? freq) 0 (* freq (Math/log freq))))]
       (* 2
          (+ (xlx f-ii)
             (xlx (- f-ix f-ii))
