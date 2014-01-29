@@ -2,6 +2,8 @@
   (:require [speclj.core :refer :all]
             [natsume-server.annotation-middleware :refer :all]))
 
+;; TODO https://github.com/reiddraper/simple-check could be used to generate tests
+
 ;; ## Test data
 
 ;; ### Word class test data
