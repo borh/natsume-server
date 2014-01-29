@@ -242,12 +242,13 @@ Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検
 
 Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
 
-## Collocations search [/api/collocations{?string_1,string_2,string_3,type,measure,offset,limit,relation-limit,compact-numbers,scale,debug}]
+## Collocations search [/api/collocations{?string_1,string_2,string_3,string_4,type,measure,offset,limit,relation-limit,compact-numbers,scale,debug}]
 
 + Parameters
     + string_1 (optional, string, `車`) ... 最初の語
     + string_2 (optional, string, `を`) ... 次の語
-    + string_3 (optional, string, `運転する`) ... 最後の語
+    + string_3 (optional, string, `運転する`) ... 次の次の語
+    + string_4 (optional, string, `よ`) ... 次の次の次の語
     + type = `noun-particle-verb` (optional, string, `noun-particle-verb`) ... noun-particle-verb
     + measure = `count` (optional, string, `count`) ...  count|dice|t-score|mi-score
     + offset = `0` (optional, int, `0`) ...  検索結果を指定offsetで返す
@@ -322,11 +323,15 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
         ]
         ```
 
-## Collocation tree [/api/collocations/tree{?string_1,string_2,string_3}]
+## Collocation tree [/api/collocations/tree{?string_1,?string_2,?string_3,?string_4,?genre,?type,?limit,?offset,?html,?sort}]
 + Parameters
-
     + string_1 (optional, string, `車`) ... 最初の語
-    
+    + string_2 (optional, string, `を`) ... 次の語
+    + string_3 (optional, string, `運転する`) ... 次の次の語
+    + string_4 (optional, string, `よ`) ... 次の次の次の語
+    + type = `noun-particle-verb` (optional, string, `noun-particle-verb`) ... 共起品詞パターン（例では名詞＋助詞＋動詞）
+    + genre (optional, string, `科学技術論文.*`) ... 対象ジャンルの絞り込み（記述はPostgreSQLのltreeに基準する）
+
 ### [GET]
 
 + Response 200 (application/json)
@@ -338,11 +343,20 @@ Natsumeに含まれる共起表現（2―4グラム）の検索が行える。
 
 # Group Sentences
 
-## Collocation sentence Search [/api/sentences/collocations{?string_1,string_2,string_3}]
+## Collocation sentence Search [/api/sentences/collocations{?string_1,?string_2,?string_3,?string_4,?genre,?type,?limit,?offset,?html,?sort}]
 + Parameters
 
     + string_1 (optional, string, `車`) ... 最初の語
-    
+    + string_2 (optional, string, `を`) ... 次の語
+    + string_3 (optional, string, `運転する`) ... 次の次の語
+    + string_4 (optional, string, `よ`) ... 次の次の次の語
+    + type = `noun-particle-verb` (optional, string, `noun-particle-verb`) ... 共起品詞パターン（例では名詞＋助詞＋動詞）
+    + genre (optional, string, `科学技術論文.*`) ... 対象ジャンルの絞り込み（記述はPostgreSQLのltreeに基準する）
+    + offset = `0` (optional, int, `0`) ...  検索結果を指定offsetで返す
+    + limit = `6` (optional, int, `80`) ...  検索結果を指定limitまで返す
+    + html = `false` (optional, boolean, `false`) ... 例文をHTML形式で返す（該当共起表現をspanタグで囲む）
+    + sort = `chunks` (optional, string, `chunks`) ... ソート順 (length|tokens|chunks|jlptLevel|bccwjLevel|linkDist|chunkDepth)
+
 ### [GET]
 
 + Response 200 (application/json)
