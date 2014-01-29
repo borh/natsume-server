@@ -10,7 +10,7 @@
             [clojure.string :as string]
             [clojure.core.reducers :as r]
             [clojure.tools.reader.edn :as edn]
-            [plumbing.core :refer [?> ?>> map-keys map-vals]]
+            [plumbing.core :refer [?> ?>> map-keys map-vals for-map]]
 
             [natsume-server.stats :as stats]
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]))
@@ -222,6 +222,14 @@
 (def gram-types
   (delay (set (q (-> (select :type) (from :gram-norm)) underscores->dashes :type))))
 
+(def tokens-by-gram
+  (delay
+   (map-vals (fn [x] (reduce #(+ %1 (-> %2 val :count)) 0 x))
+             (group-by #(let [wcs (clojure.string/split (name (key %)) #"-")
+                              aux-count (count (filter (fn [wc] (= "auxiliary" wc)) wcs))]
+                          (- (count wcs) aux-count))
+                       @gram-totals))))
+
 ;; TODO custom-query to supplement and-query type queries (i.e. text match LIKE "%考え*%")
 ;; TODO break function into two for streamlined API: general collocation query and tree-seq query
 ;; FIXME shape of data returned should be the same for all types of queries.
@@ -263,6 +271,7 @@
              #_(map genre-ltree-transform)
              (?>> (> n 1) map #(let [contingency-table (stats/expand-contingency-table
                                             {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
+                                             ;; FIXME : we probably want to have the option of using the total count per n-gram order...
                                              :f-xx (-> @gram-totals type :count)})] ;; FIXME Should add :genre filtering to gram-totals when we specify some genre filter!
                      (case measure
                        :log-dice (merge % contingency-table)
@@ -287,17 +296,35 @@
   (use 'clojure.pprint)
   (pprint (query-collocations {:string-1 "こと" :string-2 "が" :measure :t})))
 
+(comment
+  ;; tags code.
+  (fn [m] (update-in m [:tags]
+                    (fn [ts]
+                      (->> ts
+                           edn/read-string
+                           (r/map (fn [t] (if (empty? t) :none (map keyword t))))
+                           r/flatten
+                           (into [])
+                           frequencies))))
+
+  #_(->> db-results
+         (r/filter (fn [m] (set/subset? tags (set (keys (:tags m))))))
+         (r/map (fn [m] (assoc m :count (apply + (for [[k v] (:tags m) :when (tags k)] v)))))
+         (into [])))
+
+
+;; FIXME / TODO: optimization: !! do not select :f-ix/:f-xi when measure is :count. !!
 (defn query-collocations-tree
-  [{:keys [string-1 string-2 string-3 string-4 type genre tags measure compact-numbers scale]
+  [{:keys [string-1 string-2 string-3 string-4 type genre tags measure compact-numbers normalize?]
     :or {type :noun-particle-verb
-         measure :count
-         compact-numbers true
-         scale true} ;; FIXME scale unused
+         measure #{:count} ;; (keys stats/association-measures-graph)
+         normalize? true
+         compact-numbers true}
     :as m}]
   (let [n (count (string/split (name type) #"-"))
         aggregates (if (= n 1) [:count] [:count :f-ix :f-xi])
         query (select-keys m [:string-1 :string-2 :string-3 :string-4])
-        measure (keyword measure)
+        measure (if (set? measure) measure (into #{} measure))
         select-fields (->> [:string-1 :string-2 :string-3 :string-4] (take n) (into #{}))
         selected (if-let [s (seq (set/difference select-fields
                                                  (set aggregates)
@@ -310,50 +337,58 @@
         where-clause (-> query-clause
                          (conj [:= :type (fmt/to-sql type)])
                          (?> genre conj [:tilda :genre genre]))
+        merge-fns (for-map [m measure] m (if (#{:count :f-xi :f-ix #_:f-io #_:f-oi} m) + #(if %1 %1 %2)))
         clean-up-fn (fn [data] (->> data
-                                   (?>> compact-numbers map (fn [r] (update-in r [measure] compact-number)))))
-        db-results (map genre-ltree-transform
-                        (qm
-                         {:select (vec (distinct (concat aggregates-clause selected)))
-                          :from [(keyword (str "search_gram_" n))]
-                          :where where-clause
-                          :group-by selected}))]
-    (if (= (count query) n)
-      (if (= n 1)
-        (let [tags (if (empty? tags) #{:none} tags)]
-          (normalize-tree (get @gram-totals type)
-                          (seq-to-tree (->> (q {:select (vec (distinct (concat aggregates-clause selected [:tags])))
-                                                :from [(keyword (str "search_gram_" n))]
-                                                :where where-clause
-                                                :group-by (conj selected :tags)}
-                                               genre-ltree-transform
-                                               (fn [m] (update-in m [:tags]
-                                                                 (fn [ts]
-                                                                   (->> ts
-                                                                        edn/read-string
-                                                                        (r/map (fn [t] (if (empty? t) :none (map keyword t))))
-                                                                        r/flatten
-                                                                        (into [])
-                                                                        frequencies)))))
-                                            (r/filter (fn [m] (set/subset? tags (set (keys (:tags m))))))
-                                            (r/map (fn [m] (assoc m :count (apply + (for [[k v] (:tags m) :when (tags k)] v)))))
-                                            (into [])))
-                          :clean-up-fn (if compact-numbers compact-number identity)))
-        (-> (->> db-results
-                 ;; FIXME tree contingency table is broken right now?? need to first sum up the counts for correct genre comparisons??? or is the f-xx here good enough (it's not, because it ignores genre counts).
-                 (map #(let [contingency-table (stats/expand-contingency-table
-                                                {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
-                                                 :f-xx (-> @gram-totals type :count)})]
-                         (case measure
-                           :log-dice (merge % contingency-table)
-                           :count %
-                           (assoc % measure
-                                  ((measure stats/association-measures-graph) contingency-table))))))
-            (?> (= :log-dice measure) stats/log-dice (if (:string-1 query) :string-3 :string-1))
-            ((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) dissoc :count)) rs)))
-            (?> (and (not= measure :count) compact-numbers) (fn [rs] (map #(update-in % [measure] compact-number) rs)))
-            (seq-to-tree :merge-keys [measure] #_(keys stats/association-measures-graph) :merge-fn (case measure :count + #(if %1 %1 %2)))
-            (?> (= measure :count) #(normalize-tree (get @gram-totals type) % :clean-up-fn (if compact-numbers compact-number identity))))))))
+                                   (?>> compact-numbers map (fn [r] (for-map [[k v] r] k (if (measure k) (compact-number v) v))))))]
+    (if (= (count query) n) ;; Only fully-specified queries are allowed.
+      (if (= n 1) ;; 1-gram is a specialized case, as it uses :tags. -> not anymore.
+        (let [tags (if (empty? tags) #{:none} tags)
+              db-results (qm {:select (vec (distinct (concat aggregates-clause selected #_[:tags])))
+                              :from [(keyword (str "search_gram_" n))]
+                              :where where-clause
+                              :group-by selected #_(conj selected :tags)}
+                             genre-ltree-transform)
+              tree (seq-to-tree db-results)]
+          (if (empty? db-results)
+            tree
+            (if normalize?
+              (normalize-tree (get @gram-totals type) tree
+                              :clean-up-fn (if compact-numbers compact-number identity))
+              tree)))
+        ;; n > 1
+        (let [merge-stats
+              (fn [record]
+                (let [contingency-table
+                      (stats/expand-contingency-table
+                       {:f-ii (:count record)
+                        :f-ix (:f-ix record)
+                        :f-xi (:f-xi record)
+                        :f-xx (get @tokens-by-gram n) #_(-> @gram-totals type :count)})]
+                  (-> record
+                      (merge contingency-table)
+                      (merge (for-map [m (set/difference measure #{:count :f-ix :f-xi :log-dice})]
+                                 m ((m stats/association-measures-graph) contingency-table))))))
+
+              db-results
+              (qm {:select (vec (distinct (concat aggregates-clause selected)))
+                   :from [(keyword (str "search_gram_" n))]
+                   :where where-clause
+                   :group-by selected}
+                  genre-ltree-transform
+                  ;; FIXME tree contingency table is broken right now?? need to first sum up the counts for correct genre comparisons??? or is the f-xx here good enough (it's not, because it ignores genre counts).
+                  merge-stats)]
+          (if (empty? db-results)
+            (seq-to-tree db-results)
+            (-> db-results
+                ;;(?> (:log-dice measure) stats/log-dice (if (:string-1 query) :string-3 :string-1))
+                ;;((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= (:count measure)) dissoc :count)) rs)))
+                (?> (and (not (:count measure)) compact-numbers)
+                    (fn [rs]
+                      (map (fn [r]
+                             (for-map [[k v] r] k (if (measure k) (compact-number v) v)))
+                           rs)))
+                (seq-to-tree :merge-fns merge-fns :root-values (select-keys (merge-stats (into {} (r/reduce (fn [a kvs] (merge-with merge-fns a kvs)) {} (map #(dissoc % :genre) db-results)))) measure))
+                (?> (and (:count measure) normalize?) #(normalize-tree (get @gram-totals type) % :clean-up-fn (if compact-numbers compact-number identity))))))))))
 
 (comment
 
@@ -433,24 +468,36 @@
   (query-sentences {:string-1 "こと" :type :noun-particle-verb})
   (query-sentences {:string-1 "こと" :type :noun-particle-verb-particle :genre ["書籍" "*"] :limit 10 :html true}))
 
-(comment
-  ;;chisq-p (case pos
-  ;;          :noun 0.001
-  ;;          :verb 0.001
-  ;;          :particle 0.005
-  ;;          :auxiliary-verb 0.005
-  ;;          0.01)
-  ;; for df = 12 #_(stats/chisq-thresh (count freqs)) ;; FIXME broken for now...
-  ;; chi-score #spy/d (stats/chisq-test (vals freqs))
-  ;; sigma-fn (fn [x] (/ (- x mean) sd))
-  ;; sigma-filtered (->> freqs (map-vals sigma-fn) (r/filter #(>= 3 (val %))) (into {}))
-  )
+(defn mi-score [collocation]
+  ;; If no gram found in 1-gram DB, use 1 or 0.5 for freq.
+  (let [n (count (:type-vector collocation))
+        strings [:string-1 :string-2 :string-3 :string-4]
+        ;; Get counts for each string-*, if possible.
+        db-results (map query-collocations-tree
+                        (for [i (take n (range (count strings)))]
+                          (-> (apply dissoc collocation strings)
+                              (assoc :measure #{:count :mi}
+                                     :normalize? false
+                                     :type (nth (:type-vector collocation) i)
+                                     :string-1 ((nth strings i) collocation)))))
+        freqs (->> db-results (map :count) (map #(if (zero? %) 1.0 %)))
+        f-xx (get @tokens-by-gram n) #_(:count ((:type collocation) @gram-totals)) ;; Count for all genres.
+        mi-scores (let [f-ii 1.0
+                        f-ix (first freqs)
+                        f-xi (if (= 2 (count freqs)) (nth freqs 1) (nth freqs 2))]
+                    (select-keys
+                     (stats/compute-association-measures
+                      (stats/expand-contingency-table
+                       {:f-ii f-ii :f-ix f-ix :f-xi f-xi :f-xx f-xx}))
+                     [:mi :t :llr]))]
+    {:stats (map-vals compact-number mi-scores)
+     :found? false}))
 
-(defn sigma-score [pos tree]
+(defn sigma-score [pos n tree]
   (if-let [freqs (->> tree :children (map (juxt :name :count)) (into {}) seq)]
     (let [freqs (let [diff (- (count @genre-names) (count freqs))]
                   (if (pos? diff)
-                    (concat freqs (seq (zipmap (clojure.set/difference @genre-names (set (map first freqs))) (repeat diff 0.0))))
+                    (concat freqs (seq (zipmap (set/difference @genre-names (set (map first freqs))) (repeat diff 0.0))))
                     freqs))
           mean (stats/mean (vals freqs))
           sd (stats/sd (vals freqs))
@@ -472,29 +519,47 @@
                      (/ (reduce + good-vals) (count good-vals)))
           bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
                     (/ (reduce + bad-vals) (count bad-vals)))]
-      (if (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum)))
-        1
+      (-> {:register-score {:good (compact-number (if (number? good-sum) good-sum 0.0))
+                            :bad  (compact-number (if (number? bad-sum) bad-sum 0.0))
+                            :mean (compact-number (if (number? mean) mean 0.0))
+                            :verdict (cond
+                                      (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) :good
+                                      (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) :bad
+                                      :else :unknown)}
+           :found? true}
+          (?> (> n 1) assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr]))))
+      #_(if (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum)))
+        {:found? true}
         (if (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum)))
-          {:good (if (number? good-sum) (compact-number good-sum) 0.0)
-           :bad  (compact-number bad-sum)
-           :mean (compact-number mean) #_:chisq-filtered #_chisq-filtered}
-          0)))
-    -2))
+          (-> {:register-score {:good (compact-number (if (number? good-sum) good-sum 0.0))
+                                :bad  (compact-number bad-sum)
+                                :mean (compact-number mean)}
+               :found? true}
+              (?> (> n 1) assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr]))))
+          {:found? true})))
+    {:found? false}))
 
 (defn token-register-score
   "Old formula, but include measures other than chi-sq."
   [query]
   (let [results (get-one-search-token query :compact-numbers false)]
-    (sigma-score (:pos query) results)))
+    (sigma-score (:pos query) 1 results)))
 
 (defn collocation-register-score [query]
-  (let [transformed-keys (zipmap [:string-1 :string-2 :string-3 :string-4]
-                                 (mapcat (fn [part] (remove nil? [(:head-string part) (:tail-string part)]))
-                                         (:data query)))]
-    (sigma-score :collocation
-                 (query-collocations-tree (assoc transformed-keys
-                                            :compact-numbers false
-                                            :type (->> (:type query)
-                                                       (map name)
-                                                       (clojure.string/join "-")
-                                                       keyword))))))
+  (let [collocation (-> (zipmap [:string-1 :string-2 :string-3 :string-4]
+                                (mapcat (fn [part] (remove nil? [(:head-string part) (:tail-string part)]))
+                                        (:data query)))
+                        (assoc :compact-numbers false
+                               :measure #{:count :mi :f-xi :f-ix}
+                               :type-vector (:type query)
+                               :type (->> (:type query)
+                                          (map name)
+                                          (clojure.string/join "-")
+                                          keyword)))
+        tree (query-collocations-tree collocation)
+        n (count (:type-vector collocation))]
+    (if (seq (:children tree))
+      (sigma-score :collocation n tree)
+      (if (> n 1)
+        (mi-score collocation)
+        -2))))
