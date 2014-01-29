@@ -210,18 +210,6 @@
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        ))
 
-(comment
-  (defn get-gram-counts [& {:keys [n aggregates return-fields query-map]
-                            :or {n 3 aggregates [:count] query-map {}}}]
-    (let [results (q {:select (apply conj aggregates return-fields [(h/call :sum) :count]) ;; FIXME this is really borken
-                      :from [(keyword (str "search-gram-" n))]
-                      :where (map->and-query (update-in query-map [:type] dashes->underscores))
-                      :group-by [:genre]})]
-      results
-      #_(if (seq results)
-          (apply merge-with + results)
-          (zipmap aggregates (repeat 0))))))
-
 ;; Should contain all totals in a map by collocation type (n-gram size is determined by type) and genre.
 (def gram-totals
   (delay
