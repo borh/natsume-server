@@ -222,8 +222,7 @@
              []
              similarities)
      :root-values {:count 0.0}
-     :merge-keys [:count]
-     :merge-fn #(if %1 %1 %2))))
+     :merge-fns {:count #(if %1 %1 %2)})))
 (def stjc-similarities (delay (get-genre-similarities-all ["科学技術論文"])))
 (defn similarity-score [pos tree]
   (let [computed-tree (tree/normalize-tree @stjc-similarities tree :boost-factor 1 :update-field :count :update-fn *)]
@@ -248,8 +247,7 @@
              similarities)
      :root-name genre
      :root-values {:similarity root-value}
-     :merge-keys [:similarity]
-     :merge-fn #(if %1 %1 %2))))
+     :merge-fns {:similarity #(if %1 %1 %2)})))
 
 ;; FIXME now how to map these scores on a (-1,1) scale????? in fact, all other genres are negative, just some more than others. The question is, again, to what does -1 correspond to. With perplexity, we are looking at the average branching factor.
 
