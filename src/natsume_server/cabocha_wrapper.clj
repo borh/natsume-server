@@ -8,7 +8,6 @@
 ;; # Simple CaboCha JNI Wrapper
 ;;
 ;; The CaboCha JNI bindings are not thread-safe, so the parser is wrapped in flatland.useful.utils' thread-local macro.
-
 (defonce parser (utils/thread-local (Parser.)))
 
 (def ^:private unidic-features
@@ -73,6 +72,9 @@
                          :prob prob
                          :tokens tokens})))
         parsed))))
+
+
+;; FIXME consider core.async ala https://github.com/lynaghk/zmq-async/blob/master/src/com/keminglabs/zmq_async/core.clj
 
 (defn callable-parse-sentence [^String s]
   (cast Callable (fn [] (parse-sentence s))))
