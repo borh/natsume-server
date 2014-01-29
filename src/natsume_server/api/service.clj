@@ -256,7 +256,7 @@
                    results []]
               (if-let [s (first ss)]
                 (let [tree (anno/sentence->tree s)
-                      token-seq (mapv #(select-keys % [:orth :orth-base :lemma :pos-1 :pos-2 :c-form :c-type]) (mapcat :tokens tree))
+                      token-seq (mapv #(select-keys % [:orth :orth-base :lemma :pos-1 :pos-2 :c-form :c-type :tags]) (mapcat :tokens tree))
                       scored-s (score-sentence tree s)
                       length-s (count s)
                       new-offset (+ offset length-s)
@@ -276,7 +276,7 @@
                 [results (vec parsed-tokens)]))
 
             bad-morphemes (->> scored-sentences
-                               (r/filter #(map? (:register-score %)))
+                               (r/filter #(or (:register-score %) (:stats %) #_(and (:stats %) #_(> (-> % :stats :mi) 5.0))))
                                (into []))]
         (rr/response (if (:debug (:query-params (clean-params request)))
                        {:results bad-morphemes :parsed-tokens parsed-tokens :debug {:body body :parsed paragraphs}}
@@ -285,11 +285,11 @@
 
 (comment (e! (get-text-register {:body "実験をやるよ。"}))
          (e! (get-text-register {:body "第１節　介護保険法の概要"}))
+         "昔では男は仕事をする役割がある"
+         (set! *print-length* 10)
+         (e! (->> (get-text-register {:body "実験をやるよ。"}) :body :results (filter #(and (= :collocation (:type %)) (= false (:found? %)))) (map #(select-keys % [:found? :stats :string :register-score]))))
          (pprint (get-text-register {:body "人々の行動はそれぞれの国の文化や慣習、考え方によって違うことがあります。"}))
          (pprint (get-text-register {:body "実験をやる。そうですね。"})))
-
-#_(defn get-collocations-register [request]
-  (if-let [text (-> request :query-params)]))
 
 (comment
   (defn token-pos-name
