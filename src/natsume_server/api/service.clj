@@ -199,50 +199,53 @@
 
 (defn score-sentence [tree sentence]
   (let [tokens (->> tree
-                    (r/mapcat :tokens)
-                    (r/remove (fn [{:keys [pos pos-1 pos-2]}] (or (= pos :symbol) (and (= pos-1 "助詞") (or (= pos-2 "格助詞") (= pos-2 "係助詞"))))))
-                    (r/map (fn [m]
-                             (future
-                               {:type :token
-                                :register-score (db/token-register-score m) ;; TODO look for better orthographic variations given same lemma!
-                                :tags (remove nil? (:tags m))
-                                :pos (:pos m)
-                                :begin (:begin m)
-                                :end (:end m)
-                                :lemma (:lemma m)
-                                :string (:orth m)})))
-                    (r/map deref)
+                    (mapcat :tokens)
+                    (remove (fn [{:keys [pos pos-1 pos-2]}] (or (= pos :symbol) (and (= pos-1 "助詞") (or (= pos-2 "格助詞") (= pos-2 "係助詞"))))))
+                    (pmap (fn [m]
+                            (let [register-score (db/token-register-score m)
+                                  response {:type :token
+                                            :tags (:tags m)
+                                            :pos (:pos m)
+                                            :begin (:begin m)
+                                            :end (:end m)
+                                            :lemma (:lemma m)
+                                            :string (:orth m)}]
+                              (if (map? register-score)
+                                (merge response register-score)
+                                response))))
                     (into []))
         collocations (->> tree
                           natsume-server.collocations/extract-collocations
-                          (r/remove (fn [m] (= (:type m) [:verb :verb])))
-                          (r/map (fn [m]
-                                   (let [record
-                                         {:type :collocation
-                                          :pos  (:type m)
-                                          :tags (:tags m)
-                                          :register-score (db/collocation-register-score m)
-                                          :parts (->> m
-                                                      :data
-                                                      (r/map (fn [part]
-                                                               (let [begin (or (:head-begin part) (:tail-begin part))
-                                                                     end   (or (:head-end part)   (:tail-end part))
-                                                                     pos   (or (:head-pos part)   (:tail-pos part))
-                                                                     tags  (or (:head-tags part)  (:tail-tags part))
-                                                                     lemma (or (:head-string part) (:tail-string part))]
-                                                                 {:begin begin
-                                                                  :end end
-                                                                  :pos pos
-                                                                  :tags (remove nil? tags)
-                                                                  :lemma lemma
-                                                                  :string (subs sentence begin end) #_(:head-string part) #_(:tail-string part)})))
-                                                      (into []))}]
-                                     (assoc record :string (clojure.string/join (map :string (:parts record)))))))
+                          (remove (fn [m] (= (:type m) [:verb :verb]))) ;; FIXME
+                          (pmap (fn [m]
+                                  (let [record
+                                        {:type :collocation
+                                         :pos  (:type m)
+                                         :tags (:tags m)
+                                         :parts (->> m
+                                                     :data
+                                                     (r/map (fn [part]
+                                                              (let [begin (or (:head-begin part) (:tail-begin part))
+                                                                    end   (or (:head-end part)   (:tail-end part))
+                                                                    pos   (or (:head-pos part)   (:tail-pos part))
+                                                                    tags  (or (:head-tags part)  (:tail-tags part))
+                                                                    lemma (or (:head-string part) (:tail-string part))]
+                                                                {:begin begin
+                                                                 :end end
+                                                                 :pos pos
+                                                                 :tags tags
+                                                                 :lemma lemma
+                                                                 :string (subs sentence begin end) #_(:head-string part) #_(:tail-string part)})))
+                                                     (into []))}
+                                        register-score (db/collocation-register-score m)]
+                                    (-> record
+                                        (assoc :string (clojure.string/join (map :string (:parts record))))
+                                        (?> (map? register-score) merge register-score)))))
                           (into []))]
     (concat tokens collocations)))
 (defn get-text-register [request]
   ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence) .
-  (let [body (->> request :body slurp)]
+  (let [body (->> request :body #_slurp)]
     (if-let [paragraphs (->> body vector text/lines->paragraph-sentences)]
       (let [update-positions (fn [m offset] (-> m (update-in [:begin] + offset) (update-in [:end] + offset)))
 
