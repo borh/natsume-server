@@ -361,4 +361,4 @@
               ;; to enable Tomcat)
               ;;::bootstrap/host "localhost"
               ::bootstrap/type :jetty
-              ::bootstrap/port (cfg/opt :server :port)})
+              ::bootstrap/port (cfg/opt :server :port)}) ;; FIXME doesn't work
