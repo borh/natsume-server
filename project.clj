@@ -32,7 +32,7 @@
                  ;;;;
 
                  ;; Utils
-                 [org.apache.commons/commons-compress "1.6"]
+                 [org.apache.commons/commons-compress "1.7"]
                  [org.clojure/tools.reader "0.8.3"]
                  [com.taoensso/timbre "2.7.1"]
                  [clj-configurator "0.1.5"]
@@ -42,7 +42,7 @@
                  [iota "1.1.1"]
                  [org.clojure/data.csv "0.1.2"]
                  [org.flatland/useful "0.11.1"]
-                 [fast-zip "0.3.0"]
+                 [fast-zip "0.4.0"]
                  [org.apache.commons/commons-math3 "3.2"]
                  ;;
 
@@ -66,7 +66,7 @@
                  [org.clojure/core.cache "0.6.3"]
                  ;; Authentication TODO: friend & https://github.com/osbert/persona-kit
                  [org.clojure/clojurescript "0.0-2138"]
-                 [om "0.1.7"]
+                 [om "0.2.3"]
                  ;;
 
                  ;; ClojureScript
@@ -94,7 +94,7 @@
                  ;; Text processing
                  [org.chasen/cabocha "0.66"]
                  [com.ibm.icu/icu4j "52.1"]
-                 [d3-compat-tree "0.0.2"]
+                 [d3-compat-tree "0.0.3"]
                  ;;
                  ]
   :min-lein-version "2.0.0"
@@ -132,7 +132,7 @@
   :profiles {:dev {:jvm-opts ["-server" "-XX:+UseG1GC" "-Xshare:off"]
                    :plugins [[com.cemerick/austin "0.1.1"]]
                    :dependencies [[speclj "2.9.1"]
-                                  [criterium "0.4.2"]
+                                  [criterium "0.4.3"]
                                   [ring-mock "0.1.5"]
                                   [org.clojure/tools.namespace "0.2.4"]
                                   [org.clojure/java.classpath "0.2.2"]
