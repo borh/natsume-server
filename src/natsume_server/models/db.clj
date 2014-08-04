@@ -263,33 +263,33 @@
                                    (?>> (and offset (pos? offset)) drop offset)
                                    (?>> (and limit (pos? limit)) take limit)
                                    (?>> compact-numbers map (fn [r] (update-in r [measure] compact-number)))))]
-    (-> (->> (qm
-              (-> {:select (vec (distinct (concat aggregates-clause selected)))
-                   :from [(keyword (str "search_gram_" n))]
-                   :where where-clause}
-                  (?> (not-empty selected) assoc :group-by selected)))
-             #_(map genre-ltree-transform)
-             (?>> (> n 1) map #(let [contingency-table (stats/expand-contingency-table
-                                            {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
-                                             ;; FIXME : we probably want to have the option of using the total count per n-gram order...
-                                             :f-xx (-> @gram-totals type :count)})] ;; FIXME Should add :genre filtering to gram-totals when we specify some genre filter!
-                     (case measure
-                       :log-dice (merge % contingency-table)
-                       :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
-                       (assoc % measure
-                              ((measure stats/association-measures-graph) contingency-table))))))
-        (?> (= :log-dice measure) stats/log-dice (if (:string-1 query) :string-3 :string-1))
-        ((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) dissoc :count)) rs)))
-        (#(sort-by (comp - measure) %)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
-        (?> (:string-2 selected) (fn [rows] (->> rows
-                                                (group-by :string-2)
-                                                (map-vals (fn [row] (map #(dissoc % :string-2) row)))
-                                                ;; Sorting assumes higher measure values are better.
-                                                (sort-by #(- (apply + (map measure (second %)))))
-                                                (map (fn [[p fs]] {:string-2 p
-                                                                  :data (clean-up-fn fs)}))
-                                                (?>> relation-limit take relation-limit))))
-        (?> (not (:string-2 selected)) clean-up-fn))))
+    (->> (qm
+          (-> {:select (vec (distinct (concat aggregates-clause selected)))
+               :from [(keyword (str "search_gram_" n))]
+               :where where-clause}
+              (?> (not-empty selected) assoc :group-by selected)))
+         #_(map genre-ltree-transform)
+         (?>> (> n 1) map #(let [contingency-table (stats/expand-contingency-table
+                                                    {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
+                                                     ;; FIXME : we probably want to have the option of using the total count per n-gram order...
+                                                     :f-xx (-> @gram-totals type :count)})] ;; FIXME Should add :genre filtering to gram-totals when we specify some genre filter!
+                             (case measure
+                               :log-dice (merge % contingency-table)
+                               :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
+                               (assoc % measure
+                                      ((measure stats/association-measures-graph) contingency-table)))))
+         (?>> (= :log-dice measure) (fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1))))
+         (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) dissoc :count)))
+         (sort-by (comp - measure)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
+         (?>> (:string-2 selected) (fn [rows] (->> rows
+                                                  (group-by :string-2)
+                                                  (map-vals (fn [row] (map #(dissoc % :string-2) row)))
+                                                  ;; Sorting assumes higher measure values are better.
+                                                  (sort-by #(- (apply + (map measure (second %)))))
+                                                  (map (fn [[p fs]] {:string-2 p
+                                                                    :data (clean-up-fn fs)}))
+                                                  (?>> relation-limit take relation-limit))))
+         (?>> (not (:string-2 selected)) clean-up-fn))))
 ;; FIXME include option for human-readable output (log-normalized to max): scale option
 
 (comment
