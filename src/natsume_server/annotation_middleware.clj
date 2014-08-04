@@ -405,6 +405,7 @@
 ;; include one pattern in another by name
 ;; TODO Pattern rewriting/transformation in the definition. The
 ;; Tsutsuji dictionary patterns could be used as a test case.
+;; TODO https://github.com/noprompt/frak generates regexes from seq of strings: can use this to make field matchers on-the-fly
 (comment
 
   ;; more MQL-like
@@ -568,6 +569,7 @@
 ;; 5. tag all chunks by chunk type (noun phrase, adjectival phrase etc. by scanning head-tail information (:head-pos = :noun, :tail-pos :p-ga, etc.)
 ;; 5. join certain classes of chunks like `プレゼントをする`, i.e. `名詞＋を＋する／名詞＋に＋なる`
 ;; 6. replace the `orth` fields of all morphemes in CaboCha output with characters in the original string
+
 (defn sentence->tree
   "Converts string into CaboCha tree data structure."
   [s]
