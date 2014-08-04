@@ -92,7 +92,6 @@
 
 (def corpus-graph
   ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
-  ;; FIXME this default graph fails to get called when loading STJC on server! Find out why.
   {:files      (fnk [corpus-dir sampling-options]
                     (doall (println ":files")) ;; FIXME this is not reached!!! why??
                     (->> corpus-dir
