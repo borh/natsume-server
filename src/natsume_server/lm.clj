@@ -17,11 +17,13 @@
 ;; TODO lazy-loading (and unloading) of already compiled models
 ;; TODO think hard on how we want to approach model building, evaluation and collocation extraction
 ;; TODO random forests: http://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm http://code.google.com/p/fast-random-forest/
-;; TODO SVM
+;; TODO SVM (http://liblinear.bwaldvogel.de/ or Weka/etc.)
 ;; TODO caret or Mahout/Weka? (rather both, caret for exploration and Mahout/Weka for production)
 ;; TODO make a nice export function so we can feed data to R/python etc. -- or -- use SQL from R to stream data in
 ;; TODO of course, all other ML methods assume some other feature set than an n-gram LM
 ;; TODO this is really a baseline (general) method for getting similarities between documents/registers
+;; TODO token models taking token lemma conjoined with spaces. We can then use: TokenizerFactory factory = new RegExTokenizerFactory("\\S+");
+;; TODO token n-gram with content words replaced by POS, leaving just functional words
 
 ;; ## N-Gram Model Building, Training and Evaluation
 
@@ -50,6 +52,10 @@
     (if perplexity
       (Math/pow 2.0 (- log2estimate))
       log2estimate)))
+
+;; TODO   TokenizedLM:
+;; TODO   SortedSet<ScoredObject<String[]>> 	newTermSet(int nGram, int minCount, int maxReturned, LanguageModel.Tokenized backgroundLM)
+;;        Returns a list of scored n-grams ordered by the significance of the degree to which their counts in this model exceed their expected counts in a specified background model.
 
 ;; ## Persistence
 
@@ -126,9 +132,9 @@
 (case (cfg/opt :models :mode)
   :noop  (declare genre-lm-similarities) ; To fix compile.
   :build (defonce genre-lm-similarities (get-genre-lm-similarities)) ; WARNING computationally expensive, should persist.
-  :load  (if-let [fn (fs/normalized-path (format "data/%s-%d-computed-lm-similarities.clj"
-                                                 (name (cfg/opt :models :n-gram :type))
-                                                 (cfg/opt :models :n-gram :n)))]
+  :load  (if-let [fn (fs/normalized (format "data/%s-%d-computed-lm-similarities.clj" ;; fs/normalized-path deprecated!
+                                            (name (cfg/opt :models :n-gram :type))
+                                            (cfg/opt :models :n-gram :n)))]
            (defonce genre-lm-similarities (read-string (slurp fn)))))
 
 (defn- train-char-model [model model-name genre n & {:keys [full-model]}]
