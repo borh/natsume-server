@@ -462,7 +462,7 @@
   (first (stats/sample-chisq 0.05 :df n)))
 
 (defn chisq-test [xs]
-  (:X-sq (stats/chisq-test :x xs)))
+  (stats/chisq-test :table xs))
 
 (defn register
   "Based on tree similarities."
