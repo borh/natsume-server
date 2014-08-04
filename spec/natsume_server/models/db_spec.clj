@@ -1,5 +1,6 @@
 (ns natsume-server.models.db-spec
   (:require [speclj.core :refer :all]
+            [d3-compat-tree.tree :refer [normalize-tree]]
             [natsume-server.models.db :refer :all]))
 
 ;; Generate all escape sequences.
