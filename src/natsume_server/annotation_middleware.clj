@@ -50,7 +50,7 @@
 
 (defn- repair-ids [tree removed-id]
   (mapv #(let [link (:link %)]
-           (if (>= link removed-id)
+           (if (> link removed-id)
              (assoc % :link (dec link))
              %))
         tree))
@@ -185,6 +185,7 @@
 ;; ## Transition map
 ;;
 ;; Defines when POS should change or not.
+;; TODO state machine: https://github.com/mtnygard/devs
 
 (defn- vector-map->map
   "Helper function to make a map from map-like vectors."
@@ -390,7 +391,8 @@
       (update-in [:link] #(if-not (= -1 %) (dec %) %))
       update-function ; TODO a NOOP right now
       (update-in [:prob] #(/ (+ % (:prob a)) 2)) ;; CHECK
-      (update-in [:tokens] #(apply conj (:tokens a) %))))
+      (update-in [:tokens] #(apply conj (:tokens a) %))
+      add-begin-end-positions))
 
 ;; TODO Pattern matching definitions as data: allow chunk type and
 ;; relation filtering, optional tokens, wildcards, variable windows,
