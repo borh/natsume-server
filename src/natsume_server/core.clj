@@ -203,7 +203,7 @@
   (if (seq dirs)
     (->> dirs
          (r/map io/file)
-         (r/map fs/normalized-path)
+         (r/map fs/normalized)
          (r/filter fs/directory?)
          (into #{}))))
 
