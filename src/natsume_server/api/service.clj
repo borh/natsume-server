@@ -246,7 +246,7 @@
     (concat tokens collocations)))
 (defn get-text-register [request]
   ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence) .
-  (let [body (->> request :body #_slurp)]
+  (let [body (->> request :body slurp)]
     (if-let [paragraphs (->> body vector text/lines->paragraph-sentences)]
       (let [update-positions (fn [m offset] (-> m (update-in [:begin] + offset) (update-in [:end] + offset)))
 
