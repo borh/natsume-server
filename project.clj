@@ -61,12 +61,12 @@
                  ;; [io.pedestal/pedestal.tomcat "0.2.1"]
                  [cheshire "5.3.1"]
                  ;;[org.blancas/kern "0.7.0"]
-                 [camel-snake-kebab "0.1.5"]
+                 [camel-snake-kebab "0.2.1"]
                  [com.novemberain/validateur "2.2.0"]
                  [org.clojure/core.cache "0.6.3"]
                  ;; Authentication TODO: friend & https://github.com/osbert/persona-kit
                  [org.clojure/clojurescript "0.0-2280"]
-                 [om "0.7.0"]
+                 [om "0.7.1"]
                  ;;
 
                  ;; ClojureScript

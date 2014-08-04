@@ -1,7 +1,7 @@
 (ns natsume-server.utils.naming
   (:require [clojure.string :as string]
             [clojure.walk :as walk]
-            [camel-snake-kebab :as csk]))
+            [camel-snake-kebab.core :as csk]))
 
 ;; # Naming Conversion Utility Functions
 ;;
