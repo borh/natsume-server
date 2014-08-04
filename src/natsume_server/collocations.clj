@@ -6,8 +6,10 @@
 
 (defn- get-target
   ([t source target]
+     ;;(println "source " source " target " target)
      (cond (= source (dec (count t))) nil
            (= -1 target) nil ;; (nth t (dec (count t)))
+           (>= target (count t)) nil
            :else (nth t target)))
   ([t coll]
      (get-target t (:id coll) (:link coll))))
