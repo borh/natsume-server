@@ -388,7 +388,7 @@
                              (for-map [[k v] r] k (if (measure k) (compact-number v) v)))
                            rs)))
                 (seq-to-tree :merge-fns merge-fns :root-values (select-keys (merge-stats (into {} (r/reduce (fn [a kvs] (merge-with merge-fns a kvs)) {} (map #(dissoc % :genre) db-results)))) measure))
-                (?> (and (:count measure) normalize?) #(normalize-tree (get @gram-totals type) % :clean-up-fn (if compact-numbers compact-number identity))))))))))
+                (?> (and (:count measure) normalize?) ((fn [tree] (normalize-tree (get @gram-totals type) tree :clean-up-fn (if compact-numbers compact-number identity))))))))))))
 
 (comment
 
