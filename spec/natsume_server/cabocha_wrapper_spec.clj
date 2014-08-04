@@ -1,6 +1,5 @@
 (ns natsume-server.cabocha-wrapper-spec
   (:require [speclj.core :refer :all]
-            [speclj.run.standard :refer [run-specs]]
             [natsume-server.cabocha-wrapper :refer :all]))
 
 ;; ## Test data
