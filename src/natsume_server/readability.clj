@@ -536,5 +536,5 @@
 ;;     - for chunk depth and link distance, divide by chunk count.
 ;;     - for JLPT and BCCWJ levels, divide by morpheme count, etc...
 ;; - JLPT-kanji-level (<- based on list)
-;; - BCCWJ-LB-kanji-level (or rather corpus/facet based)
+;; - BCCWJ-LB-kanji-level (or rather corpus/facet based) -- move to using tokens table
 ;; - CEFR-based difficulty (cf. `hagoromo`)
