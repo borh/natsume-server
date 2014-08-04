@@ -480,7 +480,7 @@
                                      :normalize? false
                                      :type (nth (:type-vector collocation) i)
                                      :string-1 ((nth strings i) collocation)))))
-        freqs (->> db-results (map :count) (map #(if (zero? %) 1.0 %)))
+        freqs (->> db-results (map :count) (map #(if (or (nil? %) (zero? %)) 1.0 %)))
         f-xx (get @tokens-by-gram n) #_(:count ((:type collocation) @gram-totals)) ;; Count for all genres.
         mi-scores (let [f-ii 1.0
                         f-ix (first freqs)
