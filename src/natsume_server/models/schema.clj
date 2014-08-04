@@ -107,6 +107,13 @@ return the DDL string for creating that unlogged table."
    [:pron-base    :text]
    [:goshu        :text    "NOT NULL"]])
 
+(comment
+ (def uni-gram-schema
+   [:uni-grams
+    [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
+    [:string       :text    "NOT NULL"]
+    [:pos          :text    "NOT NULL"]]))
+
 (def n-gram-schemas
   (let [sentences-column [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
         gram-columns (for [order (range 1 5)]
@@ -372,6 +379,8 @@ return the DDL string for creating that unlogged table."
    ;; FIXME paragraph_counts are probably wrong
    (h/raw
     "CREATE TABLE search_gram_1 AS
+    SELECT pos_1 AS type, g1.string_1, so.genre, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT se.paragraph_order_id)::integer as paragraphs_count, count(DISTINCT so.id)::integer as sources_count FROM gram_1 AS g1, sentences AS se, sources AS so WHERE g1.sentences_id=se.id AND se.sources_id=so.id GROUP BY pos_1, g1.string_1, so.genre ORDER BY pos_1, g1.string_1, so.genre, count"
+    #_"CREATE TABLE search_gram_1 AS
     SELECT pos_1 AS type, g1.string_1, so.genre, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT se.paragraph_order_id)::integer as paragraphs_count, count(DISTINCT so.id)::integer as sources_count, json_agg(g1.tags_1)::text AS tags FROM gram_1 AS g1, sentences AS se, sources AS so WHERE g1.sentences_id=se.id AND se.sources_id=so.id GROUP BY pos_1, g1.string_1, so.genre ORDER BY pos_1, g1.string_1, so.genre, count")
    (create-index :search-gram-1 :genre :gist)
    (create-index :search-gram-1 :genre)
