@@ -216,6 +216,7 @@
                     (into []))
         collocations (->> tree
                           natsume-server.collocations/extract-collocations
+                          (filter identity) ;; FIXME ぞれ NPE problem
                           (remove (fn [m] (= (:type m) [:verb :verb]))) ;; FIXME
                           (pmap (fn [m]
                                   (let [record
@@ -284,6 +285,7 @@
       (rr/response {:results nil :message "invalid request" :request request}))))
 
 (comment (e! (get-text-register {:body "実験をやるよ。"}))
+         (e! (get-text-register {:body "ぞれ"}))
          (e! (get-text-register {:body "第１節　介護保険法の概要"}))
          "昔では男は仕事をする役割がある"
          (set! *print-length* 10)
