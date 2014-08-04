@@ -219,13 +219,13 @@
    `args` contains corpus directory names and (optional) flags.
 
   Example usage from REPL: (-main \"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT\")"
-  [& args]
+  [& args] ;; FIXME consider: https://github.com/guns/optparse-clj
   (let [target-dirs (try (cfg/parse-cli-args! args)
                          (catch IllegalArgumentException e (do (println e) (usage))))]
 
     (if (cfg/opt :verbose)
       (do (println (cfg/opt))
-          (println "Turning on verbose logging.")
+          (println "Turning on verbose logging.") ;; TODO: https://github.com/travis/progressbar
           (lc/setup-log log/config :debug))
       (lc/setup-log log/config :error))
 
