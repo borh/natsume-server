@@ -30,9 +30,12 @@
                (conj path* target))
         path*))))
 
+;; FIXME/TODO add idiom tags to **n-grams** as :idiom using http://openmwe.sourceforge.jp/pukiwiki-j/index.php?Idioms -> data/DB.all.id.20070528.xz
+;; Use EDR cdrom
+
 (defn- make-collocation [path]
   {:type (mapv #(or (:head-pos %) (:tail-pos %)) path)
-   :tags (->> path (r/map (fn [chunk] (clojure.set/union (:head-tags chunk) (:tail-tags chunk)))) (r/reduce clojure.set/union) (r/remove nil?) (into #{}))
+   :tags (->> path (r/map (fn [chunk] (clojure.set/union (:head-tags chunk) (:tail-tags chunk)))) (r/reduce clojure.set/union) (r/remove nil?) (into #{})) ;; FIXME add :idiom (see above)
    :data path})
 
 (defn extract-collocations
