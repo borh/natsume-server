@@ -63,6 +63,22 @@
 
 ;; # SQL Utilities
 
+;; TODO
+;; (extend-type Jdbc4Array
+;;   json/JSONWriter
+;;   (-write [o out]
+;;     (json/-write (.getArray o) out)))
+;;
+;; (extend-type java.sql.Timestamp
+;;   json/JSONWriter
+;;   (-write [date out]
+;;     (json/-write (str date) out)))
+;;
+;; (extend-type PGobject
+;;   clojure.lang.ISeq
+;;   (-write [o out]
+;;     (json/-write (.getArray o) out)))
+
 (defmacro with-db
   [& body]
   `(try
@@ -205,6 +221,7 @@
            :entities dashes->underscores))
 
 ;; Memoized q using LRU (Least Recently Used) strategy.
+;; TODO: consider using LU.
 (def query-cache
   (atom (cache/lru-cache-factory {} :threshold 50000)))
 (defn qm
