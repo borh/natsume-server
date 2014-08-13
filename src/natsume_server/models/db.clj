@@ -206,7 +206,7 @@
           genre-ltree-transform)
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (contains? @norm-map norm) #(normalize-tree (norm @norm-map) % :clean-up-fn (if compact-numbers compact-number identity)))
+       (?>> (contains? @norm-map norm) (#(normalize-tree (norm @norm-map) % :clean-up-fn (if compact-numbers compact-number identity))))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        ))
 
@@ -278,18 +278,18 @@
                                  :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
                                  (assoc % measure
                                         ((measure stats/association-measures-graph) contingency-table))))))
-         (?>> (= :log-dice measure) (fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1))))
+         (?>> (= :log-dice measure) ((fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1)))))
          (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) (dissoc :count))))
          (sort-by (comp - measure)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
-         (?>> (:string-2 selected) (fn [rows] (->> rows
-                                                  (group-by :string-2)
-                                                  (map-vals (fn [row] (map #(dissoc % :string-2) row)))
-                                                  ;; Sorting assumes higher measure values are better.
-                                                  (sort-by #(- (apply + (map measure (second %)))))
-                                                  (map (fn [[p fs]] {:string-2 p
-                                                                    :data (clean-up-fn fs)}))
-                                                  (?>> relation-limit (take relation-limit)))))
-         (?>> (not (:string-2 selected)) clean-up-fn))))
+         (?>> (:string-2 selected) ((fn [rows] (->> rows
+                                                   (group-by :string-2)
+                                                   (map-vals (fn [row] (map #(dissoc % :string-2) row)))
+                                                   ;; Sorting assumes higher measure values are better.
+                                                   (sort-by #(- (apply + (map measure (second %)))))
+                                                   (map (fn [[p fs]] {:string-2 p
+                                                                     :data (clean-up-fn fs)}))
+                                                   (?>> relation-limit (take relation-limit))))))
+         (?>> (not (:string-2 selected)) (clean-up-fn)))))
 ;; FIXME include option for human-readable output (log-normalized to max): scale option
 
 (comment
@@ -383,10 +383,10 @@
                 ;;(?> (:log-dice measure) (stats/log-dice (if (:string-1 query) :string-3 :string-1)))
                 ;;((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= (:count measure)) (dissoc :count))) rs)))
                 (?> (and (not (:count measure)) compact-numbers)
-                    (fn [rs]
-                      (map (fn [r]
-                             (for-map [[k v] r] k (if (measure k) (compact-number v) v)))
-                           rs)))
+                    ((fn [rs]
+                       (map (fn [r]
+                              (for-map [[k v] r] k (if (measure k) (compact-number v) v)))
+                            rs))))
                 (seq-to-tree :merge-fns merge-fns :root-values (select-keys (merge-stats (into {} (r/reduce (fn [a kvs] (merge-with merge-fns a kvs)) {} (map #(dissoc % :genre) db-results)))) measure))
                 (?> (and (:count measure) normalize?) ((fn [tree] (normalize-tree (get @gram-totals type) tree :clean-up-fn (if compact-numbers compact-number identity))))))))))))
 
