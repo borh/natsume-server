@@ -22,11 +22,12 @@
         (assoc :ne    ne
                :begin position
                :end   (+ position token-length))
-        (?> (= (count features) 6) assoc
-            :lemma     surface
-            :orth-base surface
-            :pron-base surface ; FIXME translate to katakana.
-            :goshu     "不明"))))
+        (?> (= (count features) 6)
+            (assoc
+                :lemma     surface
+                :orth-base surface
+                :pron-base surface ; FIXME translate to katakana.
+                :goshu     "不明")))))
 
 (defn- parse-tokens [tokens position]
   (loop [tokens*   tokens

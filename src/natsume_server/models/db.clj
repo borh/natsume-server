@@ -53,10 +53,10 @@
                                       (map-keys #(let [[f s] (string/split (name %) #"-")]
                                                    (keyword (str s "-" i)))
                                                 (-> record
-                                                    (?> (:head-pos record) update-in [:head-pos] name)
-                                                    (?> (:tail-pos record) update-in [:tail-pos] name)
-                                                    #_(?> (:head-tags record) update-in [:head-tags] make-jdbc-array)
-                                                    #_(?> (:tail-tags record) update-in [:tail-tags] make-jdbc-array))))))]
+                                                    (?> (:head-pos record) (update-in [:head-pos] name))
+                                                    (?> (:tail-pos record) (update-in [:tail-pos] name))
+                                                    #_(?> (:head-tags record) (update-in [:head-tags] make-jdbc-array))
+                                                    #_(?> (:tail-tags record) (update-in [:tail-tags] make-jdbc-array)))))))]
       (i! (keyword (str "gram-" grams))
           (assoc record-map :sentences-id sentences-id)))))
 
@@ -258,7 +258,7 @@
         query-clause (map->and-query query)
         where-clause (-> query-clause
                          (conj [:= :type (fmt/to-sql type)])
-                         (?> genre conj [:tilda :genre genre]))
+                         (?> genre (conj [:tilda :genre genre])))
         clean-up-fn (fn [data] (->> data
                                    (?>> (and offset (pos? offset)) (drop offset))
                                    (?>> (and limit (pos? limit)) (take limit))
