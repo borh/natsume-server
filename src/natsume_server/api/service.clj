@@ -21,6 +21,7 @@
             [natsume-server.models.db :as db]
             [natsume-server.stats :refer [association-measures-graph] :as stats]
             [natsume-server.text :as text]
+            [natsume-server.collocations :refer [extract-collocations]]
             [natsume-server.annotation-middleware :as anno]
             [natsume-server.lm :as lm]))
 
@@ -215,7 +216,7 @@
                                 response))))
                     (into []))
         collocations (->> tree
-                          natsume-server.collocations/extract-collocations
+                          extract-collocations
                           (filter identity) ;; FIXME ぞれ NPE problem
                           (remove (fn [m] (= (:type m) [:verb :verb]))) ;; FIXME
                           (pmap (fn [m]
