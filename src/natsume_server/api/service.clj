@@ -46,8 +46,8 @@
 ;; FIXME validate input parameters.
 (defn clean-params [m]
   (for-map [[k v] m]
-           (underscores->dashes k)
-           (condp #(%1 %2) (underscores->dashes k)
+           (underscores->dashes (name k))
+           (condp #(%1 %2) (underscores->dashes (name k))
              #{:relation-limit :limit :offset} (try (Long/parseLong v) (catch Exception e -1))
              #{:type :measure} (underscores->dashes v)
              #{:scale :compact-numbers :debug} (condp re-seq v #"(?i)^(true|1)$" true #"(?i)^(false|0)$" false -1)
