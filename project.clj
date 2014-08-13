@@ -61,11 +61,11 @@
                  ;; [io.pedestal/pedestal.tomcat "0.2.1"]
                  [cheshire "5.3.1"]
                  ;;[org.blancas/kern "0.7.0"]
-                 [camel-snake-kebab "0.2.1"]
+                 [camel-snake-kebab "0.2.2"]
                  [com.novemberain/validateur "2.2.0"]
-                 [org.clojure/core.cache "0.6.3"]
+                 [org.clojure/core.cache "0.6.4"]
                  ;; Authentication TODO: friend & https://github.com/osbert/persona-kit
-                 [org.clojure/clojurescript "0.0-2280"]
+                 [org.clojure/clojurescript "0.0-2311"]
                  [om "0.7.1"]
                  ;;
 
@@ -92,7 +92,7 @@
                  ;;
 
                  ;; Text processing
-                 [org.chasen/cabocha "0.66"]
+                 [org.chasen/cabocha "0.68"]
                  [com.ibm.icu/icu4j "53.1"]
                  [d3-compat-tree "0.0.3"]
                  ;;
