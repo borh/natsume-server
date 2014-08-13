@@ -242,7 +242,7 @@
                                         register-score (db/collocation-register-score m)]
                                     (-> record
                                         (assoc :string (clojure.string/join (map :string (:parts record))))
-                                        (?> (map? register-score) merge register-score)))))
+                                        (?> (map? register-score) (merge register-score))))))
                           (into []))]
     (concat tokens collocations)))
 (defn get-text-register [request]
