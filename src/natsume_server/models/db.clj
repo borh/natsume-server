@@ -32,7 +32,7 @@
   (->> sources-metadata
        (filter (fn [{:keys [basename]}] (contains? file-set basename)))
        ;; Optionally filter out sources already in database.
-       ;;(?>> (not-empty existing-basenames) map #(filter (fn [record] (not (contains? existing-basenames (nth record 3)))) %))
+       ;;(?>> (not-empty existing-basenames) (map #(filter (fn [record] (not (contains? existing-basenames (nth record 3)))) %)))
        ((comp dorun map) insert-source!)
        #_((comp dorun map) #(if (seq %) ((comp dorun map) insert-source! %)))))
 
@@ -191,7 +191,7 @@
        (group-by #(select-keys % [:lemma :orth-base :pos-1 :pos-2]))
        (map-vals seq-to-tree)
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (contains? @norm-map norm) map-vals #(normalize-tree (norm @norm-map) % :clean-up-fn compact-number))
+       (?>> (contains? @norm-map norm) (map-vals #(normalize-tree (norm @norm-map) % :clean-up-fn compact-number)))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        vec
        (map #(hash-map :token (first %) :results (second %)))))
@@ -260,26 +260,26 @@
                          (conj [:= :type (fmt/to-sql type)])
                          (?> genre conj [:tilda :genre genre]))
         clean-up-fn (fn [data] (->> data
-                                   (?>> (and offset (pos? offset)) drop offset)
-                                   (?>> (and limit (pos? limit)) take limit)
-                                   (?>> compact-numbers map (fn [r] (update-in r [measure] compact-number)))))]
+                                   (?>> (and offset (pos? offset)) (drop offset))
+                                   (?>> (and limit (pos? limit)) (take limit))
+                                   (?>> compact-numbers (map (fn [r] (update-in r [measure] compact-number))))))]
     (->> (qm
           (-> {:select (vec (distinct (concat aggregates-clause selected)))
                :from [(keyword (str "search_gram_" n))]
                :where where-clause}
-              (?> (not-empty selected) assoc :group-by selected)))
+              (?> (not-empty selected) (assoc :group-by selected))))
          #_(map genre-ltree-transform)
-         (?>> (> n 1) map #(let [contingency-table (stats/expand-contingency-table
-                                                    {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
-                                                     ;; FIXME : we probably want to have the option of using the total count per n-gram order...
-                                                     :f-xx (-> @gram-totals type :count)})] ;; FIXME Should add :genre filtering to gram-totals when we specify some genre filter!
-                             (case measure
-                               :log-dice (merge % contingency-table)
-                               :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
-                               (assoc % measure
-                                      ((measure stats/association-measures-graph) contingency-table)))))
+         (?>> (> n 1) (map #(let [contingency-table (stats/expand-contingency-table
+                                                      {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
+                                                       ;; FIXME : we probably want to have the option of using the total count per n-gram order...
+                                                       :f-xx (-> @gram-totals type :count)})] ;; FIXME Should add :genre filtering to gram-totals when we specify some genre filter!
+                               (case measure
+                                 :log-dice (merge % contingency-table)
+                                 :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
+                                 (assoc % measure
+                                        ((measure stats/association-measures-graph) contingency-table))))))
          (?>> (= :log-dice measure) (fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1))))
-         (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) dissoc :count)))
+         (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) (dissoc :count))))
          (sort-by (comp - measure)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
          (?>> (:string-2 selected) (fn [rows] (->> rows
                                                   (group-by :string-2)
@@ -288,7 +288,7 @@
                                                   (sort-by #(- (apply + (map measure (second %)))))
                                                   (map (fn [[p fs]] {:string-2 p
                                                                     :data (clean-up-fn fs)}))
-                                                  (?>> relation-limit take relation-limit))))
+                                                  (?>> relation-limit (take relation-limit)))))
          (?>> (not (:string-2 selected)) clean-up-fn))))
 ;; FIXME include option for human-readable output (log-normalized to max): scale option
 
@@ -336,10 +336,10 @@
         query-clause (map->and-query query)
         where-clause (-> query-clause
                          (conj [:= :type (fmt/to-sql type)])
-                         (?> genre conj [:tilda :genre genre]))
+                         (?> genre (conj [:tilda :genre genre])))
         merge-fns (for-map [m measure] m (if (#{:count :f-xi :f-ix #_:f-io #_:f-oi} m) + #(if %1 %1 %2)))
         clean-up-fn (fn [data] (->> data
-                                   (?>> compact-numbers map (fn [r] (for-map [[k v] r] k (if (measure k) (compact-number v) v))))))]
+                                   (?>> compact-numbers (map (fn [r] (for-map [[k v] r] k (if (measure k) (compact-number v) v)))))))]
     (if (= (count query) n) ;; Only fully-specified queries are allowed.
       (if (= n 1) ;; 1-gram is a specialized case, as it uses :tags. -> not anymore.
         (let [tags (if (empty? tags) #{:none} tags)
@@ -380,8 +380,8 @@
           (if (empty? db-results)
             (seq-to-tree db-results)
             (-> db-results
-                ;;(?> (:log-dice measure) stats/log-dice (if (:string-1 query) :string-3 :string-1))
-                ;;((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= (:count measure)) dissoc :count)) rs)))
+                ;;(?> (:log-dice measure) (stats/log-dice (if (:string-1 query) :string-3 :string-1)))
+                ;;((fn [rs] (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= (:count measure)) (dissoc :count))) rs)))
                 (?> (and (not (:count measure)) compact-numbers)
                     (fn [rs]
                       (map (fn [r]
@@ -457,7 +457,7 @@
                :where (-> (conj (map->and-query query-fields)
                                 [:= :sentences-id :sentences.id]
                                 [:= :sentences.sources-id :sources.id])
-                          (?> genre conj [:tilda :sources.genre genre]))
+                          (?> genre (conj [:tilda :sources.genre genre])))
                :group-by (apply conj selected-fields :sentences.chunks begin-end-fields)}
               :part]]}
      genre-ltree-transform
@@ -527,7 +527,7 @@
                                       (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) :bad
                                       :else :unknown)}
            :found? true}
-          (?> (> n 1) assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr]))))
+          (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr])))))
       #_(if (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum)))
         {:found? true}
         (if (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum)))
@@ -535,7 +535,7 @@
                                 :bad  (compact-number bad-sum)
                                 :mean (compact-number mean)}
                :found? true}
-              (?> (> n 1) assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr]))))
+              (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr])))))
           {:found? true})))
     {:found? false}))
 
