@@ -1,5 +1,5 @@
 (ns natsume-server.utils.reducers
-  (:refer-clojure :exclude [partition-by map mapcat filter reduce take-while drop take remove flatten])
+  (:refer-clojure :exclude [partition-by map mapcat cat filter reduce take-while drop take remove flatten])
   (:require [clojure.core.reducers :refer :all]))
 
 ;; Begin reducers utils

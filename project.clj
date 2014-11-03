@@ -7,13 +7,13 @@
   :main ^{:skip-aot true} natsume-server.core
   :scm {:url "https://github.com/borh/natsume-server.git"
         :name "git"}
-  :dependencies [[org.clojure/clojure "1.6.0"]
+  :dependencies [[org.clojure/clojure "1.7.0-alpha3"]
 
                  ;; Database
-                 [org.postgresql/postgresql "9.2-1003-jdbc4"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.3-1102-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.0"]
                  [java-jdbc/dsl "0.1.0"]
-                 [com.alibaba/druid "1.0.7"]
+                 [com.alibaba/druid "1.0.9"]
                  [honeysql "0.4.3"]
                  ;;
 
@@ -31,8 +31,9 @@
                  ;;;;
 
                  ;; Utils
-                 [org.apache.commons/commons-compress "1.6"]
-                 [org.clojure/tools.reader "0.8.5"]
+                 [org.tukaani/xz "1.5"]
+                 [org.apache.commons/commons-compress "1.9"]
+                 [org.clojure/tools.reader "0.8.11"]
                  [com.taoensso/timbre "3.2.1"]
                  [clj-configurator "0.1.5"]
                  [org.dave/cfg "1.0.0"]
@@ -40,14 +41,14 @@
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.2"]
-                 [org.flatland/useful "0.11.2"]
-                 [fast-zip "0.4.0"]
+                 [org.flatland/useful "0.11.3"]
+                 [fast-zip "0.5.0"]
                  [org.apache.commons/commons-math3 "3.3"]
-                 [fipp "0.4.3"]
+                 [fipp "0.5.1"]
                  ;;
 
                  ;; Natane (refactor out)
-                 [me.raynes/conch "0.7.0"]
+                 [me.raynes/conch "0.8.0"]
                  ;;
 
                  ;; Webserver related
@@ -61,12 +62,12 @@
                  ;; [io.pedestal/pedestal.tomcat "0.2.1"]
                  [cheshire "5.3.1"]
                  ;;[org.blancas/kern "0.7.0"]
-                 [camel-snake-kebab "0.2.2"]
-                 [com.novemberain/validateur "2.2.0"]
+                 [camel-snake-kebab "0.2.5" :exclusions [org.clojure/clojure]]
+                 [com.novemberain/validateur "2.3.1"]
                  [org.clojure/core.cache "0.6.4"]
                  ;; Authentication TODO: friend & https://github.com/osbert/persona-kit
-                 [org.clojure/clojurescript "0.0-2311"]
-                 [om "0.7.1"]
+                 [org.clojure/clojurescript "0.0-2371"]
+                 [om "0.8.0-alpha1"]
                  ;;
 
                  ;; ClojureScript
@@ -80,8 +81,8 @@
                  ;;[org.clojure/math.numeric-tower "0.0.2"]
                  [com.aliasi/lingpipe "4.1.0"]
                  ;; [clj-liblinear "0.0.1-SNAPSHOT"] ; TODO https://github.com/lynaghk/clj-liblinear
-                 [bigml/sampling "2.1.1"]
-                 [prismatic/plumbing "0.3.3"]
+                 [bigml/sampling "3.0"]
+                 [prismatic/plumbing "0.3.5" :exclusions [fs potemkin]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.2.1"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -93,13 +94,13 @@
 
                  ;; Text processing
                  [org.chasen/cabocha "0.68"]
-                 [com.ibm.icu/icu4j "53.1"]
+                 [com.ibm.icu/icu4j "54.1.1"]
                  [d3-compat-tree "0.0.3"]
                  ;;
                  ]
   :min-lein-version "2.0.0"
   :test-paths ["spec/"]
-  :plugins [[speclj "2.9.1"] [lein-cljsbuild "0.3.3"]]
+  :plugins [[speclj "3.1.0"] [lein-cljsbuild "1.0.4-SNAPSHOT"]]
   :resources-paths ["config" "public"]
   :source-paths ["src" "public"]
   :aliases {"run-dev" ["trampoline" "run" "-m" "natsume-server.api.service/run-dev"]}
@@ -129,11 +130,11 @@
                             (println)))
                   :welcome (println "Welcome to natsume-server! Run (tools-help) to see a list of useful functions.")}
   :profiles {:dev {:jvm-opts ["-server" "-XX:+UseG1GC" "-Xshare:off" "-XX:-OmitStackTraceInFastThrow"]
-                   :plugins [[com.cemerick/austin "0.1.1"]]
-                   :dependencies [[speclj "3.0.2"]
+                   :plugins [[com.cemerick/austin "0.2.0-SNAPSHOT"]]
+                   :dependencies [[speclj "3.1.0"]
                                   [criterium "0.4.3"]
                                   [ring-mock "0.1.5"]
-                                  [org.clojure/tools.namespace "0.2.5"]
+                                  [org.clojure/tools.namespace "0.2.7"]
                                   [org.clojure/java.classpath "0.2.2"]
                                   [peridot "0.3.0" :exclusions [org.apache.httpcomponents/httpmime]] ; TODO
                                   ]}

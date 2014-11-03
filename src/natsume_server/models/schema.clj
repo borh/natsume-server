@@ -4,7 +4,7 @@
             [java-jdbc.ddl :as ddl]
             [honeysql.core :as h]
             [honeysql.format :as fmt]
-            [honeysql.helpers :refer :all]
+            [honeysql.helpers :refer :all :exclude [update]]
 
             [plumbing.core :refer [for-map]]
             [natsume-server.models.sql-helpers :refer :all]

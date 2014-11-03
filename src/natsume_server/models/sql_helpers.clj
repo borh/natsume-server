@@ -1,7 +1,7 @@
 (ns natsume-server.models.sql-helpers
   (:require [honeysql.core :as h]
             [honeysql.format :as fmt]
-            [honeysql.helpers :refer :all]
+            [honeysql.helpers :refer :all :exclude [update]]
             [clojure.java.jdbc :as j]
             [clojure.string :as string]
             [clojure.set :as set]

@@ -1,7 +1,7 @@
 (ns natsume-server.models.db
   (:require [honeysql.core :as h]
             [honeysql.format :as fmt]
-            [honeysql.helpers :refer :all]
+            [honeysql.helpers :refer :all :exclude [update]]
             [d3-compat-tree.tree :refer :all]
             [natsume-server.models.sql-helpers :refer :all]
             [natsume-server.models.schema :as schema]
