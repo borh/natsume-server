@@ -1,40 +1,29 @@
-(defproject natsume-server "0.4.0-SNAPSHOT"
+(defproject natsume-server "1.0.0-SNAPSHOT"
   :description "Natsume writing assistance system data processor and API server"
   :url "http://hinoki.ryu.titech.ac.jp/natsume/"
-  :license {:name "Eclipse Public License"
-            :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :main ^{:skip-aot true} natsume-server.core
   :scm {:url "https://github.com/borh/natsume-server.git"
         :name "git"}
+  :license {:name "Eclipse Public License"
+            :url "http://www.eclipse.org/legal/epl-v10.html"}
+  :min-lein-version "2.0.0"
+  :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
+  :jvm-opts ["-server" "-XX:+UseG1GC"]
   :dependencies [[org.clojure/clojure "1.7.0-alpha3"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.3-1102-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
-                 [org.clojure/java.jdbc "0.3.0"]
-                 [java-jdbc/dsl "0.1.0"]
-                 [com.alibaba/druid "1.0.9"]
+                 [org.clojure/java.jdbc "0.3.6"]
+                 [java-jdbc/dsl "0.1.1"]
+                 [com.alibaba/druid "1.0.11"]
                  [honeysql "0.4.3"]
+                 [yesql "0.4.0"]
                  ;;
-
-                 ;; Logging (for Pedestal)
-                 [ch.qos.logback/logback-classic "1.1.2" :exclusions [org.slf4j/slf4j-api]]
-                 [org.slf4j/slf4j-api "1.7.7"]
-                 [org.slf4j/jul-to-slf4j "1.7.7"]
-                 [org.slf4j/jcl-over-slf4j "1.7.7"]
-                 [org.slf4j/log4j-over-slf4j "1.7.7"]
-                 ;;
-
-                 ;;;; Fulltext search
-                 ;;[org.elasticsearch/elasticsearch "1.0.0.Beta2"]
-                 ;;[clojurewerkz/elastisch "1.4.0"]
-                 ;;;;
 
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
-                 [org.clojure/tools.reader "0.8.11"]
-                 [com.taoensso/timbre "3.2.1"]
+                 [org.clojure/tools.reader "0.8.13"]
+                 [com.taoensso/timbre "3.3.1"]
                  [clj-configurator "0.1.5"]
                  [org.dave/cfg "1.0.0"]
                  [org.clojure/tools.cli "0.3.1"]
@@ -42,39 +31,11 @@
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.2"]
                  [org.flatland/useful "0.11.3"]
-                 [fast-zip "0.5.0"]
+                 [fast-zip "0.5.2"]
                  [org.apache.commons/commons-math3 "3.3"]
                  [fipp "0.5.1"]
-                 ;;
-
-                 ;; Natane (refactor out)
-                 [me.raynes/conch "0.8.0"]
-                 ;;
-
-                 ;; Webserver related
-                 ;;[http-kit "2.1.4"]
-                 ;;[ring/ring-core "1.2.0-RC1"]
-                 ;;[compojure "1.2.0-SNAPSHOT"]
-                 ;; TODO ZeroMQ: http://augustl.com/blog/2013/zeromq_instead_of_http/
-                 [io.pedestal/pedestal.service "0.2.2"]
-                 [io.pedestal/pedestal.service-tools "0.2.2"]
-                 [io.pedestal/pedestal.jetty "0.2.2"]
-                 ;; [io.pedestal/pedestal.tomcat "0.2.1"]
-                 [cheshire "5.3.1"]
-                 ;;[org.blancas/kern "0.7.0"]
                  [camel-snake-kebab "0.2.5" :exclusions [org.clojure/clojure]]
-                 [com.novemberain/validateur "2.3.1"]
-                 [org.clojure/core.cache "0.6.4"]
-                 ;; Authentication TODO: friend & https://github.com/osbert/persona-kit
-                 [org.clojure/clojurescript "0.0-2371"]
-                 [om "0.8.0-alpha1"]
                  ;;
-
-                 ;; ClojureScript
-                 ;;
-
-                 ;; TODO: https://github.com/bagucode/clj-native for better C bindings
-                 ;;       Also: http://code.google.com/p/jnaerator/
 
                  ;; Stats/models/ML
                  [incanter "1.5.5"]
@@ -82,7 +43,7 @@
                  [com.aliasi/lingpipe "4.1.0"]
                  ;; [clj-liblinear "0.0.1-SNAPSHOT"] ; TODO https://github.com/lynaghk/clj-liblinear
                  [bigml/sampling "3.0"]
-                 [prismatic/plumbing "0.3.5" :exclusions [fs potemkin]]
+                 [prismatic/plumbing "0.3.5" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.2.1"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -90,6 +51,10 @@
                  ;;[org.clojure/core.logic "0.8.3"] ; TODO
                  ;;[pldb "0.1.1"]
                  ;;[readyforzero/babbage "1.0.2"] ; TODO
+                 ;; word2vec/doc2vec TODO:
+                 [org.deeplearning4j/deeplearning4j-core "0.0.3.2.7"]
+                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.2.7"]
+                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.2.7"]
                  ;;
 
                  ;; Text processing
@@ -97,47 +62,41 @@
                  [com.ibm.icu/icu4j "54.1.1"]
                  [d3-compat-tree "0.0.3"]
                  ;;
-                 ]
-  :min-lein-version "2.0.0"
-  :test-paths ["spec/"]
-  :plugins [[speclj "3.1.0"] [lein-cljsbuild "1.0.4-SNAPSHOT"]]
-  :resources-paths ["config" "public"]
-  :source-paths ["src" "public"]
-  :aliases {"run-dev" ["trampoline" "run" "-m" "natsume-server.api.service/run-dev"]}
-  ;;:hooks [leiningen.cljsbuild]
-  :cljsbuild {:builds [{:id "dev"
-                        :source-paths ["src/cljs"]
-                        :compiler {:output-to "public/main.js"
-                                   :output-dir "public/out"
-                                   :optimizations :none
-                                   :source-map true}}
-                       {:id "release"
-                        :source-paths ["src/cljs"]
-                        :compiler {:output-to "public/main.js"
-                                   :optimizations :advanced
-                                   :pretty-print false
-                                   :preamble ["react/react.min.js"]
-                                   :externs ["react/externs/react.js"]}}]}
-  #_:repl-options  #_{:init-ns user
-                  :init (try
-                          (use 'io.pedestal.service-tools.dev)
-                          (require 'natsume-server.api.service)
-                          ;; Nasty trick to get around being unable to reference non-clojure.core symbols in :init
-                          (eval '(init natsume-server.api.service/service #'natsume-server.api.service/routes))
-                          (catch Throwable t
-                            (println "ERROR: There was a problem loading io.pedestal.service-tools.dev")
-                            (clojure.stacktrace/print-stack-trace t)
-                            (println)))
-                  :welcome (println "Welcome to natsume-server! Run (tools-help) to see a list of useful functions.")}
-  :profiles {:dev {:jvm-opts ["-server" "-XX:+UseG1GC" "-Xshare:off" "-XX:-OmitStackTraceInFastThrow"]
-                   :plugins [[com.cemerick/austin "0.2.0-SNAPSHOT"]]
-                   :dependencies [[speclj "3.1.0"]
-                                  [criterium "0.4.3"]
-                                  [ring-mock "0.1.5"]
+
+                 [com.stuartsierra/component "0.2.2"]
+                 [compojure "1.3.1"]
+                 [metosin/compojure-api "0.16.6"]
+                 [metosin/ring-http-response "0.5.2"]
+                 [metosin/ring-swagger-ui "2.0.17"]
+                 [prone "0.8.0"]
+                 [prismatic/schema "0.3.3"]
+                 [ring "1.3.2"]
+                 [ring/ring-defaults "0.1.2"]
+                 [ring-webjars "0.1.0"]
+                 [http-kit "2.1.19"]
+
+                 [potemkin "0.3.10"]                        ;; FIXME
+                 [duct "0.0.7"]
+                 [environ "1.0.0"]
+                 [meta-merge "0.1.0"]]
+  :plugins [[lein-environ "1.0.0"]
+            [lein-gen "0.2.0"]]
+  :generators [[duct/generators "0.0.3"]]
+  :duct {:ns-prefix natsume-server}
+  :main ^:skip-aot natsume-server.main
+  :aliases {"gen" ["generate"]}
+  :profiles
+  {;;:defaults [:base :system :user :provided :dev :profiles/dev]
+   :dev  [:project/dev  :profiles/dev]
+   :test [:project/test :profiles/test]
+   :uberjar {:aot :all :resource-paths ["swagger-ui"]}
+   :profiles/dev  {}
+   :profiles/test {}
+   :project/dev   {:source-paths ["dev"]
+                   :repl-options {:init-ns user}
+                   :dependencies [[reloaded.repl "0.1.0"]
                                   [org.clojure/tools.namespace "0.2.7"]
-                                  [org.clojure/java.classpath "0.2.2"]
-                                  [peridot "0.3.0" :exclusions [org.apache.httpcomponents/httpmime]] ; TODO
-                                  ]}
-             :server     {:jvm-opts ["-server" "-XX:+UseG1GC" "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts" "-XX:+UseFastAccessorMethods" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-XX:MaxGCPauseMillis=20"]} ;; FIXME benchmark
-             :production {:jvm-opts ["-server" "-XX:+UseG1GC" "-XX:+CMSParallelRemarkEnabled" "-XX:+AggressiveOpts" "-XX:+UseFastAccessorMethods" "-XX:+UseCompressedOops" "-XX:+DoEscapeAnalysis" "-XX:+UseBiasedLocking" "-Xmx8g"]}}
-  :pedantic :warn)
+                                  [kerodon "0.5.0"]]
+                   ;;:env {:port 3000}
+                   }
+   :project/test  {}})

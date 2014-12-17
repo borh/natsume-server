@@ -1,0 +1,38 @@
+.error-page body,
+.welcome body {
+    background: #eee;
+}
+
+.error-page h1 {
+    margin: 15% 0 0 0;
+    text-align: center;
+    font-size: 42px;
+    color: #900;
+}
+
+.error-page h2 {
+    text-align: center;
+    font-size: 32px;
+    font-weight: normal;
+    color: #333;
+}
+
+.welcome h2 {
+    margin: 10% 0 12px 0;
+    text-align: center;
+    font-size: 32px;
+    font-weight: normal;
+    color: #555;
+}
+
+.welcome h1 {
+    margin: 0;
+    text-align: center;
+    font-size: 42px;
+    color: #009;
+}
+
+.welcome .duct {
+    color: #000;
+    font-weight: bold;
+}
