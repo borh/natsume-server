@@ -6,6 +6,34 @@ For those that wish to use the Natsume system, please go to the official page:
 
 <http://hinoki.ryu.titech.ac.jp/natsume/>
 
+## Developing
+
+### Environment
+
+To setup a development environment, start a REPL.
+
+```sh
+lein repl
+```
+
+Run `go` to initiate and start the system.
+
+```clojure
+user=> (go)
+:started
+```
+
+By default this creates a web server at <http://localhost:3000>.
+
+When you make changes to your source files, use `reset` to reload any
+modified files and restart the server.
+
+```clojure
+user=> (reset)
+:reloading (...)
+:started
+```
+
 ## Prerequisites
 
 `natsume-server` is written in [Clojure](http://clojure.org/) (1.4), and thus a working Java environment is required to run it.
