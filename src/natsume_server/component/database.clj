@@ -23,6 +23,7 @@
             [natsume-server.nlp.importers.wikipedia :as wikipedia]
             [natsume-server.nlp.annotation-middleware :as am]
             [natsume-server.nlp.readability :as rd]
+            [natsume-server.utils.numbers :refer [compact-number]]
 
             [bigml.sampling.simple :as sampling]
             [plumbing.core :refer :all :exclude [update]]
@@ -36,7 +37,7 @@
             )
   (:import [com.alibaba.druid.pool DruidDataSource]))
 
-(defn- druid-pool
+(defn druid-pool
   [spec]
   (let [cpds (doto (DruidDataSource.)
                (.setDriverClassName "org.postgresql.Driver")
@@ -722,32 +723,13 @@ return the DDL string for creating that unlogged table."
 (def !norm-map (atom {}))
 (def !genre-names (atom {}))
 (defn set-norm-map! [conn]
-  (swap! !norm-map
+  (reset! !norm-map
    {:sources    (seq-to-tree (q conn (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
     :paragraphs (seq-to-tree (q conn (-> (select :genre [:paragraphs-count :count]) (from :genre-norm)) genre-ltree-transform))
     :sentences  (seq-to-tree (q conn (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
     :chunks     (seq-to-tree (q conn (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
     :tokens     (seq-to-tree (q conn (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))})
-  (swap! !genre-names (->> @!norm-map :sources :children (map :name) set)))
-
-(def ^:private decimal-format (java.text.DecimalFormat. "#.00"))
-(defprotocol ICompactNumber
-  (compact-number [num]))
-(extend-protocol ICompactNumber
-
-  java.lang.Double
-  (compact-number [x]
-    (Double/parseDouble (.format ^java.text.DecimalFormat decimal-format x)))
-
-  clojure.lang.Ratio
-  (compact-number [x]
-    (Double/parseDouble (.format ^java.text.DecimalFormat decimal-format x)))
-
-  java.lang.Long
-  (compact-number [x] x)
-
-  clojure.lang.BigInt
-  (compact-number [x] x))
+  (reset! !genre-names (->> @!norm-map :sources :children (map :name) set)))
 
 ;; FIXME TODO add compact-numbers
 ;; TODO add natsume-units version
@@ -773,7 +755,7 @@ return the DDL string for creating that unlogged table."
            {:select [:*]
             :from [:search-tokens]
             :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
-          genre-ltree-transform)
+           genre-ltree-transform)
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
        (?>> (contains? @!norm-map norm) (#(normalize-tree (norm @!norm-map) % :clean-up-fn (if compact-numbers compact-number identity))))
@@ -786,14 +768,14 @@ return the DDL string for creating that unlogged table."
 (def !tokens-by-gram (atom {}))
 
 (defn set-gram-information! [conn]
-  (swap! !gram-totals
+  (reset! !gram-totals
          (let [records (q conn (-> (select :*) (from :gram-norm)) #(update-in % [:type] underscores->dashes))]
            (->> records
                 (map #(update-in % [:genre] ltree->seq))
                 (group-by :type)
                 (map-vals #(seq-to-tree % :merge-keys [:count :sentences-count #_:paragraphs-count :sources-count])))))
-  (swap! !gram-types (set (q conn (-> (select :type) (from :gram-norm)) underscores->dashes :type)))
-  (swap! !tokens-by-gram
+  (reset! !gram-types (set (q conn (-> (select :type) (from :gram-norm)) underscores->dashes :type)))
+  (reset! !tokens-by-gram
          (map-vals (fn [x] (reduce #(+ %1 (-> %2 val :count)) 0 x))
                    (group-by #(let [wcs (clojure.string/split (name (key %)) #"-")
                                     aux-count (count (filter (fn [wc] (= "auxiliary" wc)) wcs))]
@@ -1026,93 +1008,6 @@ return the DDL string for creating that unlogged table."
 (comment
   (query-sentences conn {:string-1 "こと" :type :noun-particle-verb})
   (query-sentences conn {:string-1 "こと" :type :noun-particle-verb-particle :genre ["書籍" "*"] :limit 10 :html true}))
-
-(defn mi-score [collocation]
-  ;; If no gram found in 1-gram DB, use 1 or 0.5 for freq.
-  (let [n (count (:type-vector collocation))
-        strings [:string-1 :string-2 :string-3 :string-4]
-        ;; Get counts for each string-*, if possible.
-        db-results (map query-collocations-tree
-                        (for [i (take n (range (count strings)))]
-                          (-> (apply dissoc collocation strings)
-                              (assoc :measure #{:count :mi}
-                                     :normalize? false
-                                     :type (nth (:type-vector collocation) i)
-                                     :string-1 ((nth strings i) collocation)))))
-        freqs (->> db-results (map :count) (map #(if (or (nil? %) (zero? %)) 1.0 %)))
-        f-xx (get @!tokens-by-gram n) #_(:count ((:type collocation) @!gram-totals)) ;; Count for all genres.
-        mi-scores (let [f-ii 1.0
-                        f-ix (first freqs)
-                        f-xi (if (= 2 (count freqs)) (nth freqs 1) (nth freqs 2))]
-                    (select-keys
-                     (stats/compute-association-measures
-                      (stats/expand-contingency-table
-                       {:f-ii f-ii :f-ix f-ix :f-xi f-xi :f-xx f-xx}))
-                     [:mi :t :llr]))]
-    {:stats (map-vals compact-number mi-scores)
-     :found? false}))
-
-(defn sigma-score [pos n tree]
-  (if-let [freqs (->> tree :children (map (juxt :name :count)) (into {}) seq)]
-    (let [freqs (let [diff (- (count @!genre-names) (count freqs))]
-                  (if (pos? diff)
-                    (concat freqs (seq (zipmap (set/difference @!genre-names (set (map first freqs))) (repeat diff 0.0))))
-                    freqs))
-          mean (stats/mean (vals freqs))
-          sd (stats/sd (vals freqs))
-          ;; df = 11 (BCCWJ + STJC + Wikipedia?)
-          ;; 0.10      	0.05 	0.025 	0.01 	0.005
-          ;; 17.275 	19.675 	21.920 	24.725 	26.757
-          chisq-line (case pos
-                       :noun 26.757
-                       :verb 26.757
-                       :particle 26.757
-                       :auxiliary-verb 26.757
-                       19.675)
-          chisq-fn #(let [chi (/ (Math/pow (- % mean) 2.0) mean)]
-                      (if (> chi chisq-line)
-                        (- % mean)
-                        nil))
-          chisq-filtered (into {} (r/remove #(nil? (second %)) (map-vals chisq-fn freqs)))
-          good-sum (if-let [good-vals (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))]
-                     (/ (reduce + good-vals) (count good-vals)))
-          bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
-                    (/ (reduce + bad-vals) (count bad-vals)))]
-      (-> {:register-score {:good (compact-number (if (number? good-sum) good-sum 0.0))
-                            :bad  (compact-number (if (number? bad-sum) bad-sum 0.0))
-                            :mean (compact-number (if (number? mean) mean 0.0))
-                            :verdict (cond
-                                      (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) :good
-                                      (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) :bad
-                                      :else :unknown)}
-           :found? true}
-          (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr]))))))
-    {:found? false}))
-
-(defn token-register-score
-  "Old formula, but includes measures other than chi-sq."
-  [query]
-  (let [results (get-one-search-token query :compact-numbers false)]
-    (sigma-score (:pos query) 1 results)))
-
-(defn collocation-register-score [conn query]
-  (let [collocation (-> (zipmap [:string-1 :string-2 :string-3 :string-4]
-                                (mapcat (fn [part] (remove nil? [(:head-string part) (:tail-string part)]))
-                                        (:data query)))
-                        (assoc :compact-numbers false
-                               :measure #{:count :mi :f-xi :f-ix}
-                               :type-vector (:type query)
-                               :type (->> (:type query)
-                                          (map name)
-                                          (clojure.string/join "-")
-                                          keyword)))
-        tree (query-collocations-tree conn collocation)
-        n (count (:type-vector collocation))]
-    (if (seq (:children tree))
-      (sigma-score :collocation n tree)
-      (if (> n 1)
-        (mi-score collocation)
-        -2))))
 
 
 ;; END Query
