@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-alpha3"]
+  :dependencies [[org.clojure/clojure "1.7.0-alpha4"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.3-1102-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
@@ -47,20 +47,20 @@
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.2.1"]
                  [org.clojure/core.incubator "0.1.3"]
-                 ;;[org.clojure/core.match "0.2.0-alpha12"] ; TODO
+                 [org.clojure/core.match "0.3.0-alpha4"]
                  ;;[org.clojure/core.logic "0.8.3"] ; TODO
                  ;;[pldb "0.1.1"]
                  ;;[readyforzero/babbage "1.0.2"] ; TODO
                  ;; word2vec/doc2vec TODO:
-                 [org.deeplearning4j/deeplearning4j-core "0.0.3.2.7"]
-                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.2.7"]
-                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.2.7"]
+                 ;;[org.deeplearning4j/deeplearning4j-core "0.0.3.2.7"]
+                 ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.2.7"]
+                 ;;[org.deeplearning4j/deeplearning4j-nlp "0.0.3.2.7"]
                  ;;
 
                  ;; Text processing
                  [org.chasen/cabocha "0.68"]
                  [com.ibm.icu/icu4j "54.1.1"]
-                 [d3-compat-tree "0.0.3"]
+                 [d3-compat-tree "0.0.3.1"]
                  ;;
 
                  [com.stuartsierra/component "0.2.2"]
