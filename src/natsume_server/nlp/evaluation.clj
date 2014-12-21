@@ -17,13 +17,16 @@
 (s/defschema ScoredToken
              (assoc Token :academic-score (s/maybe s/Bool) :colloquial-score (s/maybe s/Bool)))
 
+(def test-data "data/unidic-adverb1220.tsv.xz")
+
 (s/defn get-tokens :- [Token]
-  [adverb-file :- s/Str]
-  (->> (with-open [adverb-reader (xz-reader adverb-file)]
-         (doall (csv/read-csv adverb-reader :separator \tab :quote 0)))
+  [test-file :- s/Str]
+  (->> (with-open [test-reader (xz-reader test-file)]
+         (doall (csv/read-csv test-reader :separator \tab :quote 0)))
        (r/drop 1)
        (r/map (fn [[表層形 左文脈ID 右文脈ID コスト 品詞大分類 品詞中分類 品詞小分類 品詞細分類 活用型 活用形 語彙素読み 語彙素 書字形出現形 発音形出現形 書字形基本形 発音形基本形 語種 語頭変化型 語頭変化形 語末変化型 語末変化形 アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉 備考]]
                 ;; We only need a few features to match.
+                ;; FIXME How to handle "？"?
                 {:orth-base 書字形出現形
                  :lemma 語彙素
                  :pos-1 品詞大分類
@@ -31,6 +34,9 @@
                  :normal-written   (case 一般的な書き言葉      "○" true "×" false nil)
                  :public-spoken    (case 公的な話し言葉       "○" true "×" false nil)
                  :normal-spoken    (case 日常の話し言葉       "○" true "×" false nil)}))
+       (r/remove (fn [{:keys [academic-written normal-written public-spoken normal-spoken]}]
+                   (and (nil? academic-written) (nil? normal-written)
+                        (nil? public-spoken) (nil? normal-spoken))))
        (into [])))
 
 (def conn (db/druid-pool {:subname "//localhost:5432/natsumedev"
@@ -52,8 +58,8 @@
       (assoc m :academic-score score :colloquial-score (case score true false false true nil nil)))))           ;; FIXME any way of optimizing the parameters of the scoring function?
 
 (comment
-  (score-tokens (get-tokens "data/unidic-adverb1220.tsv"))
-  (filter #(and (:score %) (:normal-spoken %)) (score-tokens (get-tokens "data/unidic-adverb1219.tsv"))))
+  (score-tokens (get-tokens test-data))
+  (filter #(and (:score %) (:normal-spoken %)) (score-tokens (get-tokens test-data))))
 
 (s/defn save-table
   [fn :- s/Str
@@ -62,8 +68,8 @@
     (with-open [w (io/writer fn)]
       (csv/write-csv w (into [(mapv name ks)] (mapv #(mapv % ks) tokens)) :separator \tab :quote 1))))
 
-(comment (save-table "data/unidic-adverb1220-scored.tsv"
-                     (score-tokens (get-tokens "data/unidic-adverb1220.tsv"))))
+(comment (save-table test-data
+                     (score-tokens (get-tokens test-data))))
 
 ;; TODO precision/recall
 
@@ -102,7 +108,27 @@
      (+ (precision cm) (recall cm))))
 
 (comment
-  (f1 (confusion-matrix (score-tokens (get-tokens "data/unidic-adverb1220.tsv")) :normal-spoken :colloquial-score))
-  (f1 (confusion-matrix (score-tokens (get-tokens "data/unidic-adverb1220.tsv")) :academic-written :academic-score)))
+  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :normal-spoken :colloquial-score))
+  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :academic-written :academic-score)))
+
+(def variations
+  [{:t :academic-written :p :academic-score}
+   {:t :normal-written   :p :academic-score}
+   {:t :public-spoken    :p :colloquial-score}
+   {:t :normal-spoken    :p :colloquial-score}])
+
+(s/defn get-all-variations
+  [true-predicted :- [{:t s/Keyword :p s/Keyword}]]
+  (for [{:keys [t p]} true-predicted]
+    (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
+      {:true t
+       :predicted p
+       :precision (precision cm)
+       :recall (recall cm)
+       :f1 (f1 cm)})))
+
+(comment
+  (use 'clojure.pprint)
+  (print-table (get-all-variations variations)))
 
 (s/set-fn-validation! true)
