@@ -6,10 +6,14 @@
 
 ;; EDN writer and reader utils
 
+(defn xz-reader
+  [fn]
+  (-> fn io/file io/input-stream XZCompressorInputStream. io/reader))
+
 (defn xz-line-seq
   "Utility function that turns XZ compressed text files into a line-seq."
   [fn]
-  (-> fn io/file io/input-stream XZCompressorInputStream. io/reader line-seq))
+  (-> fn xz-reader line-seq))
 
 (defn xz-string ^String [^String s]
   (prn-str (-> s java.io.PrintStream. XZCompressorOutputStream.)))

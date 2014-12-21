@@ -6,6 +6,7 @@
             [clojure.core.reducers :as r]
 
             [natsume-server.component.database :as db]
+            [natsume-server.utils.xz :refer [xz-reader]]
             [natsume-server.nlp.error :as error]))
 
 (s/defschema Token
@@ -18,7 +19,7 @@
 
 (s/defn get-tokens :- [Token]
   [adverb-file :- s/Str]
-  (->> (with-open [adverb-reader (io/reader adverb-file)]
+  (->> (with-open [adverb-reader (xz-reader adverb-file)]
          (doall (csv/read-csv adverb-reader :separator \tab :quote 0)))
        (r/drop 1)
        (r/map (fn [[表層形 左文脈ID 右文脈ID コスト 品詞大分類 品詞中分類 品詞小分類 品詞細分類 活用型 活用形 語彙素読み 語彙素 書字形出現形 発音形出現形 書字形基本形 発音形基本形 語種 語頭変化型 語頭変化形 語末変化型 語末変化形 アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉 備考]]
@@ -51,7 +52,7 @@
       (assoc m :academic-score score :colloquial-score (case score true false false true nil nil)))))           ;; FIXME any way of optimizing the parameters of the scoring function?
 
 (comment
-  (score-tokens (get-tokens "data/unidic-adverb1219.tsv"))
+  (score-tokens (get-tokens "data/unidic-adverb1220.tsv"))
   (filter #(and (:score %) (:normal-spoken %)) (score-tokens (get-tokens "data/unidic-adverb1219.tsv"))))
 
 (s/defn save-table
@@ -61,8 +62,8 @@
     (with-open [w (io/writer fn)]
       (csv/write-csv w (into [(mapv name ks)] (mapv #(mapv % ks) tokens)) :separator \tab :quote 1))))
 
-(comment (save-table "data/unidic-adverb1219-scored.tsv"
-                     (score-tokens (get-tokens "data/unidic-adverb1219.tsv"))))
+(comment (save-table "data/unidic-adverb1220-scored.tsv"
+                     (score-tokens (get-tokens "data/unidic-adverb1220.tsv"))))
 
 ;; TODO precision/recall
 
@@ -101,7 +102,7 @@
      (+ (precision cm) (recall cm))))
 
 (comment
-  (f1 (confusion-matrix (score-tokens (get-tokens "data/unidic-adverb1219.tsv")) :normal-spoken :colloquial-score))
-  (f1 (confusion-matrix (score-tokens (get-tokens "data/unidic-adverb1219.tsv")) :academic-written :academic-score)))
+  (f1 (confusion-matrix (score-tokens (get-tokens "data/unidic-adverb1220.tsv")) :normal-spoken :colloquial-score))
+  (f1 (confusion-matrix (score-tokens (get-tokens "data/unidic-adverb1220.tsv")) :academic-written :academic-score)))
 
 (s/set-fn-validation! true)
