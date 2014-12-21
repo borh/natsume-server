@@ -71,14 +71,14 @@
                  [prone "0.8.0"]
                  [prismatic/schema "0.3.3"]
                  [ring "1.3.2"]
-                 [ring/ring-defaults "0.1.2"]
+                 [ring/ring-defaults "0.1.3"]
                  [ring-webjars "0.1.0"]
                  [http-kit "2.1.19"]
 
                  [potemkin "0.3.10"]                        ;; FIXME
-                 [duct "0.0.7"]
+                 [duct "0.0.8"]
                  [environ "1.0.0"]
-                 [meta-merge "0.1.0"]]
+                 [meta-merge "0.1.1"]]
   :plugins [[lein-environ "1.0.0"]
             [lein-gen "0.2.0"]]
   :generators [[duct/generators "0.0.3"]]
@@ -95,7 +95,7 @@
    :project/dev   {:source-paths ["dev"]
                    :repl-options {:init-ns user}
                    :dependencies [[reloaded.repl "0.1.0"]
-                                  [org.clojure/tools.namespace "0.2.7"]
+                                  [org.clojure/tools.namespace "0.2.8"]
                                   [kerodon "0.5.0"]]
                    ;;:env {:port 3000}
                    }
