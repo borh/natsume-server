@@ -8,7 +8,8 @@
             ;;[ring.middleware.stacktrace :refer [wrap-stacktrace]]
             [prone.middleware :as prone]
             [compojure.handler :refer [api]]
-            [natsume-server.system :as system]))
+            [natsume-server.system :as system]
+            [natsume-server.nlp.evaluation :as e]))
 
 (def config
   {:db {:subname "//localhost:5432/natsumedev"
