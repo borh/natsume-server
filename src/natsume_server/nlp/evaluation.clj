@@ -37,7 +37,7 @@
        (r/remove (fn [{:keys [academic-written normal-written public-spoken normal-spoken]}]
                    (and (nil? academic-written) (nil? normal-written)
                         (nil? public-spoken) (nil? normal-spoken))))
-       (r/filter (fn [{:keys [academic-written]}]
+       #_(r/filter (fn [{:keys [academic-written]}]
                    (false? academic-written)))
        (into [])))
 
@@ -102,7 +102,7 @@
   (let [{:keys [tp fp]} cm
         tp+fp (+ tp fp)]
     (if (pos? tp+fp)
-      (/ tp (+ tp fp))
+      (double (/ tp (+ tp fp)))
       0.0)))
 
 (s/defn recall :- s/Num
@@ -110,7 +110,7 @@
   (let [{:keys [tp fn]} cm
         tp+fn (+ tp fn)]
     (if (pos? tp+fn)
-      (/ tp (+ tp fn))
+      (double (/ tp (+ tp fn)))
       0.0)))
 
 (s/defn f1 :- s/Num
