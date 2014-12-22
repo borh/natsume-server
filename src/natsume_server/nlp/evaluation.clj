@@ -142,10 +142,11 @@
   [fn :- s/Str]
   (let [scores (get-all-variations variations)
         score-keys [:true :predicted :precision :recall :f1]]
-    (doseq [{:keys [t p]} variations]
-      (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
-        (with-open [w (io/writer (str fn "-cm.tsv"))]
-          (csv/write-csv w [["" "Test positive" "Test negative"]
+    (with-open [w (io/writer (str fn "-cm.tsv"))]
+      (doseq [{:keys [t p]} variations]
+        (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
+          (csv/write-csv w [[(str (name t) " : " (name p)) "" ""]
+                            ["" "Test positive" "Test negative"]
                             ["Predicted positive" (:tp cm) (:fp cm)]
                             ["Predicted negative" (:fn cm) (:tn cm)]
                             [(str "NA = " (:NA cm) " N = " (reduce + (vals cm)))]]
@@ -156,6 +157,7 @@
 
 (comment
   (use 'clojure.pprint)
-  (print-table (get-all-variations variations)))
+  (print-table (get-all-variations variations))
+  (publish "results"))
 
 (s/set-fn-validation! true)
