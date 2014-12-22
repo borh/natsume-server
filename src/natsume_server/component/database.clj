@@ -1091,7 +1091,7 @@ return the DDL string for creating that unlogged table."
                          file-seq
                          (r/filter #(= ".txt" (fs/extension %)))
                          (into #{})
-                         (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
+                         (?>> (not= (:ratio sampling-options) 0.0) (fn [xs] (sample sampling-options xs)))))
    :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
    :sources    (fnk [corpus-dir]
                     (map
@@ -1145,7 +1145,7 @@ return the DDL string for creating that unlogged table."
                              (dorunconc #(bccwj-file-graph-fn {:conn conn :filename %}))))}))
 
 (defn process-corpus!
-  [conn corpus-dir]
+  [conn sampling corpus-dir]
   (let [corpus-computation (graph/eager-compile
                             (condp #(re-seq %1 %2) (.getPath corpus-dir)
                               #"(?i)wiki" wikipedia-graph
@@ -1153,7 +1153,7 @@ return the DDL string for creating that unlogged table."
                               corpus-graph))]
     (corpus-computation {:conn conn
                          :corpus-dir corpus-dir
-                         :sampling-options (env :sampling)})))
+                         :sampling-options sampling #_(env :sampling)})))
 
 (defn process-directories
   "Processes directories to check if they exist and returns a set of io/file directory objects with canonical and normalized paths."
@@ -1169,13 +1169,13 @@ return the DDL string for creating that unlogged table."
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
-  [conn dirs]
-  ((comp dorun map) (partial process-corpus! conn) (process-directories dirs)))
+  [conn dirs sampling]
+  ((comp dorun map) (partial process-corpus! conn sampling) (process-directories dirs)))
 
 
 ;; Component
 
-(defrecord Database [db-spec dirs clean? search? process?]
+(defrecord Database [db-spec dirs sampling clean? search? process?]
   component/Lifecycle
   (start [this]
 
@@ -1199,7 +1199,7 @@ return the DDL string for creating that unlogged table."
         (create-tables-and-indexes! conn))
 
       (when process?
-        (process conn dirs))
+        (process conn dirs sampling))
 
       (when search?
         (create-search-tables! conn))
@@ -1210,5 +1210,5 @@ return the DDL string for creating that unlogged table."
       (assoc this :connection conn)))
   (stop [this] (dissoc this :connection)))
 
-(defn database [{:keys [db dirs clean search process] :as m}]
-  (->Database db dirs clean search process))
+(defn database [{:keys [db dirs sampling clean search process] :as m}]
+  (->Database db dirs sampling clean search process))
