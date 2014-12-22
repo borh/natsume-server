@@ -37,6 +37,8 @@
        (r/remove (fn [{:keys [academic-written normal-written public-spoken normal-spoken]}]
                    (and (nil? academic-written) (nil? normal-written)
                         (nil? public-spoken) (nil? normal-spoken))))
+       (r/filter (fn [{:keys [academic-written]}]
+                   (false? academic-written)))
        (into [])))
 
 (def conn (db/druid-pool {:subname "//localhost:5432/natsumedev"
@@ -54,8 +56,8 @@
                             :register-score
                             :verdict)]
              (assoc token
-                    :academic-score score
-                    :colloquial-score (case score true false false true nil nil)))))
+                    :academic-score   (case score true true  false false nil false)
+                    :colloquial-score (case score true false false true  nil false)))))
        (r/remove (fn [{:keys [academic-score colloquial-score]}]
                    (and (nil? academic-score) (nil? colloquial-score))))
        (into []))) ;; FIXME any way of optimizing the parameters of the scoring function?
@@ -128,6 +130,22 @@
        :precision (precision cm)
        :recall (recall cm)
        :f1 (f1 cm)})))
+
+(s/defn publish
+  [fn :- s/Str]
+  (let [scores (get-all-variations variations)
+        score-keys [:true :predicted :precision :recall :f1]]
+    (doseq [{:keys [t p]} variations]
+      (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
+        (with-open [w (io/writer (str fn "-cm.tsv"))]
+          (csv/write-csv w [["" "Test positive" "Test negative"]
+                            ["Predicted positive" (:tn cm) (:fn cm)]
+                            ["Predicted negative" (:fn cm) (:tn cm)]
+                            [(str "NA = " (:NA cm) " N = " (reduce + (vals cm)))]]
+                         :separator \tab :quote 1))))
+    (with-open [w (io/writer (str fn "-scores.tsv"))]
+      (csv/write-csv w (into [(mapv name score-keys)] (mapv #(mapv % score-keys) scores))
+                     :separator \tab :quote 1))))
 
 (comment
   (use 'clojure.pprint)
