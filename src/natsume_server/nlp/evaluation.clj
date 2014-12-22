@@ -11,7 +11,7 @@
 
 (s/defschema Token
              {:orth-base s/Str :lemma s/Str :pos-1 s/Str
-              :academic-written (s/maybe s/Bool) :normal-written (s/maybe s/Bool)
+              :academic-written (s/maybe s/Bool) :academic-written-n (s/maybe s/Bool) :normal-written (s/maybe s/Bool)
               :public-spoken (s/maybe s/Bool) :normal-spoken (s/maybe s/Bool)})
 
 (s/defschema ScoredToken
@@ -31,6 +31,7 @@
                  :lemma 語彙素
                  :pos-1 品詞大分類
                  :academic-written (case アカデミックな書き言葉   "○" true "×" false nil)
+                 :academic-written-n (case アカデミックな書き言葉   "○" false "×" true nil)
                  :normal-written   (case 一般的な書き言葉      "○" true "×" false nil)
                  :public-spoken    (case 公的な話し言葉       "○" true "×" false nil)
                  :normal-spoken    (case 日常の話し言葉       "○" true "×" false nil)}))
@@ -70,7 +71,7 @@
   [fn :- s/Str
    tokens :- [ScoredToken]]
   (let [ks [:orth-base :lemma :pos-1
-            :academic-written :normal-written :public-spoken :normal-spoken
+            :academic-written :academic-written-n :normal-written :public-spoken :normal-spoken
             :colloquial-score :academic-score]]
     (with-open [w (io/writer fn)]
       (csv/write-csv w (into [(mapv name ks)] (mapv #(mapv % ks) tokens)) :separator \tab :quote 1))))
@@ -123,7 +124,8 @@
   (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :academic-written :academic-score)))
 
 (def variations
-  [{:t :academic-written :p :academic-score}
+  [{:t :academic-written-n :p :colloquial-score}
+   {:t :academic-written :p :academic-score}
    {:t :normal-written   :p :academic-score}
    {:t :public-spoken    :p :colloquial-score}
    {:t :normal-spoken    :p :colloquial-score}])
