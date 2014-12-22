@@ -69,12 +69,13 @@
 (s/defn save-table
   [fn :- s/Str
    tokens :- [ScoredToken]]
-  (let [ks (keys ScoredToken)]
+  (let [ks [:orth-base :lemma :pos-1
+            :academic-written :normal-written :public-spoken :normal-spoken
+            :colloquial-score :academic-score]]
     (with-open [w (io/writer fn)]
       (csv/write-csv w (into [(mapv name ks)] (mapv #(mapv % ks) tokens)) :separator \tab :quote 1))))
 
-(comment (save-table test-data
-                     (score-tokens (get-tokens test-data))))
+(comment (save-table "unidic-adverb-scored-2014-12-22-1.tsv" (score-tokens (get-tokens test-data))))
 
 (s/defschema ConfusionMatrix {:tp s/Num :fp s/Num :fn s/Num :tn s/Num :NA s/Num})
 
