@@ -56,8 +56,8 @@
                             :register-score
                             :verdict)]
              (assoc token
-                    :academic-score   (case score true true  false false nil #_nil false)
-                    :colloquial-score (case score true false false true  nil #_nil false)))))
+                    :academic-score   (case score true true  false false nil nil #_false)
+                    :colloquial-score (case score true false false true  nil nil #_false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
                    (and (nil? academic-score) (nil? colloquial-score))))
        (into []))) ;; FIXME any way of optimizing the parameters of the scoring function?
