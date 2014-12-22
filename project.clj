@@ -14,7 +14,7 @@
                  [org.postgresql/postgresql "9.3-1102-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.6"]
                  [java-jdbc/dsl "0.1.1"]
-                 [com.alibaba/druid "1.0.11"]
+                 [com.alibaba/druid "1.0.12"]
                  [honeysql "0.4.3"]
                  [yesql "0.4.0"]
                  ;;
@@ -76,7 +76,7 @@
                  [http-kit "2.1.19"]
 
                  [potemkin "0.3.10"]                        ;; FIXME
-                 [duct "0.0.8"]
+                 [duct "0.0.9"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]]
   :plugins [[lein-environ "1.0.0"]
