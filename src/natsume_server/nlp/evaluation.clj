@@ -90,8 +90,8 @@
             predicted-val (get token predicted-field)]
         (update cm
                 (match [true-val predicted-val]
-                       [true   true] :tp [false  true] :fp
-                       [true  false] :fn [false false] :tn
+                       [true  true] :tp [false  true] :fp
+                       [true false] :fn [false false] :tn
                        :else :NA)
                 inc)))
     {:tp 0 :fp 0 :fn 0 :tn 0 :NA 0}
@@ -99,13 +99,19 @@
 
 (s/defn precision :- s/Num
   [cm :- ConfusionMatrix]
-  (let [{:keys [tp fp]} cm]
-    (double (/ tp (+ tp fp)))))
+  (let [{:keys [tp fp]} cm
+        tp+fp (+ tp fp)]
+    (if (pos? tp+fp)
+      (/ tp (+ tp fp))
+      0.0)))
 
 (s/defn recall :- s/Num
   [cm :- ConfusionMatrix]
-  (let [{:keys [tp fn]} cm]
-    (double (/ tp (+ tp fn)))))
+  (let [{:keys [tp fn]} cm
+        tp+fn (+ tp fn)]
+    (if (pos? tp+fn)
+      (/ tp (+ tp fn))
+      0.0)))
 
 (s/defn f1 :- s/Num
   [cm :- ConfusionMatrix]
