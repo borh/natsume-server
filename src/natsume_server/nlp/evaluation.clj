@@ -17,7 +17,7 @@
 (s/defschema ScoredToken
              (assoc Token :academic-score (s/maybe s/Bool) :colloquial-score (s/maybe s/Bool)))
 
-(def test-data "data/unidic-adverb1220.tsv.xz")
+(def test-data "data/unidic-adverb-test-data.tsv.xz")
 
 (s/defn get-tokens :- [Token]
   [test-file :- s/Str]
@@ -46,16 +46,19 @@
 (s/defn score-tokens :- [ScoredToken]
   [;;conn :- s/Any
    tokens :- [Token]]
-  (for [{:keys [orth] :as m} tokens]                      ;; There will be duplicates for lemmas, so going with orth (probably not good idea though, should just directly query database and not use MeCab/CaboCha at all....)
-    (let [score (->> m
-                     (error/token-register-score conn)
-                     ;;(error/get-error conn)
-                     ;;:results
-                     ;;first
-                     :register-score
-                     :verdict)]
-      ;;(println (error/token-register-score conn m))
-      (assoc m :academic-score score :colloquial-score (case score true false false true nil nil)))))           ;; FIXME any way of optimizing the parameters of the scoring function?
+  (->> tokens
+       (r/map
+         (fn [token] ;; There will be duplicates for lemmas, so going with orth (probably not good idea though, should just directly query database and not use MeCab/CaboCha at all....)
+           (let [score (->> token
+                            (error/token-register-score conn)
+                            :register-score
+                            :verdict)]
+             (assoc token
+                    :academic-score score
+                    :colloquial-score (case score true false false true nil nil)))))
+       (r/remove (fn [{:keys [academic-score colloquial-score]}]
+                   (and (nil? academic-score) (nil? colloquial-score))))
+       (into []))) ;; FIXME any way of optimizing the parameters of the scoring function?
 
 (comment
   (score-tokens (get-tokens test-data))
@@ -71,9 +74,8 @@
 (comment (save-table test-data
                      (score-tokens (get-tokens test-data))))
 
-;; TODO precision/recall
-
 (s/defschema ConfusionMatrix {:tp s/Num :fp s/Num :fn s/Num :tn s/Num :NA s/Num})
+
 (s/defn confusion-matrix :- ConfusionMatrix
   [tokens :- [ScoredToken]
    true-field :- s/Keyword
