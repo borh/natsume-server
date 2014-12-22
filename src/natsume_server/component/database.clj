@@ -167,10 +167,10 @@ return the DDL string for creating that unlogged table."
             table-spec-str)))
 
 (defn create-table [conn tbl-name & specs]
-  (e! conn [(string/replace (apply j/create-table-ddl tbl-name specs) #"-" "_")]))
+  (j/db-do-commands conn (string/replace (apply j/create-table-ddl tbl-name specs) #"-" "_")))
 
 (defn create-unlogged-table [conn tbl-name & specs]
-  (e! conn [(string/replace (apply create-unlogged-table-ddl tbl-name specs) #"-" "_")]))
+  (j/db-do-commands conn (string/replace (apply create-unlogged-table-ddl tbl-name specs) #"-" "_")))
 
 (defn schema-keys [schema]
   (->> schema
@@ -265,7 +265,7 @@ return the DDL string for creating that unlogged table."
   (do
 
     ;; TODO need to add information from CopyRight_Annotation.txt as per BCCWJ usage guidelines.
-    (apply create-table sources-schema)
+    (apply create-table conn sources-schema)
     (e! conn (h/format (create-index :sources :genre :gist)))
     (e! conn (h/format (create-index :sources :genre :btree)))
 
@@ -578,8 +578,8 @@ return the DDL string for creating that unlogged table."
 
 ;; ### Sources
 
-(defn insert-source! [sources-metadata]
-  (i! :sources (update-in sources-metadata [:genre] seq->ltree)))
+(defn insert-source! [conn sources-metadata]
+  (i! conn :sources (update-in sources-metadata [:genre] seq->ltree)))
 
 (defn insert-sources!
   "Inserts sources meta-information from the corpus into the database.
@@ -587,24 +587,25 @@ return the DDL string for creating that unlogged table."
   If a file is not present in `sources.tsv`, bail with a fatal error (FIXME)
   message; if a file is not in `sources.tsv` or not on the filesystem,
   then ignore that file (do not insert.)"
-  [sources-metadata file-set]
+  [conn sources-metadata file-set]
   (->> sources-metadata
        (filter (fn [{:keys [basename]}] (contains? file-set basename)))
        ;; Optionally filter out sources already in database.
        ;;(?>> (not-empty existing-basenames) (map #(filter (fn [record] (not (contains? existing-basenames (nth record 3)))) %)))
-       ((comp dorun map) insert-source!)
+       ((comp dorun map) (partial insert-source! conn))
        #_((comp dorun map) #(if (seq %) ((comp dorun map) insert-source! %)))))
 
 ;; ### Sentence
 
-(defn insert-sentence [sentence-values]
-  (i! :sentences
+(defn insert-sentence [conn sentence-values]
+  (i! conn
+      :sentences
       (-> sentence-values
           #_(update-in [:s] make-jdbc-array)
           (select-keys (schema-keys sentences-schema)))))
 
 ;; ### Collocations
-(defn insert-collocations! [collocations sentences-id]
+(defn insert-collocations! [conn collocations sentences-id]
   (doseq [collocation (filter identity #_#(> (count (:type %)) 1) collocations)]
     (let [grams (count (:type collocation))
           record-map (apply merge (for [i (range 1 (inc grams))]
@@ -616,14 +617,16 @@ return the DDL string for creating that unlogged table."
                                                     (?> (:tail-pos record) (update-in [:tail-pos] name))
                                                     #_(?> (:head-tags record) (update-in [:head-tags] make-jdbc-array))
                                                     #_(?> (:tail-tags record) (update-in [:tail-tags] make-jdbc-array)))))))]
-      (i! (keyword (str "gram-" grams))
+      (i! conn
+          (keyword (str "gram-" grams))
           (assoc record-map :sentences-id sentences-id)))))
 
 ;; ### Tokens
-(defn insert-tokens! [token-seq sentences-id]
-  (i! :tokens (->> token-seq
+(defn insert-tokens! [conn token-seq sentences-id]
+  (i! conn
+      :tokens (->> token-seq
                    (map #(assoc (select-keys % [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu])
-                           :sentences-id sentences-id)))))
+                                :sentences-id sentences-id)))))
 
 ;; ## Query functions
 
@@ -1018,22 +1021,23 @@ return the DDL string for creating that unlogged table."
   {:tree     (fnk [text] (am/sentence->tree text))
    :features (fnk [tree text] (rd/sentence-readability tree text))
    ;; The following are side-effecting persistence graphs:
-   :sentences-id    (fnk [features tags paragraph-order-id sentence-order-id sources-id]
-                         (-> (insert-sentence (assoc features
-                                                   :tags tags
-                                                   :paragraph-order-id paragraph-order-id
-                                                   :sentence-order-id sentence-order-id
-                                                   :sources-id sources-id))
+   :sentences-id    (fnk [conn features tags paragraph-order-id sentence-order-id sources-id]
+                         (-> (insert-sentence conn
+                                              (assoc features
+                                                     :tags tags
+                                                     :paragraph-order-id paragraph-order-id
+                                                     :sentence-order-id sentence-order-id
+                                                     :sources-id sources-id))
                              first
                              :id))
-   :collocations-id (fnk [features sentences-id]
+   :collocations-id (fnk [conn features sentences-id]
                          (when-let [collocations (seq (:collocations features))]
-                           (map :id (insert-collocations! collocations sentences-id))))
-   :tokens          (fnk [tree sentences-id]
-                         (insert-tokens! (flatten (map :tokens tree)) sentences-id))})
+                           (map :id (insert-collocations! conn collocations sentences-id))))
+   :tokens          (fnk [conn tree sentences-id]
+                         (insert-tokens! conn (flatten (map :tokens tree)) sentences-id))})
 (def sentence-graph-fn (graph/eager-compile sentence-graph))
 
-(defnk insert-paragraphs! [paragraphs sources-id]
+(defnk insert-paragraphs! [conn paragraphs sources-id]
   (loop [paragraphs*       paragraphs
          sentence-start-id 1         ; ids start with 1 (same as SQL pkeys)
          paragraph-id      1]
@@ -1042,20 +1046,21 @@ return the DDL string for creating that unlogged table."
             sentence-count (count sentences)
             sentence-end-id (+ sentence-start-id sentence-count)]
         ((comp dorun map) #(sentence-graph-fn
-                         {:tags               tags
-                          :sources-id         sources-id
-                          :sentence-order-id  %2
-                          :paragraph-order-id paragraph-id
-                          :text               %1})
-         sentences
-         (range sentence-start-id sentence-end-id))
+                            {:conn               conn
+                             :tags               tags
+                             :sources-id         sources-id
+                             :sentence-order-id  %2
+                             :paragraph-order-id paragraph-id
+                             :text               %1})
+          sentences
+          (range sentence-start-id sentence-end-id))
         (recur (next paragraphs*)
                sentence-end-id
                (inc paragraph-id))))))
 
 (def file-graph
   {:paragraphs (fnk [filename] (-> filename str #_iota/vec iota/seq text/lines->paragraph-sentences text/add-tags))
-   :sources-id (fnk [filename] (basename->source-id (fs/base-name filename true)))
+   :sources-id (fnk [conn filename] (basename->source-id conn (fs/base-name filename true)))
    :persist    insert-paragraphs!})
 (def file-graph-fn (graph/eager-compile file-graph))
 
@@ -1099,16 +1104,16 @@ return the DDL string for creating that unlogged table."
                         :genre    [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]})
                      (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
                        (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
-   :persist    (fnk [sources files file-bases]
+   :persist    (fnk [conn sources files file-bases]
                     ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
                     (let [sources-basenames (set (map :basename sources))]
                       (println "basenames missing from sources.tsv: ")
                       (doseq [f (set/difference file-bases sources-basenames)]
                         (println f))
                       (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases)))
-                    (insert-sources! sources file-bases)
+                    (insert-sources! conn sources file-bases)
                     (->> files
-                         (dorunconc #(file-graph-fn {:filename %}))))})
+                         (dorunconc #(file-graph-fn {:conn conn :filename %}))))})
 
 (def wikipedia-graph
   (merge (dissoc corpus-graph :file-bases :sources)
@@ -1118,12 +1123,13 @@ return the DDL string for creating that unlogged table."
                              (filter #(= ".xml" (fs/extension %)))
                              (mapcat wikipedia/doc-seq) ; Should work for split and unsplit Wikipedia dumps.
                              (?>> (not= (:ratio sampling-options) 0.0) (take (int (* (:ratio sampling-options) 890089)))))) ; number is for Wikipedia as of 2013/12/03.
-          :persist (fnk [files]
+          :persist (fnk [conn files]
                         (->> files
                              (dorunconc (fn [file]
                                           (let [{:keys [sources paragraphs]} file]
-                                            (insert-source! sources)
-                                            (wikipedia-file-graph-fn {:filename (:basename sources)
+                                            (insert-source! conn sources)
+                                            (wikipedia-file-graph-fn {:conn conn
+                                                                      :filename (:basename sources)
                                                                       :paragraphs paragraphs}))))))}))
 
 (def bccwj-graph
@@ -1133,19 +1139,20 @@ return the DDL string for creating that unlogged table."
                              file-seq
                              (filter #(= ".xml" (fs/extension %)))
                              (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
-          :persist (fnk [sources files file-bases]
-                        (insert-sources! sources file-bases)
+          :persist (fnk [conn sources files file-bases]
+                        (insert-sources! conn sources file-bases)
                         (->> files
-                             (dorunconc #(bccwj-file-graph-fn {:filename %}))))}))
+                             (dorunconc #(bccwj-file-graph-fn {:conn conn :filename %}))))}))
 
 (defn process-corpus!
-  [corpus-dir]
+  [conn corpus-dir]
   (let [corpus-computation (graph/eager-compile
                             (condp #(re-seq %1 %2) (.getPath corpus-dir)
                               #"(?i)wiki" wikipedia-graph
                               #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" bccwj-graph
                               corpus-graph))]
-    (corpus-computation {:corpus-dir corpus-dir
+    (corpus-computation {:conn conn
+                         :corpus-dir corpus-dir
                          :sampling-options (env :sampling)})))
 
 (defn process-directories
@@ -1162,8 +1169,8 @@ return the DDL string for creating that unlogged table."
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
-  [dirs]
-  ((comp dorun map) process-corpus! (process-directories dirs)))
+  [conn dirs]
+  ((comp dorun map) (partial process-corpus! conn) (process-directories dirs)))
 
 
 ;; Component
@@ -1192,7 +1199,7 @@ return the DDL string for creating that unlogged table."
         (create-tables-and-indexes! conn))
 
       (when process?
-        (process dirs))
+        (process conn dirs))
 
       (when search?
         (create-search-tables! conn))
