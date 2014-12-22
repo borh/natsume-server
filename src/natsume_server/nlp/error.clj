@@ -25,6 +25,7 @@
                        :noun 26.757
                        :verb 26.757
                        :particle 26.757
+                       :adverb 17.275
                        :auxiliary-verb 26.757
                        19.675)
           chisq-fn #(let [chi (/ (Math/pow (- % mean) 2.0) mean)]
