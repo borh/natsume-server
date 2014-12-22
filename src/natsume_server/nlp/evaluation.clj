@@ -146,7 +146,7 @@
       (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
         (with-open [w (io/writer (str fn "-cm.tsv"))]
           (csv/write-csv w [["" "Test positive" "Test negative"]
-                            ["Predicted positive" (:tn cm) (:fn cm)]
+                            ["Predicted positive" (:tp cm) (:fp cm)]
                             ["Predicted negative" (:fn cm) (:tn cm)]
                             [(str "NA = " (:NA cm) " N = " (reduce + (vals cm)))]]
                          :separator \tab :quote 1))))
