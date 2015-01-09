@@ -10,8 +10,19 @@
   :jvm-opts ["-server" "-XX:+UseG1GC"]
   :dependencies [[org.clojure/clojure "1.7.0-alpha4"]
 
+                 [compojure "1.3.1" :exclusions [clj-time]]
+                 [metosin/compojure-api "0.16.6"]
+                 [metosin/ring-http-response "0.5.2"]
+                 [metosin/ring-swagger-ui "2.0.24"]
+                 [prone "0.8.0"]
+                 [prismatic/schema "0.3.3"]
+                 [ring "1.3.2"]
+                 [ring/ring-defaults "0.1.3"]
+                 [ring-webjars "0.1.0"]
+                 [http-kit "2.1.19"]
+
                  ;; Database
-                 [org.postgresql/postgresql "9.3-1102-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.4-1200-jdbc41-SNAPSHOT"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.6"]
                  [java-jdbc/dsl "0.1.1"]
                  [com.alibaba/druid "1.0.12"]
@@ -30,15 +41,15 @@
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.2"]
-                 [org.flatland/useful "0.11.3"]
+                 [org.flatland/useful "0.11.3" :exclusions [org.clojure/tools.macro]]
                  [fast-zip "0.5.2"]
-                 [org.apache.commons/commons-math3 "3.3"]
+                 [org.apache.commons/commons-math3 "3.4"]
                  [fipp "0.5.1"]
                  [camel-snake-kebab "0.2.5" :exclusions [org.clojure/clojure]]
                  ;;
 
                  ;; Stats/models/ML
-                 [incanter "1.5.5"]
+                 [incanter "1.9.0"]
                  ;;[org.clojure/math.numeric-tower "0.0.2"]
                  [com.aliasi/lingpipe "4.1.0"]
                  ;; [clj-liblinear "0.0.1-SNAPSHOT"] ; TODO https://github.com/lynaghk/clj-liblinear
@@ -52,9 +63,11 @@
                  ;;[pldb "0.1.1"]
                  ;;[readyforzero/babbage "1.0.2"] ; TODO
                  ;; word2vec/doc2vec TODO:
-                 ;;[org.deeplearning4j/deeplearning4j-core "0.0.3.2.7"]
-                 ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.2.7"]
-                 ;;[org.deeplearning4j/deeplearning4j-nlp "0.0.3.2.7"]
+                 [org.nd4j/nd4j-api "0.0.3.5.5.1" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.nd4j/nd4j-jblas "0.0.3.5.5.1"]
+                 [org.deeplearning4j/deeplearning4j-core "0.0.3.3-SNAPSHOT" :exclusions [org.nd4j/nd4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.3-SNAPSHOT" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.3-SNAPSHOT" :exclusions [org.slf4j/slf4j-api commons-io]]
                  ;;
 
                  ;; Text processing
@@ -64,23 +77,14 @@
                  ;;
 
                  [com.stuartsierra/component "0.2.2"]
-                 [compojure "1.3.1"]
-                 [metosin/compojure-api "0.16.6"]
-                 [metosin/ring-http-response "0.5.2"]
-                 [metosin/ring-swagger-ui "2.0.17"]
-                 [prone "0.8.0"]
-                 [prismatic/schema "0.3.3"]
-                 [ring "1.3.2"]
-                 [ring/ring-defaults "0.1.3"]
-                 [ring-webjars "0.1.0"]
-                 [http-kit "2.1.19"]
 
-                 [potemkin "0.3.10"]                        ;; FIXME
+                 [clj-tuple "0.1.7"]
+                 [potemkin "0.3.10" :exclusions [clj-tuple]]                        ;; FIXME
                  [duct "0.0.9"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]]
   :plugins [[lein-environ "1.0.0"]
-            [lein-gen "0.2.0"]]
+            [lein-gen "0.2.2"]]
   :generators [[duct/generators "0.0.3"]]
   :duct {:ns-prefix natsume-server}
   :main ^:skip-aot natsume-server.main
