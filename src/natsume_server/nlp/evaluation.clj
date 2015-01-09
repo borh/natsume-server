@@ -46,6 +46,8 @@
                           :user "natsumedev"
                           :password "riDJMq98LpyWgB7F"}))
 
+;; TODO add JLPT levels using JLPT-word-map from nlp.readability ns.
+
 (s/defn score-tokens :- [ScoredToken]
   [;;conn :- s/Any
    tokens :- [Token]]
@@ -57,8 +59,8 @@
                             :register-score
                             :verdict)]
              (assoc token
-                    :academic-score   (case score true true  false false nil nil #_false)
-                    :colloquial-score (case score true false false true  nil nil #_false)))))
+                    :academic-score   (case score true true  false false nil #_nil false)
+                    :colloquial-score (case score true false false true  nil #_nil false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
                    (and (nil? academic-score) (nil? colloquial-score))))
        (into []))) ;; FIXME any way of optimizing the parameters of the scoring function?
@@ -118,6 +120,11 @@
   [cm :- ConfusionMatrix]
   (/ (* 2.0 (precision cm) (recall cm))
      (+ (precision cm) (recall cm))))
+
+(s/defn f05 :- s/Num
+  [cm :- ConfusionMatrix]
+  (/ (* (+ 1 (* 0.5 0.5)) (precision cm) (recall cm))
+     (+ (* (precision cm) 0.5 0.5) (recall cm))))
 
 (comment
   (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :normal-spoken :colloquial-score))
