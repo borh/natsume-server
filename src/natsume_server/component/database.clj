@@ -34,8 +34,9 @@
 
             [environ.core :refer [env]]
             ;;[plumbing.core :refer [?> ?>> map-keys map-vals for-map]]
-            )
-  (:import [com.alibaba.druid.pool DruidDataSource]))
+            [schema.core :as s])
+  (:import [com.alibaba.druid.pool DruidDataSource]
+           [natsume_server.nlp.cabocha_wrapper Chunk]))
 
 (defn druid-pool
   [spec]
@@ -1018,10 +1019,11 @@ return the DDL string for creating that unlogged table."
 
 ;; ## Computation graphs / pipeline pattern
 (def sentence-graph
-  {:tree     (fnk [text] (am/sentence->tree text))
-   :features (fnk [tree text] (rd/sentence-readability tree text))
+  {:tree     (fnk get-tree :- [Chunk] [text :- s/Str] (am/sentence->tree text))
+   :features rd/sentence-readability
    ;; The following are side-effecting persistence graphs:
-   :sentences-id    (fnk [conn features tags paragraph-order-id sentence-order-id sources-id]
+   :sentences-id    (fnk get-sentences-id :- s/Num
+                         [conn features tags paragraph-order-id sentence-order-id sources-id]
                          (-> (insert-sentence conn
                                               (assoc features
                                                      :tags tags
@@ -1030,10 +1032,10 @@ return the DDL string for creating that unlogged table."
                                                      :sources-id sources-id))
                              first
                              :id))
-   :collocations-id (fnk [conn features sentences-id]
+   :collocations-id (fnk get-collocations-id :- s/Num [conn features sentences-id]
                          (when-let [collocations (seq (:collocations features))]
                            (map :id (insert-collocations! conn collocations sentences-id))))
-   :tokens          (fnk [conn tree sentences-id]
+   :tokens          (fnk commit-tokens :- nil [conn tree sentences-id]
                          (insert-tokens! conn (flatten (map :tokens tree)) sentences-id))})
 (def sentence-graph-fn (graph/eager-compile sentence-graph))
 

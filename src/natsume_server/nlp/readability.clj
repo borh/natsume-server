@@ -6,8 +6,10 @@
             [natsume-server.nlp.text :as txt]
             [natsume-server.nlp.annotation-middleware :as am]
             [natsume-server.nlp.collocations :as collocations]
-            [plumbing.core :refer [fnk]]
-            [plumbing.graph :as graph]))
+            [plumbing.core :refer [fnk defnk]]
+            [plumbing.graph :as graph]
+            [schema.core :as s])
+  (:import [natsume_server.nlp.cabocha_wrapper Chunk]))
 
 ;; # Features related to readability.
 ;;
@@ -370,22 +372,22 @@
 
 (def core-sentence-data
   {;:tree         (fnk [sentence] (am/sentence->tree sentence))
-   :tokens       (fnk [tree] (token-count tree))
-   :chunks       (fnk [tree] (chunk-count tree))
-   :predicates   (fnk [tree] (predicate-count-shibasaki tree))
-   :collocations (fnk [tree] (collocations/extract-collocations tree))})
+   :tokens       (fnk [tree :- [Chunk]] (token-count tree))
+   :chunks       (fnk [tree :- [Chunk]] (chunk-count tree))
+   :predicates   (fnk [tree :- [Chunk]] (predicate-count-shibasaki tree))
+   :collocations (fnk [tree :- [Chunk]] (collocations/extract-collocations tree))})
 
 (def readability-stats
-  {:jlpt-level   (fnk [tree] (JLPT-word-level tree))
-   :bccwj-level  (fnk [tree] (BCCWJ-word-log-freq tree))
-   :link-dist    (fnk [tree] (link-distance tree))
-   :chunk-depth  (fnk [tree] (chunk-depth tree))})
+  {:jlpt-level   (fnk [tree :- [Chunk]] (JLPT-word-level tree))
+   :bccwj-level  (fnk [tree :- [Chunk]] (BCCWJ-word-log-freq tree))
+   :link-dist    (fnk [tree :- [Chunk]] (link-distance tree))
+   :chunk-depth  (fnk [tree :- [Chunk]] (chunk-depth tree))})
 
 (def char-type-stats
-  {:char-types (fnk [sentence] (writing-system-count sentence))})
+  {:char-types (fnk [sentence :- s/Str] (writing-system-count sentence))})
 
 (def goshu-stats
-  {:goshu-map (fnk [tree] (goshu-map tree))})
+  {:goshu-map (fnk [tree :- [Chunk]] (goshu-map tree))})
 
 (def sentence-stats
   (merge core-sentence-data
@@ -406,9 +408,9 @@
               (assoc a ks m)))]
     (flatten-keys* {} [] m)))
 
-(defn sentence-readability [tree s]
-  (assoc (flatten-keys (sentence-graph {:tree tree :sentence s}))
-    :text s))
+(defnk sentence-readability [tree :- [Chunk] text :- s/Str]
+  (assoc (flatten-keys (sentence-graph {:tree tree :sentence text}))
+    :text text))
 
 #_(def average-readability-graph
   (assoc readability-graph
