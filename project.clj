@@ -11,7 +11,7 @@
   :dependencies [[org.clojure/clojure "1.7.0-alpha4"]
 
                  [compojure "1.3.1" :exclusions [clj-time]]
-                 [metosin/compojure-api "0.16.6"]
+                 [metosin/compojure-api "0.17.0"]
                  [metosin/ring-http-response "0.5.2"]
                  [metosin/ring-swagger-ui "2.0.24"]
                  [prone "0.8.0"]
@@ -43,9 +43,9 @@
                  [org.clojure/data.csv "0.1.2"]
                  [org.flatland/useful "0.11.3" :exclusions [org.clojure/tools.macro]]
                  [fast-zip "0.5.2"]
-                 [org.apache.commons/commons-math3 "3.4"]
+                 [org.apache.commons/commons-math3 "3.4.1"]
                  [fipp "0.5.1"]
-                 [camel-snake-kebab "0.2.5" :exclusions [org.clojure/clojure]]
+                 [camel-snake-kebab "0.3.0" :exclusions [org.clojure/clojure]]
                  ;;
 
                  ;; Stats/models/ML
@@ -63,11 +63,11 @@
                  ;;[pldb "0.1.1"]
                  ;;[readyforzero/babbage "1.0.2"] ; TODO
                  ;; word2vec/doc2vec TODO:
-                 [org.nd4j/nd4j-api "0.0.3.5.5.1" :exclusions [org.slf4j/slf4j-api commons-io]]
-                 [org.nd4j/nd4j-jblas "0.0.3.5.5.1"]
-                 [org.deeplearning4j/deeplearning4j-core "0.0.3.3-SNAPSHOT" :exclusions [org.nd4j/nd4j-api commons-io]]
-                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.3-SNAPSHOT" :exclusions [org.slf4j/slf4j-api commons-io]]
-                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.3-SNAPSHOT" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
+                 [org.deeplearning4j/deeplearning4j-core "0.0.3.3.1.alpha1" :exclusions [org.nd4j/nd4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.3.1.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.3.1.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
                  ;;
 
                  ;; Text processing
