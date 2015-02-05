@@ -19,7 +19,7 @@
           :bind-port 3000
           :run true}
    :log {:directory "./log"}
-   :dirs ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT"] ;; 26.067740016833334 m
+   :dirs ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW" "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OM"] ;; 26.067740016833334 m
    :verbose true
    :clean   false #_true
    :process false #_true
