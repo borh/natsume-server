@@ -40,6 +40,7 @@
       (-> {:register-score {:good (compact-number (if (number? good-sum) good-sum 0.0))
                             :bad  (compact-number (if (number? bad-sum) bad-sum 0.0))
                             :mean (compact-number (if (number? mean) mean 0.0))
+                            :frequencies freqs
                             :verdict (cond
                                        (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) true
                                        (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
