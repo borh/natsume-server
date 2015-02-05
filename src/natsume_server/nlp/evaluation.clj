@@ -50,14 +50,20 @@
 
 (s/defn score-tokens :- [ScoredToken]
   [;;conn :- s/Any
-   tokens :- [Token]]
+   tokens :- [Token]
+   threshold :- s/Num]
   (->> tokens
        (r/map
          (fn [token] ;; There will be duplicates for lemmas, so going with orth (probably not good idea though, should just directly query database and not use MeCab/CaboCha at all....)
-           (let [score (->> token
-                            (error/token-register-score conn)
-                            :register-score
-                            :verdict)]
+           (let [{:keys [good bad]}
+                 (:register-score (error/token-register-score conn token))
+
+                 score (if (and good bad) ;; FIXME double-check
+                         (let [diff (Math/abs (- good bad))]
+                           (cond (and (pos? good) (neg? bad) (>= diff threshold)) true
+                                 (and (neg? good) (pos? bad) (>= diff threshold)) false
+                                 :else nil)))]
+             ;;(println good bad score)
              (assoc token
                     :academic-score   (case score true true  false false nil #_nil false)
                     :colloquial-score (case score true false false true  nil #_nil false)))))
@@ -126,6 +132,19 @@
   (/ (* (+ 1 (* 0.5 0.5)) (precision cm) (recall cm))
      (+ (* (precision cm) 0.5 0.5) (recall cm))))
 
+(s/defn precision-recall-curve :- [[s/Num]]
+  "Vary the difference in freq. between corpora and see precision/recall."
+  [min :- s/Num
+   max :- s/Num
+   step :- s/Num]
+  (vec
+    (for [t (range min max step)]
+      (let [cm (confusion-matrix (score-tokens (get-tokens test-data) t) :normal-spoken :colloquial-score)]
+        [t (precision cm) (recall cm) cm]))))
+
+(comment
+  (precision-recall-curve 0.0 1000.0 10.0))
+
 (comment
   (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :normal-spoken :colloquial-score))
   (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :academic-written :academic-score)))
@@ -140,7 +159,7 @@
 (s/defn get-all-variations
   [true-predicted :- [{:t s/Keyword :p s/Keyword}]]
   (for [{:keys [t p]} true-predicted]
-    (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
+    (let [cm (confusion-matrix (score-tokens (get-tokens test-data) 100.0) t p)]
       {:true t
        :predicted p
        :precision (precision cm)
@@ -153,7 +172,7 @@
         score-keys [:true :predicted :precision :recall :f1]]
     (with-open [w (io/writer (str fn "-cm.tsv"))]
       (doseq [{:keys [t p]} variations]
-        (let [cm (confusion-matrix (score-tokens (get-tokens test-data)) t p)]
+        (let [cm (confusion-matrix (score-tokens (get-tokens test-data) 100.0) t p)]
           (csv/write-csv w [[(str (name t) " : " (name p)) "" ""]
                             ["" "Test positive" "Test negative"]
                             ["Predicted positive" (:tp cm) (:fp cm)]
