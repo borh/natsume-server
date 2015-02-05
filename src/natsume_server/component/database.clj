@@ -553,10 +553,10 @@ return the DDL string for creating that unlogged table."
    (create-index :search-gram-4 :string-4)
    (h/raw "ANALYZE")])
 
-(defn create-search-tables! [& {:keys [resort?] :or {resort? true}}]
+(defn create-search-tables! [conn & {:keys [resort?] :or {resort? true}}]
   (if resort? ;; FIXME one big transaction might be overkill?
-    (seq-execute! expensive-indexes resorted-gram-tables norm-table search-table)
-    (seq-execute! norm-table search-table)))
+    (seq-execute! conn expensive-indexes resorted-gram-tables norm-table search-table)
+    (seq-execute! conn norm-table search-table)))
 
 (defn drop-search-tables! [conn]
   (doseq [t [(ddl/drop-table :genre_norm)
@@ -1032,7 +1032,7 @@ return the DDL string for creating that unlogged table."
                                                      :sources-id sources-id))
                              first
                              :id))
-   :collocations-id (fnk get-collocations-id :- s/Num [conn features sentences-id]
+   :collocations-id (fnk get-collocations-id [conn features sentences-id]
                          (when-let [collocations (seq (:collocations features))]
                            (map :id (insert-collocations! conn collocations sentences-id))))
    :tokens          (fnk commit-tokens :- nil [conn tree sentences-id]
