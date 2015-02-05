@@ -15,7 +15,7 @@
                  [metosin/ring-http-response "0.5.2"]
                  [metosin/ring-swagger-ui "2.0.24"]
                  [prone "0.8.0"]
-                 [prismatic/schema "0.3.3"]
+                 [prismatic/schema "0.3.4"]
                  [ring "1.3.2"]
                  [ring/ring-defaults "0.1.3"]
                  [ring-webjars "0.1.0"]
@@ -54,7 +54,7 @@
                  [com.aliasi/lingpipe "4.1.0"]
                  ;; [clj-liblinear "0.0.1-SNAPSHOT"] ; TODO https://github.com/lynaghk/clj-liblinear
                  [bigml/sampling "3.0"]
-                 [prismatic/plumbing "0.3.5" :exclusions [fs potemkin prismatic/schema]]
+                 [prismatic/plumbing "0.3.6" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.2.1"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -65,9 +65,9 @@
                  ;; word2vec/doc2vec TODO:
                  [org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
                  [org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
-                 [org.deeplearning4j/deeplearning4j-core "0.0.3.3.1.alpha1" :exclusions [org.nd4j/nd4j-api commons-io]]
-                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.3.1.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
-                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.3.1.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-core "0.0.3.3.2.alpha1" :exclusions [org.nd4j/nd4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.3.2.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-nlp "0.0.3.3.2.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
                  ;;
 
                  ;; Text processing
@@ -80,7 +80,7 @@
 
                  [clj-tuple "0.1.7"]
                  [potemkin "0.3.10" :exclusions [clj-tuple]]                        ;; FIXME
-                 [duct "0.0.9"]
+                 [duct "0.1.0"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]]
   :plugins [[lein-environ "1.0.0"]
