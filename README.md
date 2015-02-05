@@ -36,29 +36,23 @@ user=> (reset)
 
 ## Prerequisites
 
-`natsume-server` is written in [Clojure](http://clojure.org/) (1.4), and thus a working Java environment is required to run it.
-All development is done on the IcedTea 7 JVM (OpenJDK), though others should work.
+`natsume-server` is written in [Clojure](http://clojure.org/), and thus requires a working Java environment to run.
+All development is done on the IcedTea 8 JVM (OpenJDK), though other version 7 should work.
 
 A PostgreSQL database is required as well.
-Currently all testing is done on the new 9.2 release.
+Currently all testing is done on the 9.3 release.
 
-`natsume-server` additionally makes use of [MeCab](http://code.google.com/p/mecab/) and [CaboCha](https://code.google.com/p/cabocha/), though because of problems using the Java bindings, all CaboCha processing is done over the network.
+`natsume-server` additionally makes use of [MeCab](http://code.google.com/p/mecab/) and [CaboCha](https://code.google.com/p/cabocha/).
 
 ### Free-floating jars
 
 Unfortunately, the following free-floating jars need to be downloaded and installed into a local maven repo:
 
 ```bash
-mvn install:install-file -DgroupId=com.aliasi -DartifactId=lingpipe -Dpackaging=jar -Dversion=4.1.0 -Dfile=lingpipe-4.1.0.jar -DgeneratePom=true
-```
-
-```bash
 mvn install:install-file -DgroupId=org.chasen -DartifactId=cabocha -Dpackaging=jar -Dversion=0.66 -Dfile=/usr/share/java/cabocha/CaboCha.jar -DgeneratePom=true
 ```
 
 ## Usage
-
-Currently corpus input and processing is functional, but collocation extraction (the main feature) is missing, so at least for the near future, natsume-server is only interesting for the developer.
 
 ### Running with lein
 
@@ -108,6 +102,6 @@ lein run /path/to/corpus/dir/
 
 ## License
 
-Copyright © 2012, 2013 Bor Hodošček
+Copyright © 2012-2015 Bor Hodošček
 
 Distributed under the Eclipse Public License, the same as Clojure.
