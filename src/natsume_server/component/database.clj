@@ -725,7 +725,7 @@ return the DDL string for creating that unlogged table."
                  (group :tokens.sentences-id)))))
 
 (def !norm-map (atom {}))
-(def !genre-names (atom {}))
+(def !genre-names (atom #{}))
 (defn set-norm-map! [conn]
   (reset! !norm-map
    {:sources    (seq-to-tree (q conn (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
@@ -762,7 +762,7 @@ return the DDL string for creating that unlogged table."
            genre-ltree-transform)
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (contains? @!norm-map norm) (#(normalize-tree (norm @!norm-map) % :clean-up-fn (if compact-numbers compact-number identity))))
+       (?>> (and norm (contains? @!norm-map norm)) (#(normalize-tree (norm @!norm-map) % :clean-up-fn (if compact-numbers compact-number identity))))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        ))
 
@@ -1088,7 +1088,7 @@ return the DDL string for creating that unlogged table."
 (def corpus-graph
   ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
   {:files      (fnk [corpus-dir sampling-options]
-                    (doall (println ":files")) ;; FIXME this is not reached!!! why??
+                    (println ":files") ;; FIXME this is not reached!!! why??
                     (->> corpus-dir
                          file-seq
                          (r/filter #(= ".txt" (fs/extension %)))
