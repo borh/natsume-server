@@ -61,7 +61,8 @@
      prob :- s/Num
      tokens :- [Morpheme]])
 
-(defn- recode-pos [m]
+(s/defn recode-pos :- s/Keyword
+  [m]
   (condp re-seq (str (:pos-1 m) (:pos-2 m) (:pos-3 m))
     #"^動詞" :verb
     #"^(副詞|名詞.+副詞可能)" :adverb
