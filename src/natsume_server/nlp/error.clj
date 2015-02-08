@@ -1,53 +1,72 @@
 (ns natsume-server.nlp.error
   (:require [schema.core :as s]
-            [plumbing.core :refer [?> ?>> map-vals]]
+            [plumbing.core :refer [?> ?>> map-vals for-map fnk]]
+            [d3-compat-tree.tree :refer [normalize-tree]]
             [natsume-server.nlp.text :as text]
             [natsume-server.nlp.annotation-middleware :as anno]
             [natsume-server.component.database :as db]
             [natsume-server.nlp.collocations :as coll]
             [natsume-server.nlp.stats :as stats]
             [natsume-server.utils.numbers :refer [compact-number]]
-            [clojure.core.reducers :as r]
-            [clojure.set :as set]))
+            [clojure.core.reducers :as r]))
 
-(defn sigma-score [pos n tree]
-  (if-let [freqs (->> tree :children (map (juxt :name :count)) (into {}) seq)]
-    (let [freqs (let [diff (- (count @db/!genre-names) (count freqs))]
-                  (if (pos? diff)
-                    (concat freqs (seq (zipmap (set/difference @db/!genre-names (set (map first freqs))) (repeat diff 0.0))))
-                    freqs))
-          mean (stats/mean (vals freqs))
-          ;;sd (stats/sd (vals freqs))
-          ;; df = 11 (BCCWJ + STJC + Wikipedia?)
-          ;; 0.10      	0.05 	0.025 	0.01 	0.005
-          ;; 17.275 	19.675 	21.920 	24.725 	26.757
-          chisq-line (case pos
-                       :noun 26.757
-                       :verb 26.757
-                       :particle 26.757
-                       :adverb 17.275
-                       :auxiliary-verb 26.757
-                       19.675)
-          chisq-fn #(let [chi (/ (Math/pow (- % mean) 2.0) mean)]
-                     (if (> chi chisq-line)
-                       (- % mean)
-                       nil))
-          chisq-filtered (into {} (r/remove #(nil? (second %)) (map-vals chisq-fn freqs)))
-          good-sum (if-let [good-vals (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))]
-                     (/ (reduce + good-vals) (count good-vals)))
-          bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
-                    (/ (reduce + bad-vals) (count bad-vals)))]
-      (-> {:register-score {:good (compact-number (if (number? good-sum) good-sum 0.0))
-                            :bad  (compact-number (if (number? bad-sum) bad-sum 0.0))
-                            :mean (compact-number (if (number? mean) mean 0.0))
-                            :frequencies freqs
-                            :verdict (cond
-                                       (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) true
-                                       (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
-                                       :else nil)}
-           :found? true}
-          (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr]))))))
-    {:found? false}))
+(s/defn sigma-score :- {s/Keyword s/Any}
+  [pos  :- s/Keyword
+   n    :- s/Num
+   tree :- {s/Keyword s/Any}]
+  (let [raw-freqs
+        (let [m (->> tree
+                     :children
+                     (map (juxt :name :count))
+                     (into {}))]
+          (for-map [genre @db/!genre-names]
+                   genre (or (get m genre) 0)))
+
+        freqs
+        (->> tree
+             (#(normalize-tree (:tokens @db/!norm-map) %))
+             :children
+             (map (juxt :name :count))
+             (into {}))]
+    (if-not (seq freqs)
+      {:found? false}
+      (let [freqs (for-map [genre @db/!genre-names]
+                           genre (or (get freqs genre) 0.0))
+            mean (stats/mean (vals freqs))
+            ;;sd (stats/sd (vals freqs))
+            ;; df = 11 (BCCWJ + STJC + Wikipedia?)
+            ;; 0.10      	0.05 	0.025 	0.01 	0.005
+            ;; 17.275 	19.675 	21.920 	24.725 	26.757
+            chisq-line (case pos
+                         :noun 26.757
+                         :verb 26.757
+                         :particle 26.757
+                         :adverb 17.275
+                         :auxiliary-verb 26.757
+                         19.675)
+            chisq-fn (s/fn :- s/Num [x :- s/Num]
+                       (/ (Math/pow (- x mean) 2.0) mean))
+            chisq-corpora (map-vals chisq-fn freqs)
+            chisq-filter #(if (> (chisq-fn %) chisq-line)
+                           (- % mean)
+                           nil)
+            chisq-filtered (into {} (r/remove #(nil? (second %)) (map-vals chisq-filter freqs)))
+            good-sum (if-let [good-vals (vals (select-keys chisq-filtered ["白書" "科学技術論文" "法律"]))]
+                       (/ (reduce + good-vals) (count good-vals)))
+            bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
+                      (/ (reduce + bad-vals) (count bad-vals)))]
+        (-> {:register-score {:good    (compact-number (if (number? good-sum) good-sum 0.0))
+                              :bad     (compact-number (if (number? bad-sum) bad-sum 0.0))
+                              :mean    (compact-number (if (number? mean) mean 0.0))
+                              :freqs   freqs
+                              :raw-freqs raw-freqs
+                              :chisq   chisq-corpora
+                              :verdict (cond
+                                         (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) true
+                                         (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
+                                         :else nil)}
+             :found?         true}
+            (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr])))))))))
 
 (defn mi-score [conn collocation]
   ;; If no gram found in 1-gram DB, use 1 or 0.5 for freq.
@@ -96,7 +115,7 @@
 (s/defn token-register-score
   "Old formula, but includes measures other than chi-sq."
   [conn query]
-  (let [results (db/get-one-search-token conn query :compact-numbers false)]
+  (let [results (db/get-one-search-token conn query :compact-numbers false :norm nil)]
     (sigma-score (:pos query) 1 results)))
 
 (s/defn score-sentence [conn tree sentence]

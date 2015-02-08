@@ -1,16 +1,20 @@
 (ns natsume-server.nlp.evaluation
   (:require [schema.core :as s]
+            [plumbing.core :refer [map-keys]]
             [clojure.java.io :as io]
             [clojure.data.csv :as csv]
             [clojure.core.match :refer [match]]
             [clojure.core.reducers :as r]
 
+            [dk.ative.docjure.spreadsheet :as spreadsheet]
+
             [natsume-server.component.database :as db]
+            [natsume-server.nlp.cabocha-wrapper :refer [recode-pos]]
             [natsume-server.utils.xz :refer [xz-reader]]
             [natsume-server.nlp.error :as error]))
 
 (s/defschema Token
-             {:orth-base s/Str :lemma s/Str :pos-1 s/Str
+             {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword
               :academic-written (s/maybe s/Bool) :academic-written-n (s/maybe s/Bool) :normal-written (s/maybe s/Bool)
               :public-spoken (s/maybe s/Bool) :normal-spoken (s/maybe s/Bool)})
 
@@ -30,6 +34,7 @@
                 {:orth-base 書字形出現形
                  :lemma 語彙素
                  :pos-1 品詞大分類
+                 :pos :adverb #_(recode-pos 品詞大分類)
                  :academic-written (case アカデミックな書き言葉   "○" true "×" false nil)
                  :academic-written-n (case アカデミックな書き言葉   "○" false "×" true nil)
                  :normal-written   (case 一般的な書き言葉      "○" true "×" false nil)
@@ -54,7 +59,7 @@
    threshold :- s/Num]
   (->> tokens
        (r/map
-         (fn [token] ;; There will be duplicates for lemmas, so going with orth (probably not good idea though, should just directly query database and not use MeCab/CaboCha at all....)
+         (fn [token]
            (let [{:keys [good bad]}
                  (:register-score (error/token-register-score conn token))
 
@@ -70,6 +75,57 @@
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
                    (and (nil? academic-score) (nil? colloquial-score))))
        (into []))) ;; FIXME any way of optimizing the parameters of the scoring function?
+
+(s/defn extend-tokens-information
+  [tokens :- [Token]
+   threshold :- s/Num]
+  (->> tokens
+       (r/map
+         (fn [token]
+           (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn token))
+                 rename (fn [s k] (-> k name (str s) keyword))
+                 total-freq (reduce + 0 (vals raw-freqs))]
+             (merge (select-keys token [:orth-base :lemma])
+                    (map-keys (partial rename "-norm-freq") freqs)
+                    (map-keys (partial rename "-freq") raw-freqs)
+                    (map-keys (partial rename "-chisq") chisq)
+                    {:verdict verdict
+                     :mean mean
+                     :total-freq total-freq
+                     :total-norm-freq (* 1000000 (/ total-freq (-> @db/!norm-map :tokens :count)))}))))
+       (into [])))
+
+(comment
+  (extend-tokens-information (get-tokens test-data) 0.0))
+
+(s/defn save-excel-table!
+  []
+  (let [data (extend-tokens-information (get-tokens test-data) 0.0)
+        header (-> data first keys vec)
+        wb (spreadsheet/create-workbook
+             "副詞リスト"
+             (into [(mapv name header)]
+                   (mapv (fn [m]
+                           (vec
+                             (for [k header]
+                               (let [v (get m k)]
+                                 (cond
+                                   (keyword? v) (name v)
+                                   (true? v) 1
+                                   (false? v) 0
+                                   :else v)))))
+                         data)))
+        sheet (spreadsheet/select-sheet "副詞リスト" wb)
+        header-row (first (spreadsheet/row-seq sheet))]
+    (spreadsheet/add-sheet! wb "合計")
+    (let [totals-sheet (spreadsheet/select-sheet "合計" wb)
+          corpora-counts (->> @db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
+          corpora-header (vec (keys corpora-counts))]
+      (spreadsheet/add-rows! totals-sheet [(into ["全コーパス"] corpora-header)
+                                           (into [(-> @db/!norm-map :tokens :count)]
+                                                 (mapv (fn [k] (get corpora-counts k)) corpora-header))]))
+    (spreadsheet/set-row-style! header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))
+    (spreadsheet/save-workbook! "副詞リスト.xlsx" wb)))
 
 (comment
   (score-tokens (get-tokens test-data))
