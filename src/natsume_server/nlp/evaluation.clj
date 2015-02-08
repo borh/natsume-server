@@ -101,7 +101,26 @@
 (s/defn save-excel-table!
   []
   (let [data (extend-tokens-information (get-tokens test-data) 0.0)
-        header (-> data first keys vec)
+        sorted-corpora ["科学技術論文"
+                        "白書"
+                        "法律"
+                        "検定教科書"
+                        "広報紙"
+                        "新聞"
+                        "書籍"
+                        "雑誌"
+                        "Yahoo_知恵袋"
+                        "Yahoo_ブログ"
+                        "韻文"
+                        "国会会議録"]
+        default-header [:lemma :orth-base :verdict :total-freq :total-norm-freq :mean]
+        norm-freq-corpora-header (mapv #(str % "-norm-freq") sorted-corpora)
+        freq-corpora-header (mapv #(str % "-freq") sorted-corpora)
+        chisq-corpora-header (mapv #(str % "-chisq") sorted-corpora)
+        header (vec (concat default-header
+                            freq-corpora-header
+                            norm-freq-corpora-header
+                            chisq-corpora-header)) #_(-> data first keys vec)
         wb (spreadsheet/create-workbook
              "副詞リスト"
              (into [(mapv name header)]
@@ -120,7 +139,7 @@
     (spreadsheet/add-sheet! wb "合計")
     (let [totals-sheet (spreadsheet/select-sheet "合計" wb)
           corpora-counts (->> @db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
-          corpora-header (vec (keys corpora-counts))]
+          corpora-header sorted-corpora #_(vec (keys corpora-counts))]
       (spreadsheet/add-rows! totals-sheet [(into ["全コーパス"] corpora-header)
                                            (into [(-> @db/!norm-map :tokens :count)]
                                                  (mapv (fn [k] (get corpora-counts k)) corpora-header))]))
