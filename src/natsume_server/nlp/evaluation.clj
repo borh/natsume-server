@@ -15,11 +15,11 @@
 
 (s/defschema Token
              {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword
-              :academic-written (s/maybe s/Bool) :academic-written-n (s/maybe s/Bool) :normal-written (s/maybe s/Bool)
-              :public-spoken (s/maybe s/Bool) :normal-spoken (s/maybe s/Bool)})
+              :アカデミックな書き言葉 (s/maybe s/Bool) :アカデミックな書き言葉-n (s/maybe s/Bool) :一般的な書き言葉 (s/maybe s/Bool)
+              :公的な話し言葉 (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
 
 (s/defschema ScoredToken
-             (assoc Token :academic-score (s/maybe s/Bool) :colloquial-score (s/maybe s/Bool)))
+             (assoc Token :準正用判定 (s/maybe s/Bool) :準誤用判定 (s/maybe s/Bool)))
 
 (def test-data "data/unidic-adverb-test-data.tsv.xz")
 
@@ -35,14 +35,14 @@
                  :lemma 語彙素
                  :pos-1 品詞大分類
                  :pos :adverb #_(recode-pos 品詞大分類)
-                 :academic-written (case アカデミックな書き言葉   "○" true "×" false nil)
-                 :academic-written-n (case アカデミックな書き言葉   "○" false "×" true nil)
-                 :normal-written   (case 一般的な書き言葉      "○" true "×" false nil)
-                 :public-spoken    (case 公的な話し言葉       "○" true "×" false nil)
-                 :normal-spoken    (case 日常の話し言葉       "○" true "×" false nil)}))
-       (r/remove (fn [{:keys [academic-written normal-written public-spoken normal-spoken]}]
-                   (and (nil? academic-written) (nil? normal-written)
-                        (nil? public-spoken) (nil? normal-spoken))))
+                 :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
+                 :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
+                 :一般的な書き言葉         (case 一般的な書き言葉       "○" true "×" false nil)
+                 :公的な話し言葉           (case 公的な話し言葉         "○" true "×" false nil)
+                 :日常の話し言葉           (case 日常の話し言葉         "○" true "×" false nil)}))
+       (r/remove (fn [{:keys [アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉]}]
+                   (and (nil? アカデミックな書き言葉) (nil? 一般的な書き言葉)
+                        (nil? 公的な話し言葉) (nil? 日常の話し言葉))))
        #_(r/filter (fn [{:keys [academic-written]}]
                    (false? academic-written)))
        (into [])))
@@ -70,11 +70,16 @@
                                  :else nil)))]
              ;;(println good bad score)
              (assoc token
-                    :academic-score   (case score true true  false false nil #_nil false)
-                    :colloquial-score (case score true false false true  nil #_nil false)))))
+                    :準正用判定   (case score true true  false false nil #_nil false)
+                    :準誤用判定 (case score true false false true  nil #_nil false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
                    (and (nil? academic-score) (nil? colloquial-score))))
        (into []))) ;; FIXME any way of optimizing the parameters of the scoring function?
+
+(s/defn rename-corpus :- s/Keyword
+  [s :- s/Str
+   k :- (s/either s/Keyword s/Str)]
+  (-> k name (str s) keyword))
 
 (s/defn extend-tokens-information
   [tokens :- [Token]
@@ -83,16 +88,16 @@
        (r/map
          (fn [token]
            (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn token))
-                 rename (fn [s k] (-> k name (str s) keyword))
                  total-freq (reduce + 0 (vals raw-freqs))]
-             (merge (select-keys token [:orth-base :lemma])
-                    (map-keys (partial rename "-norm-freq") freqs)
-                    (map-keys (partial rename "-freq") raw-freqs)
-                    (map-keys (partial rename "-chisq") chisq)
-                    {:verdict verdict
-                     :mean mean
-                     :total-freq total-freq
-                     :total-norm-freq (* 1000000 (/ total-freq (-> @db/!norm-map :tokens :count)))}))))
+             (merge (select-keys token [:orth-base :lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
+                    (map-keys (partial rename-corpus "-出現割合") freqs)
+                    (map-keys (partial rename-corpus "-頻度") raw-freqs)
+                    (map-keys (partial rename-corpus "-χ^2 検定の結果") chisq)
+                    {:判定 verdict
+                     :全コーパスにおける出現割合の平均 (or mean 0.0)
+                     :全コーパスにおける頻度 total-freq
+                     ;;:total-norm-freq (* 1000000 (/ total-freq (-> @db/!norm-map :tokens :count)))
+                     }))))
        (into [])))
 
 (comment
@@ -113,10 +118,10 @@
                         "Yahoo_ブログ"
                         "韻文"
                         "国会会議録"]
-        default-header [:lemma :orth-base :verdict :total-freq :total-norm-freq :mean]
-        norm-freq-corpora-header (mapv #(str % "-norm-freq") sorted-corpora)
-        freq-corpora-header (mapv #(str % "-freq") sorted-corpora)
-        chisq-corpora-header (mapv #(str % "-chisq") sorted-corpora)
+        default-header [:lemma :orth-base :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
+        freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
+        chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
         header (vec (concat default-header
                             freq-corpora-header
                             norm-freq-corpora-header
@@ -140,22 +145,24 @@
     (let [totals-sheet (spreadsheet/select-sheet "合計" wb)
           corpora-counts (->> @db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
           corpora-header sorted-corpora #_(vec (keys corpora-counts))]
-      (spreadsheet/add-rows! totals-sheet [(into ["全コーパス"] corpora-header)
-                                           (into [(-> @db/!norm-map :tokens :count)]
-                                                 (mapv (fn [k] (get corpora-counts k)) corpora-header))]))
+      (spreadsheet/add-rows! totals-sheet [(into ["χ^2(α=0.1)" "全コーパス"] corpora-header)
+                                           (into [17.275 (-> @db/!norm-map :tokens :count)]
+                                                 (mapv (fn [k] (get corpora-counts k)) corpora-header))])
+      (let [totals-header-row (first (spreadsheet/row-seq totals-sheet))]
+        (spreadsheet/set-row-style! totals-header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
     (spreadsheet/set-row-style! header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))
     (spreadsheet/save-workbook! "副詞リスト.xlsx" wb)))
 
 (comment
   (score-tokens (get-tokens test-data))
-  (filter #(and (:score %) (:normal-spoken %)) (score-tokens (get-tokens test-data))))
+  (filter #(and (:score %) (:日常の話し言葉 %)) (score-tokens (get-tokens test-data))))
 
 (s/defn save-table
   [fn :- s/Str
    tokens :- [ScoredToken]]
   (let [ks [:orth-base :lemma :pos-1
-            :academic-written :academic-written-n :normal-written :public-spoken :normal-spoken
-            :colloquial-score :academic-score]]
+            :アカデミックな書き言葉 :アカデミックな書き言葉-n :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉
+            :準誤用判定 :準正用判定]]
     (with-open [w (io/writer fn)]
       (csv/write-csv w (into [(mapv name ks)] (mapv #(mapv % ks) tokens)) :separator \tab :quote 1))))
 
@@ -214,22 +221,22 @@
    step :- s/Num]
   (vec
     (for [t (range min max step)]
-      (let [cm (confusion-matrix (score-tokens (get-tokens test-data) t) :normal-spoken :colloquial-score)]
+      (let [cm (confusion-matrix (score-tokens (get-tokens test-data) t) :日常の話し言葉 :準誤用判定)]
         [t (precision cm) (recall cm) cm]))))
 
 (comment
   (precision-recall-curve 0.0 1000.0 10.0))
 
 (comment
-  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :normal-spoken :colloquial-score))
-  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :academic-written :academic-score)))
+  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :日常の話し言葉 :準誤用判定))
+  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :アカデミックな書き言葉 :準正用判定)))
 
 (def variations
-  [{:t :academic-written-n :p :colloquial-score}
-   {:t :academic-written :p :academic-score}
-   {:t :normal-written   :p :academic-score}
-   {:t :public-spoken    :p :colloquial-score}
-   {:t :normal-spoken    :p :colloquial-score}])
+  [{:t :アカデミックな書き言葉-n :p :準誤用判定}
+   {:t :アカデミックな書き言葉 :p :準正用判定}
+   {:t :一般的な書き言葉   :p :準正用判定}
+   {:t :公的な話し言葉    :p :準誤用判定}
+   {:t :日常の話し言葉    :p :準誤用判定}])
 
 (s/defn get-all-variations
   [true-predicted :- [{:t s/Keyword :p s/Keyword}]]
