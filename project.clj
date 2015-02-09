@@ -25,7 +25,7 @@
                  [org.postgresql/postgresql "9.4-1200-jdbc41-SNAPSHOT"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.6"]
                  [java-jdbc/dsl "0.1.1"]
-                 [com.alibaba/druid "1.0.12"]
+                 [com.alibaba/druid "1.0.13"]
                  [honeysql "0.4.3"]
                  [yesql "0.4.0"]
                  ;;
@@ -45,7 +45,7 @@
                  [org.flatland/useful "0.11.3" :exclusions [org.clojure/tools.macro]]
                  [fast-zip "0.5.2"]
                  [org.apache.commons/commons-math3 "3.4.1"]
-                 [fipp "0.5.1"]
+                 [fipp "0.5.2"]
                  [camel-snake-kebab "0.3.0" :exclusions [org.clojure/clojure]]
                  ;;
 
