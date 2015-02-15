@@ -167,8 +167,8 @@
     (concat tokens collocations)))
 
 (s/defn get-error
-        [conn :- s/Any
-         text :- s/Str]
+  [conn :- s/Any
+   text :- s/Str]
   (if-let [paragraphs (->> text vector text/lines->paragraph-sentences)]
     (let [update-positions (fn [m offset] (-> m (update-in [:begin] + offset) (update-in [:end] + offset)))
 
