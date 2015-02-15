@@ -40,7 +40,7 @@
                  :一般的な書き言葉         (case 一般的な書き言葉       "○" true "×" false nil)
                  :公的な話し言葉           (case 公的な話し言葉         "○" true "×" false nil)
                  :日常の話し言葉           (case 日常の話し言葉         "○" true "×" false nil)}))
-       (r/remove (fn [{:keys [アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉]}]
+       #_(r/remove (fn [{:keys [アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉]}]
                    (and (nil? アカデミックな書き言葉) (nil? 一般的な書き言葉)
                         (nil? 公的な話し言葉) (nil? 日常の話し言葉))))
        #_(r/filter (fn [{:keys [academic-written]}]
@@ -82,8 +82,7 @@
   (-> k name (str s) keyword))
 
 (s/defn extend-tokens-information
-  [tokens :- [Token]
-   threshold :- s/Num]
+  [tokens :- [Token]]
   (->> tokens
        (r/map
          (fn [token]
@@ -101,11 +100,11 @@
        (into [])))
 
 (comment
-  (extend-tokens-information (get-tokens test-data) 0.0))
+  (extend-tokens-information (get-tokens test-data)))
 
 (s/defn save-excel-table!
   []
-  (let [data (extend-tokens-information (get-tokens test-data) 0.0)
+  (let [data (extend-tokens-information (get-tokens test-data))
         sorted-corpora ["科学技術論文"
                         "白書"
                         "法律"
