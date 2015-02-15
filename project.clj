@@ -17,7 +17,7 @@
                  [prone "0.8.0"]
                  [prismatic/schema "0.3.7"]
                  [ring "1.3.2"]
-                 [ring/ring-defaults "0.1.3"]
+                 [ring/ring-defaults "0.1.4"]
                  [ring-webjars "0.1.0"]
                  [http-kit "2.1.19"]
 
