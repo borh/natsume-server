@@ -68,9 +68,8 @@
                            (cond (and (pos? good) (neg? bad) (>= diff threshold)) true
                                  (and (neg? good) (pos? bad) (>= diff threshold)) false
                                  :else nil)))]
-             ;;(println good bad score)
              (assoc token
-                    :準正用判定   (case score true true  false false nil #_nil false)
+                    :準正用判定 (case score true true  false false nil #_nil false)
                     :準誤用判定 (case score true false false true  nil #_nil false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
                    (and (nil? academic-score) (nil? colloquial-score))))
@@ -101,56 +100,6 @@
 
 (comment
   (extend-tokens-information (get-tokens test-data)))
-
-(s/defn save-excel-table!
-  []
-  (let [data (extend-tokens-information (get-tokens test-data))
-        sorted-corpora ["科学技術論文"
-                        "白書"
-                        "法律"
-                        "検定教科書"
-                        "広報紙"
-                        "新聞"
-                        "書籍"
-                        "雑誌"
-                        "Yahoo_知恵袋"
-                        "Yahoo_ブログ"
-                        "韻文"
-                        "国会会議録"]
-        default-header [:lemma :orth-base :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
-        norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
-        freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
-        chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
-        header (vec (concat default-header
-                            freq-corpora-header
-                            norm-freq-corpora-header
-                            chisq-corpora-header)) #_(-> data first keys vec)
-        wb (spreadsheet/create-workbook
-             "副詞リスト"
-             (into [(mapv name header)]
-                   (mapv (fn [m]
-                           (vec
-                             (for [k header]
-                               (let [v (get m k)]
-                                 (cond
-                                   (keyword? v) (name v)
-                                   (true? v) 1
-                                   (false? v) 0
-                                   :else v)))))
-                         data)))
-        sheet (spreadsheet/select-sheet "副詞リスト" wb)
-        header-row (first (spreadsheet/row-seq sheet))]
-    (spreadsheet/add-sheet! wb "合計")
-    (let [totals-sheet (spreadsheet/select-sheet "合計" wb)
-          corpora-counts (->> @db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
-          corpora-header sorted-corpora #_(vec (keys corpora-counts))]
-      (spreadsheet/add-rows! totals-sheet [(into ["χ^2(α=0.1)" "全コーパス"] corpora-header)
-                                           (into [17.275 (-> @db/!norm-map :tokens :count)]
-                                                 (mapv (fn [k] (get corpora-counts k)) corpora-header))])
-      (let [totals-header-row (first (spreadsheet/row-seq totals-sheet))]
-        (spreadsheet/set-row-style! totals-header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
-    (spreadsheet/set-row-style! header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))
-    (spreadsheet/save-workbook! "副詞リスト.xlsx" wb)))
 
 (comment
   (score-tokens (get-tokens test-data))
@@ -263,6 +212,78 @@
     (with-open [w (io/writer (str fn "-scores.tsv"))]
       (csv/write-csv w (into [(mapv name score-keys)] (mapv #(mapv % score-keys) scores))
                      :separator \tab :quote 1))))
+
+(s/defn save-excel-table!
+  []
+  (let [tokens (get-tokens test-data)
+        data (extend-tokens-information tokens)
+        sorted-corpora ["科学技術論文"
+                        "白書"
+                        "法律"
+                        "検定教科書"
+                        "広報紙"
+                        "新聞"
+                        "書籍"
+                        "雑誌"
+                        "Yahoo_知恵袋"
+                        "Yahoo_ブログ"
+                        "韻文"
+                        "国会会議録"]
+        default-header [:lemma :orth-base :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
+        freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
+        chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
+        header (vec (concat default-header
+                            freq-corpora-header
+                            norm-freq-corpora-header
+                            chisq-corpora-header)) #_(-> data first keys vec)
+        wb (spreadsheet/create-workbook
+             "副詞リスト"
+             (into [(mapv name header)]
+                   (mapv (fn [m]
+                           (vec
+                             (for [k header]
+                               (let [v (get m k)]
+                                 (cond
+                                   (keyword? v) (name v)
+                                   (true? v) 1
+                                   (false? v) 0
+                                   :else v)))))
+                         data)))
+        sheet (spreadsheet/select-sheet "副詞リスト" wb)
+        header-row (first (spreadsheet/row-seq sheet))]
+    (spreadsheet/set-row-style! header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))
+
+    (spreadsheet/add-sheet! wb "合計")
+    (let [totals-sheet (spreadsheet/select-sheet "合計" wb)
+          corpora-counts (->> @db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
+          corpora-header sorted-corpora #_(vec (keys corpora-counts))]
+      (spreadsheet/add-rows! totals-sheet [(into ["χ^2(α=0.1)" "全コーパス"] corpora-header)
+                                           (into [17.275 (-> @db/!norm-map :tokens :count)]
+                                                 (mapv (fn [k] (get corpora-counts k)) corpora-header))])
+      (let [totals-header-row (first (spreadsheet/row-seq totals-sheet))]
+        (spreadsheet/set-row-style! totals-header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
+
+    (spreadsheet/add-sheet! wb "Precision-Recall")
+    (let [pr-sheet (spreadsheet/select-sheet "Precision-Recall" wb)
+          t :アカデミックな書き言葉-n
+          p :準誤用判定
+          cm (confusion-matrix (score-tokens tokens 0.0) t p)]
+      (spreadsheet/add-rows! pr-sheet
+                             [[(str (name t) " : " (name p)) "" ""]
+                              ["" "Test positive" "Test negative"]
+                              ["Predicted positive" (:tp cm) (:fp cm)]
+                              ["Predicted negative" (:fn cm) (:tn cm)]
+
+                              ["" "" ""]
+
+                              ["Precision"    "Recall"    "F1"    "F0.5"   "NA"     "N"]
+                              [(precision cm) (recall cm) (f1 cm) (f05 cm) (:NA cm) (reduce + (vals cm))]])
+      (let [header-row (first (spreadsheet/row-seq pr-sheet))]
+        (spreadsheet/set-row-style! header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
+
+
+    (spreadsheet/save-workbook! "副詞リスト.xlsx" wb)))
 
 (comment
   (use 'clojure.pprint)
