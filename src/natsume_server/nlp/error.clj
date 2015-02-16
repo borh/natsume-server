@@ -31,7 +31,7 @@
     (if-not (seq freqs)
       {:found? false}
       (let [freqs (for-map [genre @db/!genre-names]
-                           genre (or (get freqs genre) 0.0))
+                    genre (or (get freqs genre) 0.0))
             mean (stats/mean (vals freqs))
             ;;sd (stats/sd (vals freqs))
             ;; df = 11 (BCCWJ + STJC + Wikipedia?)
@@ -41,7 +41,7 @@
                          :noun 26.757
                          :verb 26.757
                          :particle 26.757
-                         :adverb 17.275
+                         :adverb 0.0 #_17.275
                          :auxiliary-verb 26.757
                          19.675)
             chisq-fn (s/fn :- s/Num [x :- s/Num]
