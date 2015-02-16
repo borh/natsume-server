@@ -14,12 +14,12 @@
             [natsume-server.nlp.error :as error]))
 
 (s/defschema Token
-             {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword
-              :アカデミックな書き言葉 (s/maybe s/Bool) :アカデミックな書き言葉-n (s/maybe s/Bool) :一般的な書き言葉 (s/maybe s/Bool)
-              :公的な話し言葉 (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
+  {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword
+   :アカデミックな書き言葉 (s/maybe s/Bool) :アカデミックな書き言葉-n (s/maybe s/Bool) :一般的な書き言葉 (s/maybe s/Bool)
+   :公的な話し言葉 (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
 
 (s/defschema ScoredToken
-             (assoc Token :準正用判定 (s/maybe s/Bool) :準誤用判定 (s/maybe s/Bool)))
+  (assoc Token :準正用判定 (s/maybe s/Bool) :準誤用判定 (s/maybe s/Bool)))
 
 (def test-data "data/unidic-adverb-test-data.tsv.xz")
 
@@ -232,10 +232,10 @@
 
 (def variations
   [{:t :アカデミックな書き言葉-n :p :準誤用判定}
-   {:t :アカデミックな書き言葉 :p :準正用判定}
-   {:t :一般的な書き言葉   :p :準正用判定}
-   {:t :公的な話し言葉    :p :準誤用判定}
-   {:t :日常の話し言葉    :p :準誤用判定}])
+   {:t :アカデミックな書き言葉   :p :準正用判定}
+   {:t :一般的な書き言葉         :p :準正用判定}
+   {:t :公的な話し言葉           :p :準誤用判定}
+   {:t :日常の話し言葉           :p :準誤用判定}])
 
 (s/defn get-all-variations
   [true-predicted :- [{:t s/Keyword :p s/Keyword}]]
