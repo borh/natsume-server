@@ -15,7 +15,8 @@
    n    :- s/Num
    tree :- {s/Keyword s/Any}]
   (let [raw-freqs
-        (let [m (->> tree
+        (let [m (->> tree ;; TODO/FIXME: actually, token frequencies should be normalized based on (corpus, pos) and not just on (corpus)
+                     ;; (#(normalize-tree (:pos @db/!pos-genre-tokens) %)) ;; TODO
                      :children
                      (map (juxt :name :count))
                      (into {}))]
