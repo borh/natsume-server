@@ -726,6 +726,7 @@ return the DDL string for creating that unlogged table."
 
 (def !norm-map (atom {}))
 (def !genre-names (atom #{}))
+#_(def !pos-genre-tokens (atom {}))
 (defn set-norm-map! [conn]
   (reset! !norm-map
    {:sources    (seq-to-tree (q conn (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
@@ -733,7 +734,14 @@ return the DDL string for creating that unlogged table."
     :sentences  (seq-to-tree (q conn (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
     :chunks     (seq-to-tree (q conn (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
     :tokens     (seq-to-tree (q conn (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))})
-  (reset! !genre-names (->> @!norm-map :sources :children (map :name) set)))
+  (reset! !genre-names (->> @!norm-map :sources :children (map :name) set))
+  #_(let [poss (->> (q conn (-> (select (h/call :distinct :pos-1)) (from :search-tokens))) (map :pos-1) (into #{}))] ;; FIXME: :pos-1/2/3 vs :pos
+    (reset! !pos-genre-tokens
+            (for-map [pos poss]
+              pos
+              (seq-to-tree
+                (q conn (-> (select :genre [(h/call :sum :count) :count]) (from :search-tokens) (where [:= :pos-1 "副詞"]) (group :genre))
+                   genre-ltree-transform))))))
 
 ;; FIXME TODO add compact-numbers
 ;; TODO add natsume-units version
