@@ -10,14 +10,14 @@
   :jvm-opts ["-server" "-XX:+UseG1GC"]
   :dependencies [[org.clojure/clojure "1.7.0-alpha4"]
 
-                 [compojure "1.3.1" :exclusions [clj-time]]
+                 [compojure "1.3.1" :exclusions [clj-time commons-codec]]
                  [metosin/compojure-api "0.17.0"]
                  [metosin/ring-http-response "0.5.2"]
                  [metosin/ring-swagger-ui "2.0.24"]
                  [prone "0.8.0"]
                  [prismatic/schema "0.3.7"]
                  [ring "1.3.2"]
-                 [ring/ring-defaults "0.1.4"]
+                 [ring/ring-defaults "0.1.3"]
                  [ring-webjars "0.1.0"]
                  [http-kit "2.1.19"]
 
@@ -27,7 +27,7 @@
                  [java-jdbc/dsl "0.1.1"]
                  [com.alibaba/druid "1.0.13"]
                  [honeysql "0.4.3"]
-                 [yesql "0.4.0"]
+                 [yesql "0.4.0" :exclusions [instaparse]]
                  ;;
 
                  ;; Utils
