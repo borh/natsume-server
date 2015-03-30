@@ -167,7 +167,7 @@
                           (into []))]
     (concat tokens collocations)))
 
-(s/defn get-error
+(s/defn get-error :- {:results [{s/Keyword s/Any}] :parsed-tokens [{s/Keyword s/Any}]}
   [conn :- s/Any
    text :- s/Str]
   (if-let [paragraphs (->> text vector text/lines->paragraph-sentences)]

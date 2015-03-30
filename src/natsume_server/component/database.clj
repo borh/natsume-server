@@ -36,7 +36,8 @@
             ;;[plumbing.core :refer [?> ?>> map-keys map-vals for-map]]
             [schema.core :as s])
   (:import [com.alibaba.druid.pool DruidDataSource]
-           [natsume_server.nlp.cabocha_wrapper Chunk]))
+           [natsume_server.nlp.cabocha_wrapper Chunk]
+           (java.io File)))
 
 (defn druid-pool
   [spec]
@@ -754,7 +755,7 @@ return the DDL string for creating that unlogged table."
        (group-by #(select-keys % [:lemma :orth-base :pos-1 :pos-2]))
        (map-vals seq-to-tree)
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (contains? @!norm-map norm) (map-vals #(normalize-tree (norm @!norm-map) % :clean-up-fn compact-number)))
+       (?>> (contains? @!norm-map norm) (map-vals #(normalize-tree (norm @!norm-map) % {:clean-up-fn compact-number})))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        vec
        (map #(hash-map :token (first %) :results (second %)))))
@@ -770,13 +771,13 @@ return the DDL string for creating that unlogged table."
            genre-ltree-transform)
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (and norm (contains? @!norm-map norm)) (#(normalize-tree (norm @!norm-map) % :clean-up-fn (if compact-numbers compact-number identity))))
+       (?>> (and norm (contains? @!norm-map norm)) (#(normalize-tree (norm @!norm-map) % {:clean-up-fn (if compact-numbers compact-number identity)})))
        ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
        ))
 
 ;; Should contain all totals in a map by collocation type (n-gram size is determined by type) and genre.
 (def !gram-totals (atom {}))
-(def !gram-types (atom {}))
+(def !gram-types (atom #{}))
 (def !tokens-by-gram (atom {}))
 
 (defn set-gram-information! [conn]
@@ -785,7 +786,10 @@ return the DDL string for creating that unlogged table."
            (->> records
                 (map #(update-in % [:genre] ltree->seq))
                 (group-by :type)
-                (map-vals #(seq-to-tree % :merge-keys [:count :sentences-count #_:paragraphs-count :sources-count])))))
+                (map-vals #(seq-to-tree % {:merge-fns {:count +
+                                                       :sentences-count +
+                                                       ;;:paragraphs-count +
+                                                       :sources-count +}})))))
   (reset! !gram-types (set (q conn (-> (select :type) (from :gram-norm)) underscores->dashes :type)))
   (reset! !tokens-by-gram
          (map-vals (fn [x] (reduce #(+ %1 (-> %2 val :count)) 0 x))
@@ -825,9 +829,9 @@ return the DDL string for creating that unlogged table."
                          (conj [:= :type (fmt/to-sql type)])
                          (?> genre (conj [:tilda :genre genre])))
         clean-up-fn (fn [data] (->> data
-                                   (?>> (and offset (pos? offset)) (drop offset))
-                                   (?>> (and limit (pos? limit)) (take limit))
-                                   (?>> compact-numbers (map (fn [r] (update-in r [measure] compact-number))))))]
+                                    (?>> (and offset (pos? offset)) (drop offset))
+                                    (?>> (and limit (pos? limit)) (take limit))
+                                    (?>> compact-numbers (map (fn [r] (update-in r [measure] compact-number))))))]
     (->> (qm conn
              (-> {:select (vec (distinct (concat aggregates-clause selected)))
                   :from [(keyword (str "search_gram_" n))]
@@ -838,22 +842,22 @@ return the DDL string for creating that unlogged table."
                                                       {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
                                                        ;; FIXME : we probably want to have the option of using the total count per n-gram order...
                                                        :f-xx (-> @!gram-totals type :count)})] ;; FIXME Should add :genre filtering to !gram-totals when we specify some genre filter!
-                               (case measure
-                                 :log-dice (merge % contingency-table)
-                                 :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
-                                 (assoc % measure
+                             (case measure
+                               :log-dice (merge % contingency-table)
+                               :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
+                               (assoc % measure
                                         ((measure stats/association-measures-graph) contingency-table))))))
          (?>> (= :log-dice measure) ((fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1)))))
          (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) (dissoc :count))))
          (sort-by (comp - measure)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
          (?>> (:string-2 selected) ((fn [rows] (->> rows
-                                                   (group-by :string-2)
-                                                   (map-vals (fn [row] (map #(dissoc % :string-2) row)))
-                                                   ;; Sorting assumes higher measure values are better.
-                                                   (sort-by #(- (apply + (map measure (second %)))))
-                                                   (map (fn [[p fs]] {:string-2 p
-                                                                     :data (clean-up-fn fs)}))
-                                                   (?>> relation-limit (take relation-limit))))))
+                                                    (group-by :string-2)
+                                                    (map-vals (fn [row] (map #(dissoc % :string-2) row)))
+                                                    ;; Sorting assumes higher measure values are better.
+                                                    (sort-by #(- (apply + (map measure (second %)))))
+                                                    (map (fn [[p fs]] {:string-2 p
+                                                                       :data (clean-up-fn fs)}))
+                                                    (?>> relation-limit (take relation-limit))))))
          (?>> (not (:string-2 selected)) (clean-up-fn)))))
 ;; FIXME include option for human-readable output (log-normalized to max): scale option
 
@@ -904,7 +908,7 @@ return the DDL string for creating that unlogged table."
             tree
             (if normalize?
               (normalize-tree (get @!gram-totals type) tree
-                              :clean-up-fn (if compact-numbers compact-number identity))
+                              {:clean-up-fn (if compact-numbers compact-number identity)})
               tree)))
         ;; n > 1
         (let [merge-stats
@@ -939,8 +943,8 @@ return the DDL string for creating that unlogged table."
                        (map (fn [r]
                               (for-map [[k v] r] k (if (measure k) (compact-number v) v)))
                             rs))))
-                (seq-to-tree :merge-fns merge-fns :root-values (select-keys (merge-stats (into {} (r/reduce (fn [a kvs] (merge-with merge-fns a kvs)) {} (map #(dissoc % :genre) db-results)))) measure))
-                (?> (and (:count measure) normalize?) ((fn [tree] (normalize-tree (get @!gram-totals type) tree :clean-up-fn (if compact-numbers compact-number identity))))))))))))
+                (seq-to-tree {:merge-fns merge-fns :root-values (select-keys (merge-stats (into {} (r/reduce (fn [a kvs] (merge-with merge-fns a kvs)) {} (map #(dissoc % :genre) db-results)))) measure)})
+                (?> (and (:count measure) normalize?) ((fn [tree] (normalize-tree (get @!gram-totals type) tree {:clean-up-fn (if compact-numbers compact-number identity)})))))))))))
 
 (comment
 
@@ -1027,24 +1031,24 @@ return the DDL string for creating that unlogged table."
 
 ;; ## Computation graphs / pipeline pattern
 (def sentence-graph
-  {:tree     (fnk get-tree :- [Chunk] [text :- s/Str] (am/sentence->tree text))
-   :features rd/sentence-readability
+  {:tree            (fnk get-tree :- [Chunk] [text :- s/Str] (am/sentence->tree text))
+   :features        rd/sentence-readability
    ;; The following are side-effecting persistence graphs:
    :sentences-id    (fnk get-sentences-id :- s/Num
-                         [conn features tags paragraph-order-id sentence-order-id sources-id]
-                         (-> (insert-sentence conn
-                                              (assoc features
-                                                     :tags tags
-                                                     :paragraph-order-id paragraph-order-id
-                                                     :sentence-order-id sentence-order-id
-                                                     :sources-id sources-id))
-                             first
-                             :id))
+                      [conn features tags paragraph-order-id sentence-order-id sources-id]
+                      (-> (insert-sentence conn
+                                           (assoc features
+                                             :tags (into #{} (map name tags))
+                                             :paragraph-order-id paragraph-order-id
+                                             :sentence-order-id sentence-order-id
+                                             :sources-id sources-id))
+                          first
+                          :id))
    :collocations-id (fnk get-collocations-id [conn features sentences-id]
-                         (when-let [collocations (seq (:collocations features))]
-                           (map :id (insert-collocations! conn collocations sentences-id))))
+                      (when-let [collocations (seq (:collocations features))]
+                        (map :id (insert-collocations! conn collocations sentences-id))))
    :tokens          (fnk commit-tokens :- nil [conn tree sentences-id]
-                         (insert-tokens! conn (flatten (map :tokens tree)) sentences-id))})
+                      (insert-tokens! conn (flatten (map :tokens tree)) sentences-id))})
 (def sentence-graph-fn (graph/eager-compile sentence-graph))
 
 (defnk insert-paragraphs! [conn paragraphs sources-id]
@@ -1096,34 +1100,33 @@ return the DDL string for creating that unlogged table."
 (def corpus-graph
   ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
   {:files      (fnk [corpus-dir sampling-options]
-                    (println ":files") ;; FIXME this is not reached!!! why??
-                    (->> corpus-dir
-                         file-seq
-                         (r/filter #(= ".txt" (fs/extension %)))
-                         (into #{})
-                         (?>> (not= (:ratio sampling-options) 0.0) (fn [xs] (sample sampling-options xs)))))
+                 (->> corpus-dir
+                      file-seq
+                      (r/filter #(= ".txt" (fs/extension %)))
+                      (into #{})
+                      (?>> (not= (:ratio sampling-options) 0.0) ((fn [xs] (sample sampling-options xs))))))
    :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
    :sources    (fnk [corpus-dir]
-                    (map
-                     (fn [[title author year basename genres-name subgenres-name
-                          subsubgenres-name subsubsubgenres-name permission]]
-                       {:title    title
-                        :author   author
-                        :year     (Integer/parseInt year)
-                        :basename basename
-                        :genre    [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]})
-                     (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
-                       (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
+                 (map
+                   (fn [[title author year basename genres-name subgenres-name
+                         subsubgenres-name subsubsubgenres-name permission]]
+                     {:title    title
+                      :author   author
+                      :year     (Integer/parseInt year)
+                      :basename basename
+                      :genre    [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]})
+                   (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
+                     (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
    :persist    (fnk [conn sources files file-bases]
-                    ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
-                    (let [sources-basenames (set (map :basename sources))]
-                      (println "basenames missing from sources.tsv: ")
-                      (doseq [f (set/difference file-bases sources-basenames)]
-                        (println f))
-                      (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases)))
-                    (insert-sources! conn sources file-bases)
-                    (->> files
-                         (dorunconc #(file-graph-fn {:conn conn :filename %}))))})
+                 ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
+                 (let [sources-basenames (set (map :basename sources))]
+                   (println "basenames missing from sources.tsv: ")
+                   (doseq [f (set/difference file-bases sources-basenames)]
+                     (println f))
+                   (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases)))
+                 (insert-sources! conn sources file-bases)
+                 (->> files
+                      (dorunconc #(file-graph-fn {:conn conn :filename %}))))})
 
 (def wikipedia-graph
   (merge (dissoc corpus-graph :file-bases :sources)
@@ -1145,17 +1148,19 @@ return the DDL string for creating that unlogged table."
 (def bccwj-graph
   (merge corpus-graph
          {:files   (fnk [corpus-dir sampling-options]
-                        (->> corpus-dir
-                             file-seq
-                             (filter #(= ".xml" (fs/extension %)))
-                             (?>> (not= (:ratio sampling-options) 0.0) (partial sample sampling-options))))
+                     (->> corpus-dir
+                          file-seq
+                          (filter #(= ".xml" (fs/extension %)))
+                          (?>> (not= (:ratio sampling-options) 0.0) ((fn [xs] (sample sampling-options xs))))))
           :persist (fnk [conn sources files file-bases]
-                        (insert-sources! conn sources file-bases)
-                        (->> files
-                             (dorunconc #(bccwj-file-graph-fn {:conn conn :filename %}))))}))
+                     (insert-sources! conn sources file-bases)
+                     (->> files
+                          (dorunconc #(bccwj-file-graph-fn {:conn conn :filename %}))))}))
 
-(defn process-corpus!
-  [conn sampling corpus-dir]
+(s/defn process-corpus! :- nil
+  [conn :- s/Any
+   sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}
+   corpus-dir :- File]
   (let [corpus-computation (graph/eager-compile
                             (condp #(re-seq %1 %2) (.getPath corpus-dir)
                               #"(?i)wiki" wikipedia-graph
@@ -1165,9 +1170,9 @@ return the DDL string for creating that unlogged table."
                          :corpus-dir corpus-dir
                          :sampling-options sampling #_(env :sampling)})))
 
-(defn process-directories
+(s/defn process-directories :- #{File}
   "Processes directories to check if they exist and returns a set of io/file directory objects with canonical and normalized paths."
-  [dirs]
+  [dirs :- [s/Str]]
   (if (seq dirs)
     (->> dirs
          (r/map io/file)
@@ -1175,13 +1180,14 @@ return the DDL string for creating that unlogged table."
          (r/filter fs/directory?)
          (into #{}))))
 
-(defn process
+(s/defn process :- nil
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
-  [conn dirs sampling]
+  [conn :- s/Any
+   dirs :- [s/Str]
+   sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}]
   ((comp dorun map) (partial process-corpus! conn sampling) (process-directories dirs)))
-
 
 ;; Component
 
@@ -1218,6 +1224,7 @@ return the DDL string for creating that unlogged table."
       (set-gram-information! conn)
 
       (assoc this :connection conn)))
+
   (stop [this] (dissoc this :connection)))
 
 (defn database [{:keys [db dirs sampling clean search process] :as m}]
