@@ -46,7 +46,6 @@
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.2"]
                  [dk.ative/docjure "1.8.0"]
-                 [org.flatland/useful "0.11.3" :exclusions [org.clojure/tools.macro]]
                  [fast-zip "0.6.1"]
                  [org.apache.commons/commons-math3 "3.4.1"]
                  [fipp "0.5.2"]

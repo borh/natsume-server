@@ -1,15 +1,12 @@
 (ns natsume-server.nlp.cabocha-wrapper
   (:require [clojure.string :as string]
-            [flatland.useful.utils :as utils]
             [qbits.knit :as knit]
             [schema.core :as s])
   (:import [org.chasen.cabocha Parser Token]
-           (clojure.lang PersistentHashSet)))
+           [clojure.lang PersistentHashSet]))
 
 ;; # Simple CaboCha JNI Wrapper
-;;
-;; The CaboCha JNI bindings are not thread-safe, so the parser is wrapped in flatland.useful.utils' thread-local macro.
-(defonce parser (utils/thread-local (Parser.)))
+(defonce parser (Parser.))
 
 (def ^:private unidic-features
   "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `2.1.1`."
@@ -125,7 +122,7 @@
   "Parses input sentence string and returns a vector of CaboCha chunks containing dependency
    information and a vector of tokens, which are represented as maps."
   [s :- String] ;; s/Str gives reflection warnings
-  (let [tree   (.parse ^Parser @parser s)
+  (let [tree   (.parse ^Parser parser s)
         chunks (.chunk_size tree)]
     (loop [chunk-id 0
            token-id 0
