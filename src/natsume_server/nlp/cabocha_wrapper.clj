@@ -167,8 +167,8 @@
         (.setDaemon true)))))
 (def cabocha-executor
   (knit/executor :fixed
-                 :num-threads (.. Runtime getRuntime availableProcessors)
-                 :thread-factory (cabocha-thread-factory (knit/thread-group "cabocha-thread"))))
+                 {:num-threads    (.. Runtime getRuntime availableProcessors)
+                  :thread-factory (cabocha-thread-factory (knit/thread-group "cabocha-thread"))}))
 
 (defn parse-sentence-synchronized [^String s]
   @(knit/execute cabocha-executor

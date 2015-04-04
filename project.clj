@@ -8,10 +8,10 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-alpha4"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0-alpha6"]       ;; alpha5 >> core.matrix.dataset compile error?!
 
                  [com.stuartsierra/component "0.2.3"]
-                 [potemkin "0.3.12"]
+                 [potemkin "0.3.13"]
                  [duct "0.1.0"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
@@ -19,29 +19,20 @@
 
                  ;; TODO
                  [org.immutant/web "2.0.0-beta2"]
+                 [instaparse "1.3.6"]                       ;; FIXME Override
                  [io.pedestal/pedestal.service "0.3.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.3.1"]
                  [io.pedestal/pedestal.immutant "0.3.1" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.19.1"]
+                 [metosin/ring-swagger "0.19.3"]
                  [frankiesardo/pedestal-swagger "0.3.1-SNAPSHOT"]
                  [cheshire "5.4.0"]
-                 ;;[com.novemberain/validateur "2.4.2"]
-
-                 ;;[compojure "1.3.2" :exclusions [clj-time commons-codec]]
-                 ;;[metosin/compojure-api "0.18.0"]
-                 ;;[metosin/ring-http-response "0.6.1"]
-                 ;;[metosin/ring-swagger-ui "2.1.1-M1"]
-                 ;;[prone "0.8.1"]
-                 ;;[ring "1.3.2" :exclusions [ring/ring-jetty-adapter]]
-                 ;;[ring/ring-defaults "0.1.4"]
-                 ;;[ring-webjars "0.1.0"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.6"]
                  [java-jdbc/dsl "0.1.1"]
                  [com.alibaba/druid "1.0.13"]
-                 [honeysql "0.5.1"]
+                 [honeysql "0.5.2"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
                  ;;
 
@@ -50,8 +41,6 @@
                  [org.apache.commons/commons-compress "1.9"]
                  [org.clojure/tools.reader "0.8.16"]
                  [com.taoensso/timbre "3.4.0"]
-                 ;;[clj-configurator "0.1.5"]
-                 ;;[org.dave/cfg "1.0.0"]
                  [org.clojure/tools.cli "0.3.1"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
@@ -65,13 +54,13 @@
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.33.2"]
+                 [net.mikera/core.matrix "0.34.0"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  [com.aliasi/lingpipe "4.1.0"]
                  [bigml/sampling "3.0"]
                  [prismatic/plumbing "0.4.1" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
-                 [cc.qbits/knit "0.2.1"]
+                 [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
                  [org.clojure/core.match "0.3.0-alpha5-SNAPSHOT"]
                  ;;;; word2vec/doc2vec TODO:
@@ -84,7 +73,7 @@
 
                  ;; Text processing
                  [org.chasen/cabocha "0.68"]
-                 [com.ibm.icu/icu4j "54.1.1"]
+                 [com.ibm.icu/icu4j "55.1"]
                  [d3-compat-tree "0.0.4"]
                  ;;
 
