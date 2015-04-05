@@ -3,10 +3,19 @@
             [qbits.knit :as knit]
             [schema.core :as s])
   (:import [org.chasen.cabocha Parser Token]
-           [clojure.lang PersistentHashSet]))
+           [clojure.lang PersistentHashSet IDeref]))
 
 ;; # Simple CaboCha JNI Wrapper
-(defonce parser (Parser.))
+
+(defn thread-local*
+  [init]
+  (let [generator (proxy [ThreadLocal] []
+                    (initialValue [] (init)))]
+    (reify IDeref
+      (deref [this]
+        (.get generator)))))
+
+(defonce parser (thread-local* (fn [] (Parser.))))
 
 (def ^:private unidic-features
   "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `2.1.1`."
@@ -122,7 +131,7 @@
   "Parses input sentence string and returns a vector of CaboCha chunks containing dependency
    information and a vector of tokens, which are represented as maps."
   [s :- String] ;; s/Str gives reflection warnings
-  (let [tree   (.parse ^Parser parser s)
+  (let [tree   (.parse ^Parser @parser s)
         chunks (.chunk_size tree)]
     (loop [chunk-id 0
            token-id 0
