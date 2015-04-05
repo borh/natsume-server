@@ -22,7 +22,7 @@
            alphanumerics)))
 
 (defn codepoint-range->string [codepoints]
-  (apply str (for [codepoint codepoints] (char codepoint))))
+  (string/join (for [codepoint codepoints] (char codepoint))))
 
 (def delimiter-set (set (vec (str delimiter))))
 (def alphanumerics-set (set (vec (str "0123456789"
@@ -57,7 +57,7 @@
                           (conj (pop (pop a)) z \newline y x)
                           (conj a x))))))
        reverse
-       (apply str)
+       string/join
        string/split-lines))
 
 ;; TODO FIXME make a stand-off interface to the text that keeps the

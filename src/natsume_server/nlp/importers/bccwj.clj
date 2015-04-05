@@ -141,8 +141,8 @@
  (defn seq->zip->text
    [xs]
    (clojure.walk/walk emit-tags-flat
-              #(apply str %)
-              xs))
+                      string/join
+                      xs))
 
  (defn xml->plain-text
    [filename]

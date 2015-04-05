@@ -158,7 +158,7 @@ return the DDL string for creating that unlogged table."
         {:keys [table-spec entities] :or {entities identity}} other-specs
         table-spec-str (or (and table-spec (str " " table-spec)) "")
         specs-to-string (fn [specs]
-                          (apply str
+                          (clojure.string/join
                                  (map (j/as-sql-name entities)
                                       (apply concat
                                              (interpose [", "]
@@ -608,15 +608,17 @@ return the DDL string for creating that unlogged table."
 
 ;; ### Collocations
 (defn insert-collocations! [conn collocations sentences-id]
-  (doseq [collocation (filter identity #_#(> (count (:type %)) 1) collocations)]
+  (doseq [collocation collocations #_(filter identity #_#(> (count (:type %)) 1) collocations)]
     (let [grams (count (:type collocation))
           record-map (apply merge (for [i (range 1 (inc grams))]
                                     (let [record (nth (:data collocation) (dec i))]
+                                      (println record)
                                       (map-keys #(let [[f s] (string/split (name %) #"-")]
                                                    (keyword (str s "-" i)))
                                                 (-> record
                                                     (?> (:head-pos record) (update-in [:head-pos] name))
                                                     (?> (:tail-pos record) (update-in [:tail-pos] name))
+                                                    (?> (:tags record) (update-in [:tags] (fn [xs] (->> xs (map name) (into #{})))))
                                                     #_(?> (:head-tags record) (update-in [:head-tags] make-jdbc-array))
                                                     #_(?> (:tail-tags record) (update-in [:tail-tags] make-jdbc-array)))))))]
       (i! conn
