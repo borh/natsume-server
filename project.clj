@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-alpha6"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0-beta1"]       ;; alpha5 >> core.matrix.dataset compile error?!
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
@@ -18,19 +18,19 @@
                  [prismatic/schema "0.4.0"]
 
                  ;; TODO
-                 [org.immutant/web "2.0.0-beta2"]
+                 [org.immutant/web "2.0.0-beta3"]
                  [instaparse "1.3.6"]                       ;; FIXME Override
                  [io.pedestal/pedestal.service "0.3.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.3.1"]
                  [io.pedestal/pedestal.immutant "0.3.1" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.19.3"]
+                 [metosin/ring-swagger "0.19.5"]
                  [frankiesardo/pedestal-swagger "0.3.1-SNAPSHOT"]
                  [cheshire "5.4.0"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.6"]
-                 [java-jdbc/dsl "0.1.1"]
+                 [java-jdbc/dsl "0.1.2"]
                  [com.alibaba/druid "1.0.13"]
                  [honeysql "0.5.2"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
@@ -39,7 +39,7 @@
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
-                 [org.clojure/tools.reader "0.8.16"]
+                 [org.clojure/tools.reader "0.9.1"]
                  [com.taoensso/timbre "3.4.0"]
                  [org.clojure/tools.cli "0.3.1"]
                  [me.raynes/fs "1.4.6"]
@@ -55,9 +55,9 @@
                  ;; Stats/models/ML
                  [net.mikera/core.matrix "0.34.0"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
-                 [com.aliasi/lingpipe "4.1.0"]
+                 ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0"]
-                 [prismatic/plumbing "0.4.1" :exclusions [fs potemkin prismatic/schema]]
+                 [prismatic/plumbing "0.4.2" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
