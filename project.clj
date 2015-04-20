@@ -18,12 +18,12 @@
                  [prismatic/schema "0.4.0"]
 
                  ;; TODO
-                 [org.immutant/web "2.0.0-beta3"]
+                 [org.immutant/web "2.0.0"]
                  [instaparse "1.3.6"]                       ;; FIXME Override
-                 [io.pedestal/pedestal.service "0.3.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
-                 [io.pedestal/pedestal.service-tools "0.3.1"]
-                 [io.pedestal/pedestal.immutant "0.3.1" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.19.5"]
+                 [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 [io.pedestal/pedestal.service-tools "0.4.0"]
+                 [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
+                 [metosin/ring-swagger "0.19.6"]
                  [frankiesardo/pedestal-swagger "0.3.1-SNAPSHOT"]
                  [cheshire "5.4.0"]
 
@@ -47,7 +47,7 @@
                  [org.clojure/data.csv "0.1.2"]
                  [dk.ative/docjure "1.8.0"]
                  [fast-zip "0.6.1"]
-                 [org.apache.commons/commons-math3 "3.4.1"]
+                 [org.apache.commons/commons-math3 "3.5"]
                  [fipp "0.5.2"]
                  [camel-snake-kebab "0.3.1" :exclusions [org.clojure/clojure]]
                  ;;
