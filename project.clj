@@ -8,30 +8,30 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-beta1"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0-beta2"]       ;; alpha5 >> core.matrix.dataset compile error?!
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
                  [duct "0.1.0"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
-                 [prismatic/schema "0.4.0"]
+                 [prismatic/schema "0.4.2"]
 
                  ;; TODO
                  [org.immutant/web "2.0.0"]
-                 [instaparse "1.3.6"]                       ;; FIXME Override
+                 [instaparse "1.4.0"]                       ;; FIXME Override
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.0"]
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.19.6"]
-                 [frankiesardo/pedestal-swagger "0.3.1-SNAPSHOT"]
+                 [metosin/ring-swagger "0.20.2"]
+                 [frankiesardo/pedestal-swagger "0.4.0"]
                  [cheshire "5.4.0"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.6"]
                  [java-jdbc/dsl "0.1.2"]
-                 [com.alibaba/druid "1.0.13"]
+                 [com.alibaba/druid "1.0.14"]
                  [honeysql "0.5.2"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
                  ;;
@@ -39,7 +39,7 @@
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
-                 [org.clojure/tools.reader "0.9.1"]
+                 [org.clojure/tools.reader "0.9.2"]
                  [com.taoensso/timbre "3.4.0"]
                  [org.clojure/tools.cli "0.3.1"]
                  [me.raynes/fs "1.4.6"]
@@ -48,7 +48,7 @@
                  [dk.ative/docjure "1.8.0"]
                  [fast-zip "0.6.1"]
                  [org.apache.commons/commons-math3 "3.5"]
-                 [fipp "0.5.2"]
+                 [fipp "0.6.0"]
                  [camel-snake-kebab "0.3.1" :exclusions [org.clojure/clojure]]
                  ;;
 
@@ -57,7 +57,7 @@
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0"]
-                 [prismatic/plumbing "0.4.2" :exclusions [fs potemkin prismatic/schema]]
+                 [prismatic/plumbing "0.4.3" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -94,7 +94,7 @@
                    :repl-options {:init-ns user}
                    :dependencies [[reloaded.repl "0.1.0"]
                                   [org.clojure/tools.namespace "0.2.10"]
-                                  [kerodon "0.5.0" :exclusions [org.flatland/ordered]]]
+                                  [kerodon "0.6.1" :exclusions [org.flatland/ordered]]]
                    :env {:db {:subname "//localhost:5432/natsumedev"
                               :user "natsumedev"
                               :password "riDJMq98LpyWgB7F"}
