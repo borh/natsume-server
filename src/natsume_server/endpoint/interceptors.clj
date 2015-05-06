@@ -1,5 +1,5 @@
 (ns natsume-server.endpoint.interceptors
-  (:require [io.pedestal.interceptor :refer [defbefore defon-request defon-response]]
+  (:require [io.pedestal.interceptor.helpers :refer [defbefore defon-request defon-response]]
             [ring.util.response :refer [content-type]]
             [plumbing.core :refer [map-keys ?>]]
             [natsume-server.utils.naming :refer [dashes->lower-camel underscores->dashes]]
