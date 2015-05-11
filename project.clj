@@ -12,7 +12,7 @@
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
-                 [duct "0.1.0"]
+                 [duct "0.1.1"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
                  [prismatic/schema "0.4.2"]
@@ -32,7 +32,7 @@
                  [org.clojure/java.jdbc "0.3.6"]
                  [java-jdbc/dsl "0.1.2"]
                  [com.alibaba/druid "1.0.14"]
-                 [honeysql "0.5.2"]
+                 [honeysql "0.6.0"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
                  ;;
 
@@ -48,7 +48,7 @@
                  [dk.ative/docjure "1.8.0"]
                  [fast-zip "0.6.1"]
                  [org.apache.commons/commons-math3 "3.5"]
-                 [fipp "0.6.0"]
+                 [fipp "0.6.1"]
                  [camel-snake-kebab "0.3.1" :exclusions [org.clojure/clojure]]
                  ;;
 
