@@ -2,8 +2,10 @@
   (:require [environ.core :refer [env]]))
 
 (def defaults
-  ^:displace {:http {:port 3000}})
+  ^:displace {:http {:port 3000}
+              :db   {:password "riDJMq98LpyWgB7F",
+                     :user "natsumedev",
+                     :subname "//localhost:5432/natsumedev"},})
 
 (def environ
-  {:http {:port (some-> env :port Integer.)}
-   :db   {:uri  (env :database-url)}})
+  {:http {:port (some-> env :port Integer.)}})

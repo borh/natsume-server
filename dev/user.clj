@@ -20,13 +20,19 @@
                 :password "riDJMq98LpyWgB7F"}
      :http     {:port 3000}
      :log      {:directory "./log"}
-     :dirs     ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW" "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OM"] ;; 26.067740016833334 m
+     :dirs     [#_"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW"
+                #_"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OM"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT"
+                ] ;; Bench numbers for OT (all):
+     ;; Old baseline:   26.067740016833334 m
+     ;; with validation 29.325954580383332 m (slowdown probably from ext4->btrfs move)
+     ;; w/o  validation 28.0387819849 m
      :verbose  true
-     :clean    false #_true
-     :process  false #_true
-     :search   false #_true
+     :clean    #_false true
+     :process  #_false true
+     :search   #_false true
      :server   true                                         ;; TODO
-     :sampling {:ratio    0.02
+     :sampling {:ratio    0.0
                 :seed     2
                 :replace  false
                 :hold-out false}}))
