@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-beta2"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0-beta3"]       ;; alpha5 >> core.matrix.dataset compile error?!
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
@@ -18,7 +18,7 @@
                  [prismatic/schema "0.4.2"]
 
                  ;; TODO
-                 [org.immutant/web "2.0.0"]
+                 [org.immutant/web "2.0.1"]
                  [instaparse "1.4.0"]                       ;; FIXME Override
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.0"]
