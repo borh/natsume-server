@@ -22,6 +22,7 @@
                          {:env                 :prod
                           ::http/routes        routes
                           ::http/resource-path "/public"
+                          ::http/router        :linear-search
                           ::http/type          :immutant
                           ::http/port          port}))
                      :port port)]
