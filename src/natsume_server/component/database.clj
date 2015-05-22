@@ -73,11 +73,12 @@
   (atom (cache/lru-cache-factory {} :threshold 50000)))
 (defn qm
   [conn query & trans]
-  (if (cache/has? @query-cache query)
-    (get (swap! query-cache #(cache/hit % query)) query)
-    (let [new-value (apply q conn query trans)]
-      (swap! query-cache #(cache/miss % query new-value))
-      new-value)))
+  (let [query-trans [query trans]]
+    (if (cache/has? @query-cache query-trans)
+      (first (get (swap! query-cache #(cache/hit % query-trans)) query-trans))
+      (let [new-value (apply q conn query trans)]
+        (swap! query-cache #(cache/miss % query-trans [new-value trans]))
+        new-value))))
 
 (defn i!*
   [conn tbl-name row-fn & rows]
@@ -991,7 +992,7 @@ return the DDL string for creating that unlogged table."
   "Query sentences containing given collocations, up to 'limit' times per top-level genre.
   Including the optional genre parameter will only return sentences from given genre, which can be any valid PostgreSQL ltree query."
   [conn
-   {:keys [type limit offset genre html sort order]
+   {:keys [type limit offset genre html sort]
     :or {limit 6 offset 0 type :noun-particle-verb}
     :as m}]
   (let [sort (if sort
