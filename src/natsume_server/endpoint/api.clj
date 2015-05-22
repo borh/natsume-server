@@ -108,6 +108,29 @@
     (if (not-empty sentences)
       (response sentences))))
 
+(swagger/defhandler
+  view-sentences-by-token
+  {:summary    ""
+   :parameters {:query {(opt :orth-base) s/Str
+                        (req :lemma)     s/Str
+                        (opt :pos-1)     s/Str
+                        (opt :pos-2)     s/Str
+                        (opt :genre)    [s/Str]
+                        (opt :limit)    Long
+                        (opt :offset)   Long
+                        (opt :html)     s/Bool
+                        (opt :sort)     s/Str}}
+   :responses  {200 {:schema [{(req :text)    s/Str
+                               (req :genre)   [s/Str]
+                               (req :title)   s/Str
+                               (req :author)  s/Str
+                               (req :year)    s/Int}]}}}
+  [{:keys [conn query-params]}]
+  ;; validate: html sort order
+  (let [sentences (db/query-sentences conn query-params)] ;; FIXME
+    (if (not-empty sentences)
+      (response sentences))))
+
 
 (swagger/defhandler
   view-collocations-tree
@@ -234,7 +257,8 @@
        ["/similarity" {:get view-genre-similarity}]]]
      ["/tokens" {:get view-tokens}]
      ["/sentences"
-      ["/collocations" {:get view-sentences-by-collocation}]]
+      ["/collocations" {:get view-sentences-by-collocation}]
+      ["/tokens" {:get view-sentences-by-token}]]
      ["/collocations" {:get view-collocations}
       ["/tree" {:get view-collocations-tree}]]
      ["/errors"
