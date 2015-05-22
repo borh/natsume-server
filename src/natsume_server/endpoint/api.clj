@@ -115,16 +115,16 @@
                         (req :lemma)     s/Str
                         (opt :pos-1)     s/Str
                         (opt :pos-2)     s/Str
-                        (opt :genre)    [s/Str]
-                        (opt :limit)    Long
-                        (opt :offset)   Long
-                        (opt :html)     s/Bool
-                        (opt :sort)     s/Str}}
-   :responses  {200 {:schema [{(req :text)    s/Str
-                               (req :genre)   [s/Str]
-                               (req :title)   s/Str
-                               (req :author)  s/Str
-                               (req :year)    s/Int}]}}}
+                        (opt :genre)     [s/Str]
+                        (opt :limit)     Long
+                        (opt :offset)    Long
+                        (opt :html)      s/Bool
+                        (opt :sort)      s/Str}}
+   :responses  {200 {:schema [{(req :text)   s/Str
+                               (req :genre)  [s/Str]
+                               (req :title)  s/Str
+                               (req :author) s/Str
+                               (req :year)   s/Int}]}}}
   [{:keys [conn query-params]}]
   ;; validate: html sort order
   (let [sentences (db/query-sentences conn query-params)] ;; FIXME
