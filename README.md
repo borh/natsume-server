@@ -4,7 +4,7 @@ Natsume writing assistance system data processor and server source code.
 
 For those that wish to use the Natsume system, please go to the official page:
 
-<http://hinoki.ryu.titech.ac.jp/natsume/>
+<https://hinoki.ryu.titech.ac.jp/natsume/>
 
 ## Developing
 
@@ -37,12 +37,12 @@ user=> (reset)
 ## Prerequisites
 
 `natsume-server` is written in [Clojure](http://clojure.org/), and thus requires a working Java environment to run.
-All development is done on the IcedTea 8 JVM (OpenJDK), though other version 7 should work.
+All development is done on the IcedTea 8 JVM (OpenJDK), though other versions (7) should work.
 
 A PostgreSQL database is required as well.
-Currently all testing is done on the 9.3 release.
+Currently all testing is done on the 9.4 release.
 
-`natsume-server` additionally makes use of [MeCab](http://code.google.com/p/mecab/) and [CaboCha](https://code.google.com/p/cabocha/).
+`natsume-server` additionally makes use of [MeCab](https://taku910.github.io/mecab/) and [CaboCha](https://taku910.github.io/cabocha/).
 
 ### Free-floating jars
 
