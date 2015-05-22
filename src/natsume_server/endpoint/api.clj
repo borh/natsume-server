@@ -240,9 +240,7 @@
       mw/kebab-case-params
       (swagger/keywordize-params :form-params :headers)
 
-
       ;; on-response ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
 
       http/json-body
       (swagger/body-params :json-params)
@@ -263,7 +261,9 @@
       ["/tree" {:get view-collocations-tree}]]
      ["/errors"
       ["/register"                                          ;; ^:interceptors [mw/read-body]
-       {:post get-text-register}]]]
+       {:post get-text-register}]]
+     ["/suggestions"                                        ;; TODO Suggest correct orthography given token/collocation
+      ["/tokens" {:get :TODO}]]]
 
     ;; Swagger Documentation
     ["/doc" ^:interceptors [mw/custom-decode-params
