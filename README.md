@@ -4,7 +4,7 @@ Natsume writing assistance system data processor and server source code.
 
 For those that wish to use the Natsume system, please go to the official page:
 
-<https://hinoki.ryu.titech.ac.jp/natsume/>
+<https://hinoki-project.org/natsume/>
 
 ## Developing
 
