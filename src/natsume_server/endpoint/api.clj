@@ -78,7 +78,7 @@
 
 (swagger/defhandler
   view-sentences-by-collocation
-  {:summary    ""
+  {:summary    "Returns sentences matching queried collocation."
    :parameters {:query {(opt :string-1) s/Str
                         (opt :string-2) s/Str
                         (opt :string-3) s/Str
@@ -110,7 +110,7 @@
 
 (swagger/defhandler
   view-sentences-by-token
-  {:summary    ""
+  {:summary    "Returns sentences matching queried token."
    :parameters {:query {(opt :orth-base) s/Str
                         (req :lemma)     s/Str
                         (opt :pos-1)     s/Str
@@ -134,7 +134,7 @@
 
 (swagger/defhandler
   view-collocations-tree
-  {:summary    ""
+  {:summary    "Returns D3-compatible tree of counts matching queried collocation."
    :parameters {:query {(opt :string-1) s/Str
                         (opt :string-2) s/Str
                         (opt :string-3) s/Str
@@ -145,8 +145,7 @@
                         (opt :offset)   Long
                         (opt :html)     s/Bool
                         (opt :sort)     s/Str}}
-   :responses  {200 {:schema #_D3Tree {s/Keyword s/Any}}}
-   }
+   :responses  {200 {:schema #_D3Tree {s/Keyword s/Any}}}}
   [{:keys [conn query-params]}]
   (let [query-params (assoc query-params :compact-numbers true :scale true)
         n (count (clojure.string/split (name (:type query-params)) #"-"))]
