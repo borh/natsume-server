@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-beta3"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0-RC1"]       ;; alpha5 >> core.matrix.dataset compile error?!
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
@@ -23,7 +23,8 @@
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.0"]
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.20.3"]
+                 [metosin/ring-swagger "0.20.3" :exclusions [metosin/ring-swagger-ui]]
+                 [metosin/ring-swagger-ui "2.1.5-M2"]
                  [frankiesardo/pedestal-swagger "0.4.0"]
                  [cheshire "5.4.0"]
 
