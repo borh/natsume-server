@@ -12,19 +12,16 @@
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
-                 [duct "0.1.1"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
-                 [prismatic/schema "0.4.2"]
+                 [prismatic/schema "0.4.3"]
 
-                 ;; TODO
-                 [org.immutant/web "2.0.1"]
-                 [instaparse "1.4.0"]                       ;; FIXME Override
+                 [org.immutant/web "2.0.1" :exclusions [ring/ring-core]]
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.0"]
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
                  [metosin/ring-swagger "0.20.3" :exclusions [metosin/ring-swagger-ui]]
-                 [metosin/ring-swagger-ui "2.1.5-M2"]
+                 [metosin/ring-swagger-ui "2.1.8-M1"]
                  [frankiesardo/pedestal-swagger "0.4.0"]
                  [cheshire "5.4.0"]
 
@@ -58,7 +55,7 @@
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0"]
-                 [prismatic/plumbing "0.4.3" :exclusions [fs potemkin prismatic/schema]]
+                 [prismatic/plumbing "0.4.4" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -78,13 +75,9 @@
                  ;;
 
                  ]
-  :plugins [[lein-environ "1.0.0"]
-            [lein-gen "0.2.2"]]
-  :generators [[duct/generators "0.1.0"]]
+  :plugins [[lein-environ "1.0.0"]]
   :duct {:ns-prefix natsume-server}
   :main ^:skip-aot natsume-server.main
-  :aliases {"gen" ["generate"]
-            "setup" ["do" ["generate" "locals"]]}
   :profiles
   {:dev  [:project/dev  :profiles/dev]
    :test [:project/test :profiles/test]
@@ -94,8 +87,7 @@
    :project/dev   {:source-paths ["dev"]
                    :repl-options {:init-ns user}
                    :dependencies [[reloaded.repl "0.1.0"]
-                                  [org.clojure/tools.namespace "0.2.10"]
-                                  [kerodon "0.6.1" :exclusions [org.flatland/ordered]]]
+                                  [org.clojure/tools.namespace "0.2.10"]]
                    :env {:db {:subname "//localhost:5432/natsumedev"
                               :user "natsumedev"
                               :password "riDJMq98LpyWgB7F"}
