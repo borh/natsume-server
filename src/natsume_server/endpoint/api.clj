@@ -18,27 +18,25 @@
 (def opt s/optional-key)
 (def req s/required-key)
 
-;; FIXME The following functions need to complete in the db ns before we can define the schema below.
+;; FIXME The following functions need to complete loading in the db ns before we can define the schema below.
 ;; (set-norm-map! conn)
 ;; (set-gram-information! conn)
-(s/defschema allowed-types (apply s/enum #{:noun-particle-verb :noun-particle-adjective :adjective-noun} #_@db/!gram-types))
+(s/defschema allowed-types    (apply s/enum #{:noun-particle-verb :noun-particle-adjective :adjective-noun} #_@db/!gram-types))
 (s/defschema allowed-measures (apply s/enum (set (conj (keys association-measures-graph) :count))))
-(s/defschema allowed-norms (apply s/enum (set (keys @db/!norm-map))))
+(s/defschema allowed-norms    (apply s/enum (set (keys @db/!norm-map))))
 
 (swagger/defhandler
   view-sources-api
-  {:summary    "Returns general summary information on the corpora and documents included in Natsume."
+  {:summary    "Returns general summary information on the corpora and documents included in Natsume"
    :parameters {}}
   [request]
   (response "TODO"))
 
 (swagger/defhandler
   view-sources-genre
-  {:summary    "Returns a JSON d3-compatible tree structure of counts by genre.
-               Defaults to sources count.
-               Checks for valid input, defined as what is available in db/norm-map."
+  {:summary    "Returns a D3-compatible tree structure of counts (default = sources) by genre"
    :parameters {:query {(opt :norm) allowed-norms}}
-   :responses  {200 {:schema D3Tree}}}
+   :responses  {200 {:schema s/Any #_D3Tree}}}
   [{:keys [query-params]}]
   (response ((or (->> query-params :norm keyword)
                  :sources)
@@ -46,16 +44,16 @@
 
 (swagger/defhandler
   view-genre-similarity
-  {:summary    ""
+  {:summary    "Return a D3-compatible tree of similarity scores for queried genre"
    :parameters {:query {:genre [s/Str]}}
    :responses  {200 {:schema {}}}}
   [{:keys [query-params]}]
-  (if-let [genre (-> query-params :genre (clojure.string/split #"\."))]
+  (if-let [genre (-> query-params :genre first (clojure.string/split #"\."))]
     (response :TODO #_(lm/get-genre-similarities genre))))
 
 (swagger/defhandler
   view-tokens
-  {:summary    "Natsumeに含まれる単語（短単位、Natsume特有のユニット）の検索が行える。"
+  {:summary    "Returns D3-compatible tree of genre occurrences for queried (SUW) token"
    :parameters {:query
                 #_(s/either
                   {(req :orth-base) s/Str
@@ -78,7 +76,7 @@
 
 (swagger/defhandler
   view-sentences-by-collocation
-  {:summary    "Returns sentences matching queried collocation."
+  {:summary    "Returns sentences matching queried collocation"
    :parameters {:query {(opt :string-1) s/Str
                         (opt :string-2) s/Str
                         (opt :string-3) s/Str
@@ -103,18 +101,27 @@
                                (opt :end-3)   s/Int
                                (opt :end-4)   s/Int}]}}}
   [{:keys [conn query-params]}]
-  ;; validate: html sort order
+  ;; FIXME validate: sort order; n <=> string-{1,2,3,4} sanity check
+  (println query-params)
   (let [sentences (db/query-sentences conn query-params)]
     (if (not-empty sentences)
       (response sentences))))
 
 (swagger/defhandler
   view-sentences-by-token
-  {:summary    "Returns sentences matching queried token."
-   :parameters {:query {(opt :orth-base) s/Str
+  {:summary    "Returns sentences matching queried (SUW) token"
+   :parameters {:query {(opt :orth)      s/Str
+                        (opt :orth-base) s/Str
+                        (opt :pron)      s/Str
+                        (opt :pron-base) s/Str
                         (req :lemma)     s/Str
                         (opt :pos-1)     s/Str
                         (opt :pos-2)     s/Str
+                        (opt :pos-3)     s/Str
+                        (opt :pos-4)     s/Str
+                        (opt :c-type)    s/Str
+                        (opt :c-form)    s/Str
+                        (opt :goshu)     s/Str ;; FIXME
                         (opt :genre)     [s/Str]
                         (opt :limit)     Long
                         (opt :offset)    Long
@@ -127,14 +134,14 @@
                                (req :year)   s/Int}]}}}
   [{:keys [conn query-params]}]
   ;; validate: html sort order
-  (let [sentences (db/query-sentences conn query-params)] ;; FIXME
+  (let [sentences (db/query-sentences-tokens conn query-params)] ;; FIXME
     (if (not-empty sentences)
       (response sentences))))
 
 
 (swagger/defhandler
   view-collocations-tree
-  {:summary    "Returns D3-compatible tree of counts matching queried collocation."
+  {:summary    "Returns D3-compatible tree of counts matching queried collocation or 1-gram"
    :parameters {:query {(opt :string-1) s/Str
                         (opt :string-2) s/Str
                         (opt :string-3) s/Str
@@ -161,14 +168,14 @@
 
 (swagger/defhandler
   get-text-register
-  {:summary    "Returns positions of errors by error type and confidence.
-
+  {:summary    "Returns positions of errors by error type and confidence
 現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。"
-   ;;:parameters {:body s/Str} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
+   :parameters {:body s/Any} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
    :responses  {200 {:schema {s/Keyword s/Any}}}}
-  [{:keys [conn body query-params] :as request}]
-  ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence) .
-  (let [body-text (slurp body)]
+  [{:keys [conn body-params] :as request}]
+  ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence).
+  (println body-params)
+  (let [body-text (:text body-params)]
     (if-let [results (error/get-error conn body-text)]
       (response results))))
 
@@ -179,7 +186,7 @@
 ;; FIXME Genre collocation view: use tree structure, but for one or more fully-specified collocations only! Should this be split into another api path?
 (swagger/defhandler
   view-collocations
-  {:summary    "Natsumeに含まれる共起表現（2―4グラム）の検索が行える。"
+  {:summary    "Returns collocations of queried (Natsume-specific) units"
    :parameters {:query {(opt :string-1)        s/Str
                         (opt :string-2)        s/Str
                         (opt :string-3)        s/Str
@@ -190,13 +197,13 @@
                         (opt :offset)          Long
                         (opt :relation-limit)  Long
                         (opt :compact-numbers) s/Bool
-                        (opt :scale)           s/Bool
-                        (opt :debug)           s/Bool}}
+                        ;;(opt :scale)           s/Bool ;; TODO not implemented
+                        }}
    :responses  {200 {:schema [{(opt :string-1) s/Str
                                (opt :string-2) s/Str
                                (opt :string-3) s/Str
                                (opt :string-4) s/Str
-                               (req :data)     [(assoc      ;; FIXME s/enum not valid as key?
+                               (req :data)     [{s/Keyword s/Any} #_(assoc      ;; FIXME s/enum not valid as key?
                                                   (for-map [measure allowed-measures]
                                                     (opt measure) s/Num)
                                                   (opt :string-1) s/Str
@@ -212,18 +219,26 @@
                   :limit 80
                   :relation-limit 8
                   :compact-numbers true
-                  :scale false
-                  :debug false}
+                  :scale false}
                  query-params)]
     (if-let [r (db/query-collocations conn q)]
       (response r))))
 
+(defn get-suggestions-tokens [])
+
 (swagger/defroutes
   api-endpoint
-  {:title "Natsume Server API"
-   :description "Natsume Server API"
-   :version "1.0"}
-  [[["/api" {:get identity}
+  {:info {:title       "Natsume Server API"
+          :description "Documentation for the Natsume Server API"
+          :version     "1.0"
+          :contact     {:name  "Bor Hodošček"
+                        :email "hinoki-project@googlegroups.com"
+                        :url   "https://hinoki-project.org"}
+          :license     {:name "Eclipse Public License"
+                        :url  "http://www.eclipse.org/legal/epl-v10.html"}}
+   :tags [{:name        "Sources"
+           :description "query sources"}]}
+  [[["/api" {:get identity} ;; FIXME (redirect to root?)
 
      ^:interceptors
      [;; before ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -238,31 +253,32 @@
       mw/custom-body-params
       mw/kebab-case-params
       (swagger/keywordize-params :form-params :headers)
+      io.pedestal.http.body-params/body-params
+      (swagger/body-params)
 
       ;; on-response ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-      http/json-body
-      (swagger/body-params :json-params)
-      mw/json-interceptor ;; Response-specific
+      ;;http/json-body
+      mw/json-interceptor
 
       ;; after ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
       (swagger/validate-response)]
 
-     ["/sources" {:get view-sources-api}
+     ["/sources" ^:interceptors [(swagger/tag-route "Sources")] {:get view-sources-api} ;; TODO
       ["/genre" {:get view-sources-genre}
        ["/similarity" {:get view-genre-similarity}]]]
-     ["/tokens" {:get view-tokens}]
-     ["/sentences"
+     ["/sentences" ^:interceptors [(swagger/tag-route "Sentences")]
       ["/collocations" {:get view-sentences-by-collocation}]
-      ["/tokens" {:get view-sentences-by-token}]]
-     ["/collocations" {:get view-collocations}
+      ["/tokens" {:get view-sentences-by-token}]] ;; TODO
+     ["/tokens" ^:interceptors [(swagger/tag-route "Tokens")] {:get view-tokens}]
+     ["/collocations" ^:interceptors [(swagger/tag-route "Collocations")] {:get view-collocations}
       ["/tree" {:get view-collocations-tree}]]
-     ["/errors"
+     ["/errors" ^:interceptors [(swagger/tag-route "Errors")]
       ["/register"                                          ;; ^:interceptors [mw/read-body]
        {:post get-text-register}]]
-     ["/suggestions"                                        ;; TODO Suggest correct orthography given token/collocation
-      ["/tokens" {:get :TODO}]]]
+     ["/suggestions" ^:interceptors [(swagger/tag-route "Suggestions")] ;; TODO Suggest correct orthography given token/collocation
+      ["/tokens" {:get get-suggestions-tokens}]]]
 
     ;; Swagger Documentation
     ["/doc" ^:interceptors [mw/custom-decode-params

@@ -961,8 +961,7 @@ return the DDL string for creating that unlogged table."
   {:select (set/difference (set (concat selected aggregates))
                            (set (keys query)))
    :from [:search-tokens]
-   :where (map->and-query query)
-   })
+   :where (map->and-query query)})
 
 ;; FIXME: this is actually not useful as we want to sort by measures....
 ;; :order-by (reduce #(conj %1 [%2 :desc]) [] aggregates)
@@ -998,35 +997,74 @@ return the DDL string for creating that unlogged table."
   (let [sort (if sort
                (if (re-seq #"(?i)^(length|tokens|chunks|jlpt.?level|bccwj.?level|link.?dist|chunk.?depth)$" sort) (str (name (underscores->dashes sort)) " ASC") "abs(4 - chunks)")
                "abs(4 - chunks)")
-        query-fields (select-keys m [:string-1 :string-2 :string-3 :string-4])
+        type-vec (-> type name (string/split #"-"))
+        type-fields (into {} (map-indexed (fn [i t] [(keyword (str "pos-" (inc i))) t]) type-vec))
+        query-fields (merge (select-keys m [:string-1 :string-2 :string-3 :string-4]) type-fields)
         selected-fields [:sources.genre :sources.title :sources.author :sources.year :sentences.text]
-        n (-> type name (string/split #"-") count)
+        n (count type-vec)
         search-table (keyword (str "gram_" n))
         begin-end-fields (for [number (range 1 (inc n))
                                s ["begin-" "end-"]]
                            (keyword (str s number)))]
     (q conn {:select [(h/call :setseed 0.2)]}) ; FIXME Better way to get consistent ordering? -> when setting connection?
     (qm conn
-     {:select [:*]
-      :where [:<= :part.r limit]
-      :from [[{:select (-> selected-fields
-                           (concat begin-end-fields)
-                           (conj [(h/raw (str "ROW_NUMBER() OVER (PARTITION BY subltree(sources.genre, 0, 1) ORDER BY RANDOM(), " sort ")")) :r]))
-               :from [search-table :sentences :sources]
-               :where (-> (conj (map->and-query query-fields)
-                                [:= :sentences-id :sentences.id]
-                                [:= :sentences.sources-id :sources.id])
-                          (?> genre (conj [:tilda :sources.genre genre])))
-               :group-by (apply conj selected-fields :sentences.chunks begin-end-fields)}
-              :part]]}
-     genre-ltree-transform
-     #(dissoc % :r)
-     (if html tag-html identity))))
+        {:select [:*]
+         :where  [:<= :part.r limit]
+         :from   [[{:select   (-> selected-fields
+                                  (concat begin-end-fields)
+                                  (conj [(h/raw (str "ROW_NUMBER() OVER (PARTITION BY subltree(sources.genre, 0, 1) ORDER BY RANDOM(), " sort ")")) :r]))
+                    :from     [search-table :sentences :sources]
+                    :where    (-> (conj (map->and-query query-fields)
+                                        [:= :sentences-id :sentences.id]
+                                        [:= :sentences.sources-id :sources.id])
+                                  (?> genre (conj [:tilda :sources.genre genre])))
+                    :group-by (apply conj selected-fields :sentences.chunks begin-end-fields)}
+                   :part]]}
+        genre-ltree-transform
+        #(dissoc % :r)
+        (if html tag-html identity))))
 
 (comment
   (query-sentences conn {:string-1 "こと" :type :noun-particle-verb})
   (query-sentences conn {:string-1 "こと" :type :noun-particle-verb-particle :genre ["書籍" "*"] :limit 10 :html true}))
 
+(defn query-sentences-tokens
+  "Query sentences containing given collocations, up to 'limit' times per top-level genre.
+  Including the optional genre parameter will only return sentences from given genre, which can be any valid PostgreSQL ltree query."
+  [conn
+   {:keys [lemma limit offset genre html sort] ;; FIXME lemma should be optional--instead we should require some set of orth/lemma/pron etc.
+    :or {limit 6 offset 0}
+    :as m}]
+  (let [sort (if sort
+               (if (re-seq #"(?i)^(length|tokens|chunks|jlpt.?level|bccwj.?level|link.?dist|chunk.?depth)$" sort) (str (name (underscores->dashes sort)) " ASC") "abs(4 - chunks)")
+               "abs(4 - chunks)")
+        type-vec (-> type name (string/split #"-"))
+        type-fields (into {} (map-indexed (fn [i t] [(keyword (str "pos-" (inc i))) t]) type-vec))
+        query-fields (merge (select-keys m [:string-1 :string-2 :string-3 :string-4]) type-fields)
+        selected-fields [:sources.genre :sources.title :sources.author :sources.year :sentences.text]
+        n (count type-vec)
+        search-table (keyword (str "gram_" n))
+        begin-end-fields (for [number (range 1 (inc n))
+                               s ["begin-" "end-"]]
+                           (keyword (str s number)))]
+    (println query-fields)
+    (q conn {:select [(h/call :setseed 0.2)]}) ; FIXME Better way to get consistent ordering? -> when setting connection?
+    (qm conn
+        {:select [:*]
+         :where  [:<= :part.r limit]
+         :from   [[{:select   (-> selected-fields
+                                  (concat begin-end-fields)
+                                  (conj [(h/raw (str "ROW_NUMBER() OVER (PARTITION BY subltree(sources.genre, 0, 1) ORDER BY RANDOM(), " sort ")")) :r]))
+                    :from     [search-table :sentences :sources]
+                    :where    (-> (conj (map->and-query query-fields)
+                                        [:= :sentences-id :sentences.id]
+                                        [:= :sentences.sources-id :sources.id])
+                                  (?> genre (conj [:tilda :sources.genre genre])))
+                    :group-by (apply conj selected-fields :sentences.chunks begin-end-fields)}
+                   :part]]}
+        genre-ltree-transform
+        #(dissoc % :r)
+        (if html tag-html identity))))
 
 ;; END Query
 

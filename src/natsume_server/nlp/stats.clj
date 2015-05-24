@@ -159,7 +159,7 @@
 
 ;; ### MI^3-Score
 
-(defnk mi3
+(defnk mi-3
   "A heuristic association measure.
   Source: Oakes, M.P. (1998). Statistics for corpus linguistics. Edinburgh textbooks in empirical linguistics. Edinburgh University Press."
   [f-ii f-ix f-xi f-xx]
@@ -371,7 +371,7 @@
    :t t
    :chi-sq chi-sq
    :mi mi
-   :mi3 mi3
+   :mi-3 mi-3
    :llr llr
    :ms ms
    :mi-log-prod mi-log-prod
