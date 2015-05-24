@@ -7,7 +7,6 @@
             [meta-merge.core :refer [meta-merge]]
             [natsume-server.config :as config]
             [reloaded.repl :refer [system init start stop go reset]]
-            [compojure.handler :refer [api]]
             [natsume-server.system :as system]
             [natsume-server.nlp.evaluation :as e]))
 
@@ -28,9 +27,9 @@
      ;; with validation 29.325954580383332 m (slowdown probably from ext4->btrfs move)
      ;; w/o  validation 28.0387819849 m
      :verbose  true
-     :clean    #_false true
-     :process  #_false true
-     :search   #_false true
+     :clean    false #_true
+     :process  false #_true
+     :search   false #_true
      :server   true                                         ;; TODO
      :sampling {:ratio    0.0
                 :seed     2
