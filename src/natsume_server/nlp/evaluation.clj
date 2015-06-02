@@ -102,8 +102,8 @@
   (extend-tokens-information (get-tokens test-data)))
 
 (comment
-  (score-tokens (get-tokens test-data))
-  (filter #(and (:score %) (:日常の話し言葉 %)) (score-tokens (get-tokens test-data))))
+  (score-tokens (get-tokens test-data) 0.0)
+  (filter #(and (:score %) (:日常の話し言葉 %)) (score-tokens (get-tokens test-data) 0.0)))
 
 (s/defn save-table
   [fn :- s/Str
@@ -114,7 +114,7 @@
     (with-open [w (io/writer fn)]
       (csv/write-csv w (into [(mapv name ks)] (mapv #(mapv % ks) tokens)) :separator \tab :quote 1))))
 
-(comment (save-table "unidic-adverb-scored-2014-12-22-1.tsv" (score-tokens (get-tokens test-data))))
+(comment (save-table "unidic-adverb-scored-2014-12-22-1.tsv" (score-tokens (get-tokens test-data) 0.0)))
 
 (s/defschema ConfusionMatrix {:tp s/Num :fp s/Num :fn s/Num :tn s/Num :NA s/Num})
 
@@ -176,8 +176,8 @@
   (precision-recall-curve 0.0 1000.0 10.0))
 
 (comment
-  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :日常の話し言葉 :準誤用判定))
-  (f1 (confusion-matrix (score-tokens (get-tokens test-data)) :アカデミックな書き言葉 :準正用判定)))
+  (f1 (confusion-matrix (score-tokens (get-tokens test-data) 0.0) :日常の話し言葉 :準誤用判定))
+  (f1 (confusion-matrix (score-tokens (get-tokens test-data) 0.0) :アカデミックな書き言葉 :準正用判定)))
 
 (def variations
   [{:t :アカデミックな書き言葉-n :p :準誤用判定}
