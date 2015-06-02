@@ -178,12 +178,11 @@
   get-text-register
   {:summary    "Returns positions of errors by error type and confidence
 現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。"
-   :parameters {:body {:text s/Str}} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
+   :parameters {:body s/Any #_{:text s/Str}} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
    :responses  {200 {:schema {s/Keyword s/Any}}}}
-  [{:keys [conn body-params] :as request}]
+  [{:keys [conn body-params body] :as request}]
   ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence).
-  (println body-params)
-  (let [body-text (:text body-params)]
+  (let [body-text (slurp body) #_(:text body-params)]
     (if-let [results (error/get-error conn body-text)]
       (response results))))
 
