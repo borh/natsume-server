@@ -20,10 +20,10 @@
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.0"]
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.20.3" :exclusions [metosin/ring-swagger-ui]]
+                 [metosin/ring-swagger "0.20.4" :exclusions [metosin/ring-swagger-ui]]
                  [metosin/ring-swagger-ui "2.1.8-M1"]
                  [frankiesardo/pedestal-swagger "0.4.0"]
-                 [cheshire "5.4.0"]
+                 [cheshire "5.5.0"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
@@ -38,7 +38,7 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
                  [org.clojure/tools.reader "0.9.2"]
-                 [com.taoensso/timbre "3.4.0"]
+                 [com.taoensso/timbre "4.0.0-beta4"]
                  [org.clojure/tools.cli "0.3.1"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
@@ -47,6 +47,7 @@
                  [fast-zip "0.6.1"]
                  [org.apache.commons/commons-math3 "3.5"]
                  [fipp "0.6.2"]
+                 [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.3.1" :exclusions [org.clojure/clojure]]
                  ;;
 
