@@ -42,7 +42,7 @@
                          :noun 26.757
                          :verb 26.757
                          :particle 26.757
-                         :adverb 0.0 #_17.275
+                         :adverb #_0.0 17.275
                          :auxiliary-verb 26.757
                          19.675)
             chisq-fn (s/fn :- s/Num [x :- s/Num]
