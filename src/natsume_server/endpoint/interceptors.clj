@@ -16,11 +16,11 @@
     @!connection))
 
 ;; FIXME no effect??
-(defon-request
+(defbefore
   utf8-default
-  [request]
+  [context]
   (println "defon-request")
-  (assoc-in request [:character-encoding] "UTF-8"))
+  (assoc-in context [:request :character-encoding] "UTF-8"))
 
 (defbefore
   insert-db
