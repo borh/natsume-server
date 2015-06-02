@@ -5,6 +5,7 @@
 
             [ring.util.response :refer [response]]
             [pedestal.swagger.core :as swagger]
+            ;;[flatland.ordered.map :refer [ordered-map]] ;; FIXME change when new schema version released
 
             [schema.core :as s]
             [plumbing.core :refer [for-map map-keys ?>]]
@@ -15,10 +16,12 @@
             [natsume-server.nlp.collocations :refer [extract-collocations]]
             [natsume-server.nlp.error :as error]))
 
+(def ordered-map hash-map) ;; FIXME change when new schema version released
+
 (def opt s/optional-key)
 (def req s/required-key)
 
-;; FIXME The following functions need to complete loading in the db ns before we can define the schema below.
+;; FIXME The following functions need to complete loading in the db ns before we can define the schema below. (Race condition!)
 ;; (set-norm-map! conn)
 ;; (set-gram-information! conn)
 (s/defschema allowed-types    (apply s/enum #{:noun-particle-verb :noun-particle-adjective :adjective-noun} #_@db/!gram-types))
@@ -35,7 +38,7 @@
 (swagger/defhandler
   view-sources-genre
   {:summary    "Returns a D3-compatible tree structure of counts (default = sources) by genre"
-   :parameters {:query {(opt :norm) allowed-norms}}
+   :parameters {:query {(opt :norm) allowed-norms}} ;; FIXME default parameters with swagger?
    :responses  {200 {:schema s/Any #_D3Tree}}}
   [{:keys [query-params]}]
   (response ((or (->> query-params :norm keyword)
@@ -62,11 +65,12 @@
                    (opt :pos-2)     s/Str
                    (opt :norm)      allowed-norms})
 
-                {(opt :orth-base) s/Str
-                 (req :lemma)     s/Str
-                 (opt :pos-1)     s/Str
-                 (opt :pos-2)     s/Str
-                 (opt :norm)      allowed-norms}}
+                (ordered-map
+                  (opt :orth-base) s/Str
+                  (req :lemma) s/Str
+                  (opt :pos-1) s/Str
+                  (opt :pos-2) s/Str
+                  (opt :norm) allowed-norms)}
    :responses  {200 {:schema D3Tree}}}
   [{:keys [conn query-params]}]
   (let [{:keys [genre norm] :or {norm :tokens}} query-params] ; TODO :norm should include other measures like tf-idf, dice, etc.
@@ -77,29 +81,31 @@
 (swagger/defhandler
   view-sentences-by-collocation
   {:summary    "Returns sentences matching queried collocation"
-   :parameters {:query {(opt :string-1) s/Str
-                        (opt :string-2) s/Str
-                        (opt :string-3) s/Str
-                        (opt :string-4) s/Str
-                        (opt :genre)    [s/Str]
-                        (req :type)     allowed-types
-                        (opt :limit)    Long
-                        (opt :offset)   Long
-                        (opt :html)     s/Bool
-                        (opt :sort)     s/Str}}
-   :responses  {200 {:schema [{(req :text)    s/Str
-                               (req :genre)   [s/Str]
-                               (req :title)   s/Str
-                               (req :author)  s/Str
-                               (req :year)    s/Int
-                               (opt :begin-1) s/Int
-                               (opt :begin-2) s/Int
-                               (opt :begin-3) s/Int
-                               (opt :begin-4) s/Int
-                               (opt :end-1)   s/Int
-                               (opt :end-2)   s/Int
-                               (opt :end-3)   s/Int
-                               (opt :end-4)   s/Int}]}}}
+   :parameters {:query (ordered-map
+                         (opt :string-1) s/Str
+                         (opt :string-2) s/Str
+                         (opt :string-3) s/Str
+                         (opt :string-4) s/Str
+                         (opt :genre) [s/Str]
+                         (req :type) allowed-types
+                         (opt :limit) Long
+                         (opt :offset) Long
+                         (opt :html) s/Bool
+                         (opt :sort) s/Str)}
+   :responses  {200 {:schema [(ordered-map
+                                (req :text) s/Str
+                                (req :genre) [s/Str]
+                                (req :title) s/Str
+                                (req :author) s/Str
+                                (req :year) s/Int
+                                (opt :begin-1) s/Int
+                                (opt :end-1) s/Int
+                                (opt :begin-2) s/Int
+                                (opt :end-2) s/Int
+                                (opt :begin-3) s/Int
+                                (opt :end-3) s/Int
+                                (opt :begin-4) s/Int
+                                (opt :end-4) s/Int)]}}}
   [{:keys [conn query-params]}]
   ;; FIXME validate: sort order; n <=> string-{1,2,3,4} sanity check
   (println query-params)
@@ -110,23 +116,24 @@
 (swagger/defhandler
   view-sentences-by-token
   {:summary    "Returns sentences matching queried (SUW) token"
-   :parameters {:query {(opt :orth)      s/Str
-                        (opt :orth-base) s/Str
-                        (opt :pron)      s/Str
-                        (opt :pron-base) s/Str
-                        (req :lemma)     s/Str
-                        (opt :pos-1)     s/Str
-                        (opt :pos-2)     s/Str
-                        (opt :pos-3)     s/Str
-                        (opt :pos-4)     s/Str
-                        (opt :c-type)    s/Str
-                        (opt :c-form)    s/Str
-                        (opt :goshu)     s/Str ;; FIXME
-                        (opt :genre)     [s/Str]
-                        (opt :limit)     Long
-                        (opt :offset)    Long
-                        (opt :html)      s/Bool
-                        (opt :sort)      s/Str}}
+   :parameters {:query (ordered-map
+                         (opt :orth) s/Str
+                         (opt :orth-base) s/Str
+                         (opt :pron) s/Str
+                         (opt :pron-base) s/Str
+                         (opt :lemma) s/Str
+                         (opt :pos-1) s/Str
+                         (opt :pos-2) s/Str
+                         (opt :pos-3) s/Str
+                         (opt :pos-4) s/Str
+                         (opt :c-type) s/Str
+                         (opt :c-form) s/Str
+                         (opt :goshu) s/Str                 ;; FIXME
+                         (opt :genre) [s/Str]
+                         (opt :limit) Long
+                         (opt :offset) Long
+                         (opt :html) s/Bool
+                         (opt :sort) s/Str)}
    :responses  {200 {:schema [{(req :text)   s/Str
                                (req :genre)  [s/Str]
                                (req :title)  s/Str
@@ -142,16 +149,17 @@
 (swagger/defhandler
   view-collocations-tree
   {:summary    "Returns D3-compatible tree of counts matching queried collocation or 1-gram"
-   :parameters {:query {(opt :string-1) s/Str
-                        (opt :string-2) s/Str
-                        (opt :string-3) s/Str
-                        (opt :string-4) s/Str
-                        (opt :genre)    [s/Str]
-                        (req :type)     allowed-types
-                        (opt :limit)    Long               ;; FIXME these are not used, right???
-                        (opt :offset)   Long
-                        (opt :html)     s/Bool
-                        (opt :sort)     s/Str}}
+   :parameters {:query (ordered-map
+                         (opt :string-1) s/Str
+                         (opt :string-2) s/Str
+                         (opt :string-3) s/Str
+                         (opt :string-4) s/Str
+                         (opt :genre) [s/Str]
+                         (req :type) allowed-types
+                         (opt :limit) Long                  ;; FIXME these are not used, right???
+                         (opt :offset) Long
+                         (opt :html) s/Bool
+                         (opt :sort) s/Str)}
    :responses  {200 {:schema #_D3Tree {s/Keyword s/Any}}}}
   [{:keys [conn query-params]}]
   (let [query-params (assoc query-params :compact-numbers true :scale true)
@@ -170,7 +178,7 @@
   get-text-register
   {:summary    "Returns positions of errors by error type and confidence
 現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。"
-   :parameters {:body s/Any} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
+   :parameters {:body {:text s/Str}} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
    :responses  {200 {:schema {s/Keyword s/Any}}}}
   [{:keys [conn body-params] :as request}]
   ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence).
@@ -187,29 +195,29 @@
 (swagger/defhandler
   view-collocations
   {:summary    "Returns collocations of queried (Natsume-specific) units"
-   :parameters {:query {(opt :string-1)        s/Str
-                        (opt :string-2)        s/Str
-                        (opt :string-3)        s/Str
-                        (opt :string-4)        s/Str
-                        (req :type)            allowed-types
-                        (opt :measure)         allowed-measures
-                        (opt :limit)           Long
-                        (opt :offset)          Long
-                        (opt :relation-limit)  Long
-                        (opt :compact-numbers) s/Bool
-                        ;;(opt :scale)           s/Bool ;; TODO not implemented
-                        }}
-   :responses  {200 {:schema [{(opt :string-1) s/Str
-                               (opt :string-2) s/Str
-                               (opt :string-3) s/Str
-                               (opt :string-4) s/Str
-                               (req :data)     [{s/Keyword s/Any} #_(assoc      ;; FIXME s/enum not valid as key?
+   :parameters {:query (ordered-map
+                         (opt :string-1) s/Str
+                         (opt :string-2) s/Str
+                         (opt :string-3) s/Str
+                         (opt :string-4) s/Str
+                         (req :type) allowed-types
+                         (opt :measure) allowed-measures
+                         (opt :limit) Long
+                         (opt :offset) Long
+                         (opt :relation-limit) Long
+                         ;;(opt :scale) s/Bool ;; TODO not implemented
+                         (opt :compact-numbers) s/Bool)}
+   :responses  {200 {:schema [(ordered-map (opt :string-1) s/Str
+                                           (opt :string-2) s/Str
+                                           (opt :string-3) s/Str
+                                           (opt :string-4) s/Str
+                                           (req :data) [{s/Keyword s/Any} #_(assoc      ;; FIXME s/enum not valid as key?
                                                   (for-map [measure allowed-measures]
                                                     (opt measure) s/Num)
                                                   (opt :string-1) s/Str
                                                   (opt :string-2) s/Str
                                                   (opt :string-3) s/Str
-                                                  (opt :string-4) s/Str)]}]}}}
+                                                  (opt :string-4) s/Str)])]}}}
   [{:keys [conn query-params]}]
   ;; TODO (log-)scaling from 0-100 for display.
   (let [q (merge {:type :noun-particle-verb
@@ -237,7 +245,17 @@
           :license     {:name "Eclipse Public License"
                         :url  "http://www.eclipse.org/legal/epl-v10.html"}}
    :tags [{:name        "Sources"
-           :description "query sources"}]}
+           :description "methods returning corpus information"}
+          {:name        "Sentences"
+           :description "methods returning sentences"}
+          {:name        "Tokens"
+           :description "methods returning tokens"}
+          {:name        "Collocations"
+           :description "methods returning collocations"}
+          {:name        "Errors"
+           :description "methods for error-checking text"}
+          {:name        "Suggestions"
+           :description "methods for token/collocation suggestions"}]}
   [[["/api" {:get identity} ;; FIXME (redirect to root?)
 
      ^:interceptors
@@ -253,7 +271,6 @@
       mw/custom-body-params
       mw/kebab-case-params
       (swagger/keywordize-params :form-params :headers)
-      io.pedestal.http.body-params/body-params
       (swagger/body-params)
 
       ;; on-response ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
