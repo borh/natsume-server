@@ -63,10 +63,10 @@
            (let [{:keys [good bad]}
                  (:register-score (error/token-register-score conn token))
 
-                 score (if (and good bad) ;; FIXME double-check
+                 score (if (and good bad)
                          (let [diff (Math/abs (- good bad))]
-                           (cond (and (pos? good) (neg? bad) (>= diff threshold)) true
-                                 (and (neg? good) (pos? bad) (>= diff threshold)) false
+                           (cond (and (>= good 0.0) (neg? bad) (>= diff threshold)) true
+                                 (and (<= good 0.0) (pos? bad) (>= diff threshold)) false
                                  :else nil)))]
              (assoc token
                     :準正用判定 (case score true true  false false nil #_nil false)
