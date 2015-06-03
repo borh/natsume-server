@@ -256,7 +256,7 @@
           corpora-counts (->> @db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
           corpora-header sorted-corpora #_(vec (keys corpora-counts))]
       (spreadsheet/add-rows! totals-sheet [(into ["χ^2(α=0.1)" "全コーパス"] corpora-header)
-                                           (into [17.275 (-> @db/!norm-map :tokens :count)]
+                                           (into [0.0 (-> @db/!norm-map :tokens :count)]
                                                  (mapv (fn [k] (get corpora-counts k)) corpora-header))])
       (let [totals-header-row (first (spreadsheet/row-seq totals-sheet))]
         (spreadsheet/set-row-style! totals-header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
