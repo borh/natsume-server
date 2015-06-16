@@ -67,7 +67,7 @@
                               :chisq   chisq-corpora
                               :verdict (cond
                                          (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) true
-                                         (and (<= good-raw 0.005) (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
+                                         (and (<= good-raw 0.5) (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
                                          :else nil)}
              :found?         true}
             (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr])))))))))
