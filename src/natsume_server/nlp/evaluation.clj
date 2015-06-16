@@ -14,7 +14,7 @@
             [natsume-server.nlp.error :as error])
   (:import [com.ibm.icu.text Transliterator]))
 
-(def romaji-transliterator (Transliterator/getInstance "Katakana-Latin; NFKD;"))
+(def romaji-transliterator (Transliterator/getInstance "Katakana-Latin;"))
 
 (defn romanize
   [^String s]
@@ -93,7 +93,7 @@
          (fn [token]
            (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn token))
                  total-freq (reduce + 0 (vals raw-freqs))]
-             (merge (select-keys token [:orth-base :lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
+             (merge (select-keys token [:orth-base :lemma :romaji :display :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
                     (map-keys (partial rename-corpus "-出現割合") freqs)
                     (map-keys (partial rename-corpus "-頻度") raw-freqs)
                     (map-keys (partial rename-corpus "-χ^2 検定の結果") chisq)
@@ -114,7 +114,7 @@
 (s/defn save-table
   [fn :- s/Str
    tokens :- [ScoredToken]]
-  (let [ks [:orth-base :lemma :pos-1
+  (let [ks [:orth-base :lemma :pos-1 :romaji :display
             :アカデミックな書き言葉 :アカデミックな書き言葉-n :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉
             :準誤用判定 :準正用判定]]
     (with-open [w (io/writer fn)]
@@ -235,7 +235,7 @@
                         "Yahoo_ブログ"
                         "韻文"
                         "国会会議録"]
-        default-header [:lemma :orth-base :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        default-header [:lemma :orth-base :romaji :display :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
         norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
         freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
         chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
