@@ -38,6 +38,8 @@
             ;; df = 11 (BCCWJ + STJC + Wikipedia?)
             ;; 0.10      	0.05 	0.025 	0.01 	0.005
             ;; 17.275 	19.675 	21.920 	24.725 	26.757
+            good-raw (reduce + (vals (select-keys freqs ["白書" "科学技術論文" "法律"])))
+            bad-raw  (reduce + (vals (select-keys freqs ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"])))
             chisq-line (case pos
                          :noun 26.757
                          :verb 26.757
@@ -56,6 +58,7 @@
                        (/ (reduce + good-vals) (count good-vals)))
             bad-sum (if-let [bad-vals (vals (select-keys chisq-filtered ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))]
                       (/ (reduce + bad-vals) (count bad-vals)))]
+        ;; FIXME never score something bad that has occurs over a certain ammount in good-sum (0.5% ?)
         (-> {:register-score {:good    (compact-number (if (number? good-sum) good-sum 0.0))
                               :bad     (compact-number (if (number? bad-sum) bad-sum 0.0))
                               :mean    (compact-number (if (number? mean) mean 0.0))
@@ -64,7 +67,7 @@
                               :chisq   chisq-corpora
                               :verdict (cond
                                          (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) true
-                                         (and (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
+                                         (and (<= good-raw 0.005) (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
                                          :else nil)}
              :found?         true}
             (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr])))))))))
