@@ -28,17 +28,17 @@
                  ;; Database
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.7"]
-                 [java-jdbc/dsl "0.1.2"]
+                 [java-jdbc/dsl "0.1.3"]
                  [com.alibaba/druid "1.0.14"]
-                 [honeysql "0.6.0"]
+                 [honeysql "0.6.1"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
                  ;;
 
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
-                 [org.clojure/tools.reader "0.9.2"]
-                 [com.taoensso/timbre "4.0.0-beta4"]
+                 [org.clojure/tools.reader "0.10.0-alpha1"]
+                 [com.taoensso/timbre "4.0.1"]
                  [org.clojure/tools.cli "0.3.1"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
@@ -52,7 +52,7 @@
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.34.0"]
+                 [net.mikera/core.matrix "0.36.1"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0"]
