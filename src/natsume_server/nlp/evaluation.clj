@@ -11,10 +11,17 @@
             [natsume-server.component.database :as db]
             [natsume-server.nlp.cabocha-wrapper :refer [recode-pos]]
             [natsume-server.utils.xz :refer [xz-reader]]
-            [natsume-server.nlp.error :as error]))
+            [natsume-server.nlp.error :as error])
+  (:import [com.ibm.icu.text Transliterator]))
+
+(def romaji-transliterator (Transliterator/getInstance "Katakana-Latin; NFKD;"))
+
+(defn romanize
+  [^String s]
+  (.transliterate romaji-transliterator s))
 
 (s/defschema Token
-  {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword
+  {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword :romaji s/Str :display s/Str
    :アカデミックな書き言葉 (s/maybe s/Bool) :アカデミックな書き言葉-n (s/maybe s/Bool) :一般的な書き言葉 (s/maybe s/Bool)
    :公的な話し言葉 (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
 
@@ -35,6 +42,8 @@
               :lemma         語彙素
               :pos-1         品詞大分類
               :pos           :adverb #_(recode-pos 品詞大分類)
+              :romaji        (romanize 発音形基本形)
+              :display       (str (romanize 発音形基本形) " (" 書字形出現形 ")")
               :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
               :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
               :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
