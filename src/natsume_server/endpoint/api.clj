@@ -293,7 +293,8 @@
      ["/errors" ^:interceptors [(swagger/tag-route "Errors")]
       ["/register"                                          ;; ^:interceptors [mw/read-body]
        {:post get-text-register}]]
-     ["/suggestions" ^:interceptors [(swagger/tag-route "Suggestions")] ;; TODO Suggest correct orthography given token/collocation
+     ["/suggestions" ^:interceptors [(swagger/tag-route "Suggestions")] ;; TODO Suggest correct orthography given token/collocation.
+      ;; TODO Look into how we integrate suggestions with the error API--specifically, how to deal with information on before-after differences (c.f. kosodo data).
       ["/tokens" {:get get-suggestions-tokens}]]]
 
     ;; Swagger Documentation
