@@ -8,7 +8,7 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0-RC1"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0"]       ;; alpha5 >> core.matrix.dataset compile error?!
 
                  [com.stuartsierra/component "0.2.3"]
                  [potemkin "0.3.13"]
@@ -16,9 +16,9 @@
                  [meta-merge "0.1.1"]
                  [prismatic/schema "0.4.3"]
 
-                 [org.immutant/web "2.0.1" :exclusions [ring/ring-core]]
+                 [org.immutant/web "2.0.2" :exclusions [ring/ring-core]]
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
-                 [io.pedestal/pedestal.service-tools "0.4.0"]
+                 [io.pedestal/pedestal.service-tools "0.4.0" :exclusions [org.slf4j/log4j-over-slf4j]]
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
                  [metosin/ring-swagger "0.20.4" :exclusions [metosin/ring-swagger-ui]]
                  [metosin/ring-swagger-ui "2.1.8-M1"]
@@ -29,7 +29,7 @@
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.3.7"]
                  [java-jdbc/dsl "0.1.3"]
-                 [com.alibaba/druid "1.0.14"]
+                 [com.alibaba/druid "1.0.15"]
                  [honeysql "0.6.1"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
                  ;;
@@ -38,24 +38,24 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
                  [org.clojure/tools.reader "0.10.0-alpha1"]
-                 [com.taoensso/timbre "4.0.1"]
+                 [com.taoensso/timbre "4.0.2"]
                  [org.clojure/tools.cli "0.3.1"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.2"]
                  [dk.ative/docjure "1.8.0"]
-                 [fast-zip "0.6.1"]
+                 [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [org.apache.commons/commons-math3 "3.5"]
                  [fipp "0.6.2"]
                  [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
-                 [camel-snake-kebab "0.3.1" :exclusions [org.clojure/clojure]]
+                 [camel-snake-kebab "0.3.2" :exclusions [org.clojure/clojure]]
                  ;;
 
                  ;; Stats/models/ML
                  [net.mikera/core.matrix "0.36.1"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
-                 [bigml/sampling "3.0"]
+                 [bigml/sampling "3.0" :exclusions [incanter/parallelcolt]]
                  [prismatic/plumbing "0.4.4" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
@@ -72,7 +72,7 @@
                  ;; Text processing
                  [org.chasen/cabocha "0.68"]
                  [com.ibm.icu/icu4j "55.1"]
-                 [d3-compat-tree "0.0.4"]
+                 [d3-compat-tree "0.0.7"]
                  ;;
 
                  ]
