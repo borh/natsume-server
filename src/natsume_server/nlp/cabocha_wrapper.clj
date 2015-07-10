@@ -149,7 +149,7 @@
           (recur
            (inc chunk-id)
            (+ token-id token-count)
-           (int (.end (last tokens)))
+           (int (:end (last tokens)))
            (conj parsed
                  {:id chunk-id
                   :link link-id

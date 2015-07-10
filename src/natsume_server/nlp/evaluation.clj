@@ -18,7 +18,7 @@
 
 (defn romanize
   [^String s]
-  (.transliterate romaji-transliterator s))
+  (.transliterate ^Transliterator romaji-transliterator s))
 
 (s/defschema Token
   {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword :romaji s/Str :display s/Str
@@ -70,7 +70,7 @@
                  (:register-score (error/token-register-score conn token))
 
                  score (if (and good bad)
-                         (let [diff (Math/abs (- good bad))]
+                         (let [diff (Math/abs ^Double (- ^Double good ^Double bad))]
                            (cond (and (>= good 0.0) (neg? bad) (>= diff threshold)) true
                                  (and (<= good 0.0) (pos? bad) (>= diff threshold)) false
                                  :else nil)))]

@@ -33,7 +33,7 @@
             [iota :as iota]
 
             [environ.core :refer [env]]
-            ;;[plumbing.core :refer [?> ?>> map-keys map-vals for-map]]
+            [plumbing.core :refer [fn->>]]
             [schema.core :as s])
   (:import [com.alibaba.druid.pool DruidDataSource]
            [natsume_server.nlp.cabocha_wrapper Chunk]
@@ -619,8 +619,8 @@ return the DDL string for creating that unlogged table."
                                           (-> record
                                               (?> (:head-pos record)  (update-in [:head-pos] name))
                                               (?> (:tail-pos record)  (update-in [:tail-pos] name))
-                                              (?> (:head-tags record) (update-in [:head-tags] (fn [xs] (->> xs (map name) (into #{})))))
-                                              (?> (:tail-tags record) (update-in [:tail-tags] (fn [xs] (->> xs (map name) (into #{}))))))))))]
+                                              (?> (:head-tags record) (update-in [:head-tags] (fn->> (map name) (into #{}))))
+                                              (?> (:tail-tags record) (update-in [:tail-tags] (fn->> (map name) (into #{})))))))))]
       (i! conn
           (keyword (str "gram-" grams))
           (assoc record-map :sentences-id sentences-id)))))
