@@ -275,7 +275,7 @@
       ;; on-response ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
       ;;http/json-body
-      mw/json-interceptor
+      mw/json-response
 
       ;; after ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -301,6 +301,6 @@
     ["/doc" ^:interceptors [mw/custom-decode-params
                             (swagger/coerce-params)
                             (swagger/body-params :json-params)
-                            mw/json-interceptor]
+                            mw/json-response]
      {:get [(swagger/swagger-doc)]}]
     ["/*resource" {:get [(swagger/swagger-ui)]}]]])
