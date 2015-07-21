@@ -1195,7 +1195,7 @@ return the DDL string for creating that unlogged table."
    sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}
    corpus-dir :- File]
   (let [corpus-computation (graph/eager-compile
-                            (condp #(re-seq %1 %2) (.getPath corpus-dir)
+                            (condp re-seq (.getPath corpus-dir)
                               #"(?i)wiki" wikipedia-graph
                               #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" bccwj-graph
                               corpus-graph))]
