@@ -8,10 +8,10 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0"]       ;; alpha5 >> core.matrix.dataset compile error?!
+  :dependencies [[org.clojure/clojure "1.7.0"]
 
                  [com.stuartsierra/component "0.2.3"]
-                 [potemkin "0.3.13"]
+                 [potemkin "0.4.1"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
                  [prismatic/schema "0.4.3"]
