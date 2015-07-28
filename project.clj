@@ -27,7 +27,7 @@
 
                  ;; Database
                  [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
-                 [org.clojure/java.jdbc "0.3.7"]
+                 [org.clojure/java.jdbc "0.4.1"]
                  [java-jdbc/dsl "0.1.3"]
                  [com.alibaba/druid "1.0.15"]
                  [honeysql "0.6.1"]
