@@ -404,10 +404,9 @@ return the DDL string for creating that unlogged table."
           pt.count::integer AS paragraphs_count, -- FIXME DISTINCT is wrong, normal sum is wrong
           count(DISTINCT so.id)::integer  AS sources_count
    FROM sentences AS se,
-        sources AS so,
-        paragraph_table AS pt
-   WHERE se.sources_id=so.id AND so.genre=pt.genre
-   GROUP BY so.genre, pt.count")
+        sources AS so
+   WHERE se.sources_id=so.id
+   GROUP BY so.genre")
    ;; No indexes for now as it is a small table.
 
    ;; TODO: gram counts, etc.
