@@ -22,7 +22,7 @@
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
                  [metosin/ring-swagger "0.20.4" :exclusions [metosin/ring-swagger-ui]]
                  [metosin/ring-swagger-ui "2.1.8-M1"]
-                 [frankiesardo/pedestal-swagger "0.4.0"]
+                 [frankiesardo/pedestal-swagger "0.4.3"]
                  [cheshire "5.5.0"]
 
                  ;; Database
@@ -37,9 +37,9 @@
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
-                 [org.clojure/tools.reader "0.10.0-alpha1"]
+                 [org.clojure/tools.reader "0.10.0-alpha3"]
                  [com.taoensso/timbre "4.0.2"]
-                 [org.clojure/tools.cli "0.3.1"]
+                 [org.clojure/tools.cli "0.3.2"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.2"]

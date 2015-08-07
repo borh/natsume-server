@@ -263,13 +263,12 @@
       mw/insert-db
       mw/utf8-default
       mw/custom-decode-params
-      (swagger/coerce-params)
+      (swagger/coerce-request)
 
       ;; on-request ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
       mw/custom-body-params
       mw/kebab-case-params
-      (swagger/keywordize-params :form-params :headers)
       (swagger/body-params)
 
       ;; on-response ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -299,8 +298,8 @@
 
     ;; Swagger Documentation
     ["/doc" ^:interceptors [mw/custom-decode-params
-                            (swagger/coerce-params)
+                            (swagger/coerce-request)
                             (swagger/body-params :json-params)
                             mw/json-response]
-     {:get [(swagger/swagger-doc)]}]
+     {:get [(swagger/swagger-json)]}]
     ["/*resource" {:get [(swagger/swagger-ui)]}]]])
