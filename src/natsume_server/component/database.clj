@@ -193,12 +193,12 @@ return the DDL string for creating that unlogged table."
 
 (def sentences-schema
   [:sentences
-   [:id                "serial"  "PRIMARY KEY"]
-   [:text              "text"    "NOT NULL"]
-   [:sentence-order-id "integer" "NOT NULL"]
+   [:id                 "serial"  "PRIMARY KEY"]
+   [:text               "text"    "NOT NULL"]
+   [:sentence-order-id  "integer" "NOT NULL"]
    [:paragraph-order-id "integer" "NOT NULL"]
-   [:sources-id        "integer" "REFERENCES sources(id)"]
-   [:tags              "text[]"]
+   [:sources-id         "integer" "NOT NULL" "REFERENCES sources(id)"]
+   [:tags               "text[]"]
    ;; The following are the raw numbers needed to calculate readability at the sentence, paragraph or document scale
    ;; FIXME readability should really be calculated after the whole corpus is processed: in this way, it should be possible to compute bccwj-level straight from the data, though this again depends on the existence of the tokens table as we don't want to re-parse all the data. And this might actually be really slow in SQL.
    ;; But for cleanliness reasons, separate the following from sentences for now. FIXME
