@@ -395,8 +395,6 @@ return the DDL string for creating that unlogged table."
 
   [(h/raw
     "CREATE TABLE genre_norm AS
-   WITH paragraph_table AS
-   (SELECT sum(count) AS count, genre FROM (SELECT max(paragraph_order_id) AS count, sources.id, genre FROM sentences, sources WHERE sentences.sources_id=sources.id GROUP BY sources.id, sources.genre) AS count GROUP BY genre)
    SELECT so.genre,
           sum(se.tokens)::integer         AS token_count,
           sum(se.chunks)::integer         AS chunk_count,
