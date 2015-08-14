@@ -38,11 +38,11 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.9"]
                  [org.clojure/tools.reader "0.10.0-alpha3"]
-                 [com.taoensso/timbre "4.0.2"]
+                 [com.taoensso/timbre "4.1.0"]
                  [org.clojure/tools.cli "0.3.2"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
-                 [org.clojure/data.csv "0.1.2"]
+                 [org.clojure/data.csv "0.1.3"]
                  [dk.ative/docjure "1.8.0"]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [org.apache.commons/commons-math3 "3.5"]
@@ -52,7 +52,7 @@
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.36.1"]
+                 [net.mikera/core.matrix "0.37.0"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0" :exclusions [incanter/parallelcolt]]
