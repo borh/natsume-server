@@ -5,7 +5,7 @@
 
             [ring.util.response :refer [response]]
             [pedestal.swagger.core :as swagger]
-            ;;[flatland.ordered.map :refer [ordered-map]] ;; FIXME change when new schema version released
+            ;; [flatland.ordered.map :refer [ordered-map]] ;; FIXME change when new schema version released
 
             [schema.core :as s]
             [plumbing.core :refer [for-map map-keys ?>]]
@@ -243,7 +243,7 @@
                         :url   "https://hinoki-project.org"}
           :license     {:name "Eclipse Public License"
                         :url  "http://www.eclipse.org/legal/epl-v10.html"}}
-   :tags [{:name        "Sources"
+   #_:tags #_[{:name        "Sources"
            :description "methods returning corpus information"}
           {:name        "Sentences"
            :description "methods returning sentences"}
@@ -280,26 +280,28 @@
 
       (swagger/validate-response)]
 
-     ["/sources" ^:interceptors [(swagger/tag-route "Sources")] {:get view-sources-api} ;; TODO
+     ["/sources" {:get view-sources-api} ;; TODO
       ["/genre" {:get view-sources-genre}
        ["/similarity" {:get view-genre-similarity}]]]
-     ["/sentences" ^:interceptors [(swagger/tag-route "Sentences")]
+     ["/sentences"
       ["/collocations" {:get view-sentences-by-collocation}]
       ["/tokens" {:get view-sentences-by-token}]] ;; TODO
-     ["/tokens" ^:interceptors [(swagger/tag-route "Tokens")] {:get view-tokens}]
-     ["/collocations" ^:interceptors [(swagger/tag-route "Collocations")] {:get view-collocations}
+     ["/tokens" {:get view-tokens}]
+     ["/collocations" {:get view-collocations}
       ["/tree" {:get view-collocations-tree}]]
-     ["/errors" ^:interceptors [(swagger/tag-route "Errors")]
+     ["/errors"
       ["/register"                                          ;; ^:interceptors [mw/read-body]
        {:post get-text-register}]]
-     ["/suggestions" ^:interceptors [(swagger/tag-route "Suggestions")] ;; TODO Suggest correct orthography given token/collocation.
+     ["/suggestions" ;; TODO Suggest correct orthography given token/collocation.
       ;; TODO Look into how we integrate suggestions with the error API--specifically, how to deal with information on before-after differences (c.f. kosodo data).
       ["/tokens" {:get get-suggestions-tokens}]]]
 
     ;; Swagger Documentation
-    ["/doc" ^:interceptors [mw/custom-decode-params
+    ["/swagger/swagger.json" ^:interceptors [mw/json-response] {:get [(swagger/swagger-json)]}]
+    ["/swagger/*resource" {:get [(swagger/swagger-ui)]}]
+    #_["/doc" ^:interceptors [mw/custom-decode-params
                             (swagger/coerce-request)
                             (swagger/body-params :json-params)
                             mw/json-response]
      {:get [(swagger/swagger-json)]}]
-    ["/*resource" {:get [(swagger/swagger-ui)]}]]])
+    #_["/*resource" {:get [(swagger/swagger-ui)]}]]])
