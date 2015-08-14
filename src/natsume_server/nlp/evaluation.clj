@@ -21,7 +21,7 @@
   (.transliterate ^Transliterator romaji-transliterator s))
 
 (s/defschema Token
-  {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword :romaji s/Str :display s/Str
+  {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword :romaji s/Str :display-lemma s/Str
    :アカデミックな書き言葉 (s/maybe s/Bool) :アカデミックな書き言葉-n (s/maybe s/Bool) :一般的な書き言葉 (s/maybe s/Bool)
    :公的な話し言葉 (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
 
@@ -43,7 +43,7 @@
               :pos-1         品詞大分類
               :pos           :adverb #_(recode-pos 品詞大分類)
               :romaji        (romanize 発音形基本形)
-              :display       (str (romanize 発音形基本形) " (" 書字形出現形 ")")
+              :display-lemma (str 語彙素 " /" (romanize 語彙素読み) "/")
               :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
               :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
               :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
@@ -93,7 +93,7 @@
          (fn [token]
            (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn token))
                  total-freq (reduce + 0 (vals raw-freqs))]
-             (merge (select-keys token [:orth-base :lemma :romaji :display :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
+             (merge (select-keys token [:orth-base :lemma :romaji :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
                     (map-keys (partial rename-corpus "-出現割合") freqs)
                     (map-keys (partial rename-corpus "-頻度") raw-freqs)
                     (map-keys (partial rename-corpus "-χ^2 検定の結果") chisq)
@@ -114,7 +114,7 @@
 (s/defn save-table
   [fn :- s/Str
    tokens :- [ScoredToken]]
-  (let [ks [:orth-base :lemma :pos-1 :romaji :display
+  (let [ks [:orth-base :lemma :pos-1 :romaji :display-lemma
             :アカデミックな書き言葉 :アカデミックな書き言葉-n :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉
             :準誤用判定 :準正用判定]]
     (with-open [w (io/writer fn)]
@@ -235,7 +235,7 @@
                         "Yahoo_ブログ"
                         "韻文"
                         "国会会議録"]
-        default-header [:lemma :orth-base :romaji :display :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        default-header [:lemma :orth-base :romaji :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
         norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
         freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
         chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
