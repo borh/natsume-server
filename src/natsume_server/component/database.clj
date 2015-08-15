@@ -399,7 +399,6 @@ return the DDL string for creating that unlogged table."
           sum(se.tokens)::integer         AS token_count,
           sum(se.chunks)::integer         AS chunk_count,
           count(DISTINCT se.id)::integer  AS sentences_count,
-          pt.count::integer AS paragraphs_count, -- FIXME DISTINCT is wrong, normal sum is wrong
           count(DISTINCT so.id)::integer  AS sources_count
    FROM sentences AS se,
         sources AS so
@@ -481,7 +480,6 @@ return the DDL string for creating that unlogged table."
                     {:select [:pos-1 :pos-2 :c-form :orth-base :lemma :genre
                               [(h/call :count :pos-1) :count]
                               [(h/call :count-distinct :sentences.id) :sentences-count]
-                              [(h/call :count-distinct :sentences.paragraph-order-id) :paragraphs-count]
                               [(h/call :count-distinct :sources.id) :sources-count]]
                      :from [:tokens :sentences :sources]
                      :where [:and
@@ -498,10 +496,9 @@ return the DDL string for creating that unlogged table."
 
    ;; FIXME TODO consider adding array of sentence ids per row?
    ;; TODO need a clear search case for these (and for normal gram_X tables for that matter).
-   ;; FIXME paragraph_counts are probably wrong
    (h/raw
     "CREATE TABLE search_gram_1 AS
-    SELECT pos_1 AS type, g1.string_1, so.genre, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT se.paragraph_order_id)::integer as paragraphs_count, count(DISTINCT so.id)::integer as sources_count FROM gram_1 AS g1, sentences AS se, sources AS so WHERE g1.sentences_id=se.id AND se.sources_id=so.id GROUP BY pos_1, g1.string_1, so.genre ORDER BY pos_1, g1.string_1, so.genre, count")
+    SELECT pos_1 AS type, g1.string_1, so.genre, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_1 AS g1, sentences AS se, sources AS so WHERE g1.sentences_id=se.id AND se.sources_id=so.id GROUP BY pos_1, g1.string_1, so.genre ORDER BY pos_1, g1.string_1, so.genre, count")
    (create-index :search-gram-1 :genre :gist)
    (create-index :search-gram-1 :genre)
    (create-index :search-gram-1 :type)
@@ -512,7 +509,7 @@ return the DDL string for creating that unlogged table."
      WITH
        f_ix AS (SELECT (pos_1 || '_' || pos_2) AS t, string_1, genre, count(string_2)::integer FROM gram_2, sentences, sources WHERE gram_2.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_1, genre),
        f_xi AS (SELECT (pos_1 || '_' || pos_2) AS t, string_2, genre, count(string_1)::integer FROM gram_2, sentences, sources WHERE gram_2.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_2, genre)
-    SELECT (pos_1 || '_' || pos_2) AS type, g2.string_1, g2.string_2, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT se.paragraph_order_id)::integer as paragraphs_count, count(DISTINCT so.id)::integer as sources_count FROM gram_2 AS g2, sentences AS se, sources AS so, f_ix, f_xi WHERE g2.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2) AND f_xi.t=(pos_1 || '_' || pos_2) AND f_ix.string_1=g2.string_1 and f_xi.string_2=g2.string_2 AND f_ix.genre=so.genre AND f_xi.genre=so.genre GROUP BY pos_1, pos_2, g2.string_1, g2.string_2, so.genre, f_ix, f_xi ORDER BY (pos_1 || '_' || pos_2), g2.string_1, g2.string_2, so.genre, count")
+    SELECT (pos_1 || '_' || pos_2) AS type, g2.string_1, g2.string_2, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_2 AS g2, sentences AS se, sources AS so, f_ix, f_xi WHERE g2.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2) AND f_xi.t=(pos_1 || '_' || pos_2) AND f_ix.string_1=g2.string_1 and f_xi.string_2=g2.string_2 AND f_ix.genre=so.genre AND f_xi.genre=so.genre GROUP BY pos_1, pos_2, g2.string_1, g2.string_2, so.genre, f_ix, f_xi ORDER BY (pos_1 || '_' || pos_2), g2.string_1, g2.string_2, so.genre, count")
 
    (create-index :search-gram-2 :genre :gist)
    (create-index :search-gram-2 :genre)
@@ -526,7 +523,7 @@ return the DDL string for creating that unlogged table."
      WITH
        f_ix AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS t, string_1, genre, count(string_3)::integer FROM gram_3, sentences, sources WHERE gram_3.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_1, genre),
        f_xi AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS t, string_3, genre, count(string_1)::integer FROM gram_3, sentences, sources WHERE gram_3.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_3, genre)
-    SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS type, g3.string_1, g3.string_2, g3.string_3, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT se.paragraph_order_id)::integer as paragraphs_count, count(DISTINCT so.id)::integer as sources_count FROM gram_3 AS g3, sentences AS se, sources AS so, f_ix, f_xi WHERE g3.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2 || '_' || pos_3) AND f_xi.t=(pos_1 || '_' || pos_2 || '_' || pos_3) AND f_ix.string_1=g3.string_1 and f_xi.string_3=g3.string_3 AND f_ix.genre=so.genre AND f_xi.genre=so.genre GROUP BY pos_1, pos_2, pos_3, g3.string_1, g3.string_2, g3.string_3, so.genre, f_ix, f_xi ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3), g3.string_1, g3.string_2, g3.string_3, so.genre, count")
+    SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS type, g3.string_1, g3.string_2, g3.string_3, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_3 AS g3, sentences AS se, sources AS so, f_ix, f_xi WHERE g3.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2 || '_' || pos_3) AND f_xi.t=(pos_1 || '_' || pos_2 || '_' || pos_3) AND f_ix.string_1=g3.string_1 and f_xi.string_3=g3.string_3 AND f_ix.genre=so.genre AND f_xi.genre=so.genre GROUP BY pos_1, pos_2, pos_3, g3.string_1, g3.string_2, g3.string_3, so.genre, f_ix, f_xi ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3), g3.string_1, g3.string_2, g3.string_3, so.genre, count")
 
    (create-index :search-gram-3 :genre :gist)
    (create-index :search-gram-3 :genre)
@@ -541,7 +538,7 @@ return the DDL string for creating that unlogged table."
      WITH
        f_ix AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS t, string_1, genre, count(string_3)::integer FROM gram_4, sentences, sources WHERE gram_4.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_1, genre),
        f_xi AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS t, string_3, genre, count(string_1)::integer FROM gram_4, sentences, sources WHERE gram_4.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_3, genre)
-    SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS type, g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT se.paragraph_order_id)::integer as paragraphs_count, count(DISTINCT so.id)::integer as sources_count FROM gram_4 AS g4, sentences AS se, sources AS so, f_ix, f_xi WHERE g4.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AND f_xi.t=(pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AND f_ix.string_1=g4.string_1 and f_xi.string_3=g4.string_3 AND f_ix.genre=so.genre AND f_xi.genre=so.genre GROUP BY pos_1, pos_2, pos_3, pos_4, g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, f_ix, f_xi ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4), g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, count")
+    SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS type, g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_4 AS g4, sentences AS se, sources AS so, f_ix, f_xi WHERE g4.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AND f_xi.t=(pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AND f_ix.string_1=g4.string_1 and f_xi.string_3=g4.string_3 AND f_ix.genre=so.genre AND f_xi.genre=so.genre GROUP BY pos_1, pos_2, pos_3, pos_4, g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, f_ix, f_xi ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4), g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, count")
 
    (create-index :search-gram-4 :genre :gist)
    (create-index :search-gram-4 :genre)
@@ -731,7 +728,6 @@ return the DDL string for creating that unlogged table."
 (defn set-norm-map! [conn]
   (reset! !norm-map
    {:sources    (seq-to-tree (q conn (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
-    :paragraphs (seq-to-tree (q conn (-> (select :genre [:paragraphs-count :count]) (from :genre-norm)) genre-ltree-transform))
     :sentences  (seq-to-tree (q conn (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
     :chunks     (seq-to-tree (q conn (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
     :tokens     (seq-to-tree (q conn (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))})
@@ -789,7 +785,6 @@ return the DDL string for creating that unlogged table."
                 (group-by :type)
                 (map-vals #(seq-to-tree % {:merge-fns {:count +
                                                        :sentences-count +
-                                                       ;;:paragraphs-count +
                                                        :sources-count +}})))))
   (reset! !gram-types (set (q conn (-> (select :type) (from :gram-norm)) underscores->dashes :type)))
   (reset! !tokens-by-gram
