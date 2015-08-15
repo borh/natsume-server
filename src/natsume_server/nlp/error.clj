@@ -38,7 +38,7 @@
             ;; df = 11 (BCCWJ + STJC + Wikipedia?)
             ;; 0.10      	0.05 	0.025 	0.01 	0.005
             ;; 17.275 	19.675 	21.920 	24.725 	26.757
-            good-unfiltered-ppm (* (/ (reduce + (vals (select-keys freqs ["白書" "科学技術論文" "法律"])))
+            good-unfiltered-ppm (* (/ (reduce + (vals (select-keys raw-freqs ["白書" "科学技術論文" "法律"])))
                                       (reduce + (vals (select-keys @db/!genre-tokens-map ["白書" "科学技術論文" "法律"]))))
                                    1000000)
             chisq-line (case pos

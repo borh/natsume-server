@@ -1,6 +1,7 @@
 (ns natsume-server.nlp.evaluation
   (:require [schema.core :as s]
             [plumbing.core :refer [map-keys]]
+            [clojure.string :as string]
             [clojure.java.io :as io]
             [clojure.data.csv :as csv]
             [clojure.core.match :refer [match]]
@@ -18,7 +19,7 @@
 
 (defn romanize
   [^String s]
-  (.transliterate ^Transliterator romaji-transliterator s))
+  (string/replace (.transliterate ^Transliterator romaji-transliterator s) "~tsu" "t"))
 
 (s/defschema Token
   {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword :romaji s/Str :display-lemma s/Str
@@ -97,11 +98,16 @@
                     (map-keys (partial rename-corpus "-出現割合") freqs)
                     (map-keys (partial rename-corpus "-頻度") raw-freqs)
                     (map-keys (partial rename-corpus "-χ^2 検定の結果") chisq)
-                    {:判定 verdict
+                    {:判定             verdict
                      :全コーパスにおける出現割合の平均 (or mean 0.0)
-                     :全コーパスにおける頻度 total-freq
-                     ;;:total-norm-freq (* 1000000 (/ total-freq (-> @db/!norm-map :tokens :count)))
-                     }))))
+                     :全コーパスにおける頻度           total-freq
+                     :All-PPM          (* 1000000 (/ total-freq (-> @db/!norm-map :tokens :count)))
+                     :Pos-PPM          (* (/ (reduce + (vals (select-keys raw-freqs ["白書" "科学技術論文" "法律"])))
+                                             (reduce + (vals (select-keys @db/!genre-tokens-map ["白書" "科学技術論文" "法律"]))))
+                                          1000000)
+                     :Neg-PPM          (* (/ (reduce + (vals (select-keys raw-freqs ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"])))
+                                             (reduce + (vals (select-keys @db/!genre-tokens-map ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"]))))
+                                          1000000)}))))
        (into [])))
 
 (comment
@@ -235,7 +241,7 @@
                         "Yahoo_ブログ"
                         "韻文"
                         "国会会議録"]
-        default-header [:lemma :orth-base :romaji :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        default-header [:lemma :orth-base :romaji :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :All-PPM :Pos-PPM :Neg-PPM :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
         norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
         freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
         chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
