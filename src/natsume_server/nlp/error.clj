@@ -21,7 +21,7 @@
                      (map (juxt :name :count))
                      (into {}))]
           (for-map [genre @db/!genre-names]
-                   genre (or (get m genre) 0)))
+            genre (or (get m genre) 0)))
 
         freqs
         (->> tree
@@ -38,8 +38,9 @@
             ;; df = 11 (BCCWJ + STJC + Wikipedia?)
             ;; 0.10      	0.05 	0.025 	0.01 	0.005
             ;; 17.275 	19.675 	21.920 	24.725 	26.757
-            good-raw (reduce + (vals (select-keys freqs ["白書" "科学技術論文" "法律"])))
-            bad-raw  (reduce + (vals (select-keys freqs ["Yahoo_知恵袋" "Yahoo_ブログ" "国会会議録"])))
+            good-unfiltered-ppm (* (/ (reduce + (vals (select-keys freqs ["白書" "科学技術論文" "法律"])))
+                                      (reduce + (vals (select-keys @db/!genre-tokens-map ["白書" "科学技術論文" "法律"]))))
+                                   1000000)
             chisq-line (case pos
                          :noun 26.757
                          :verb 26.757
@@ -67,7 +68,7 @@
                               :chisq   chisq-corpora
                               :verdict (cond
                                          (and (and good-sum (>= good-sum 0.0)) (and bad-sum (neg? bad-sum))) true
-                                         (and (<= good-raw 0.5) (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
+                                         (and #_(<= good-unfiltered-ppm 0.5) (and good-sum (<= good-sum 0.0)) (and bad-sum (pos? bad-sum))) false
                                          :else nil)}
              :found?         true}
             (?> (> n 1) (assoc :stats (map-vals compact-number (select-keys tree [:count :mi :t :llr])))))))))

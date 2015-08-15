@@ -726,6 +726,7 @@ return the DDL string for creating that unlogged table."
 
 (def !norm-map (atom {}))
 (def !genre-names (atom #{}))
+(def !genre-tokens-map (atom {}))
 #_(def !pos-genre-tokens (atom {}))
 (defn set-norm-map! [conn]
   (reset! !norm-map
@@ -735,6 +736,7 @@ return the DDL string for creating that unlogged table."
     :chunks     (seq-to-tree (q conn (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
     :tokens     (seq-to-tree (q conn (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))})
   (reset! !genre-names (->> @!norm-map :sources :children (map :name) set))
+  (reset! !genre-tokens-map (->> @!norm-map :tokens :children (map (juxt :name :count)) (into {})))
   #_(let [poss (->> (q conn (-> (select (h/call :distinct :pos-1)) (from :search-tokens))) (map :pos-1) (into #{}))] ;; FIXME: :pos-1/2/3 vs :pos
     (reset! !pos-genre-tokens
             (for-map [pos poss]
