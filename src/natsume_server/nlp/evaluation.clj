@@ -38,7 +38,7 @@
       (drop 1)
       (map (fn [[表層形 左文脈ID 右文脈ID コスト 品詞大分類 品詞中分類 品詞小分類 品詞細分類 活用型 活用形 語彙素読み 語彙素 書字形出現形 発音形出現形 書字形基本形 発音形基本形 語種 語頭変化型 語頭変化形 語末変化型 語末変化形 アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉 備考]]
              ;; We only need a few features to match.
-             ;; FIXME How to handle "？"?
+             ;; FIXME How to handle "？" in annotation?
              {:orth-base     書字形出現形
               :lemma         語彙素
               :pos-1         品詞大分類
@@ -50,7 +50,7 @@
               :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
               :公的な話し言葉       (case 公的な話し言葉 "○" true "×" false nil)
               :日常の話し言葉       (case 日常の話し言葉 "○" true "×" false nil)}))
-      (distinct))
+      (distinct)) ;; FIXME Care needs to be taken when interpreting overall frequenices based on this list, because the distinct here does not just look at orth-base and lemma values but also annotations which are outside the system
     (with-open [test-reader (xz-reader test-file)]
       (doall (csv/read-csv test-reader :separator \tab :quote 0)))))
 
