@@ -14,7 +14,7 @@
                  [potemkin "0.4.1"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
-                 [prismatic/schema "0.4.3"]
+                 [prismatic/schema "1.0.0-alpha1"]
 
                  [org.immutant/web "2.0.2" :exclusions [ring/ring-core]]
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
@@ -26,7 +26,7 @@
                  [cheshire "5.5.0"]
 
                  ;; Database
-                 [org.postgresql/postgresql "9.4-1201-jdbc41"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.4-1202-jdbc42"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.4.1"]
                  [java-jdbc/dsl "0.1.3"]
                  [com.alibaba/druid "1.0.15"]
@@ -36,14 +36,14 @@
 
                  ;; Utils
                  [org.tukaani/xz "1.5"]
-                 [org.apache.commons/commons-compress "1.9"]
+                 [org.apache.commons/commons-compress "1.10"]
                  [org.clojure/tools.reader "0.10.0-alpha3"]
-                 [com.taoensso/timbre "4.1.0"]
-                 [org.clojure/tools.cli "0.3.2"]
+                 [com.taoensso/timbre "4.1.1"]
+                 [org.clojure/tools.cli "0.3.3"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.2"]
                  [org.clojure/data.csv "0.1.3"]
-                 [dk.ative/docjure "1.8.0"]
+                 [dk.ative/docjure "1.9.0"]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [org.apache.commons/commons-math3 "3.5"]
                  [fipp "0.6.2"]
@@ -72,7 +72,7 @@
                  ;; Text processing
                  [org.chasen/cabocha "0.68"]
                  [com.ibm.icu/icu4j "55.1"]
-                 [d3-compat-tree "0.0.7"]
+                 [d3-compat-tree "0.0.8"]
                  ;;
 
                  ]
@@ -88,7 +88,7 @@
    :project/dev   {:source-paths ["dev"]
                    :repl-options {:init-ns user}
                    :dependencies [[reloaded.repl "0.1.0"]
-                                  [org.clojure/tools.namespace "0.2.10"]]
+                                  [org.clojure/tools.namespace "0.3.0-alpha1"]]
                    :env {:db {:subname "//localhost:5432/natsumedev"
                               :user "natsumedev"
                               :password "riDJMq98LpyWgB7F"}
