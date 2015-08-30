@@ -36,7 +36,7 @@
   (vals
     (reduce
       (fn [a m]
-        (let [uniq-ident ((juxt :orth-base :lemma) m)]
+        (let [uniq-ident (:lemma m)]
           (if (get a uniq-ident)
             (do
               #_(clojure.pprint/pprint {:a ((juxt :orth-base :lemma :lemma-romaji) m)
