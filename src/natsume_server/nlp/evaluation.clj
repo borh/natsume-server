@@ -250,7 +250,7 @@
         score-keys [:true :predicted :precision :recall :f1]]
     (with-open [w (io/writer (str fn "-cm.tsv"))]
       (doseq [{:keys [t p]} variations]
-        (let [cm (confusion-matrix (score-tokens (get-tokens test-data) 100.0) t p)]
+        (let [cm (confusion-matrix (score-tokens (get-tokens test-data) 0.0) t p)]
           (csv/write-csv w [[(str (name t) " : " (name p)) "" ""]
                             ["" "Test positive" "Test negative"]
                             ["Predicted positive" (:tp cm) (:fp cm)]
