@@ -48,7 +48,7 @@
                 :pos           :adverb #_(recode-pos 品詞大分類)
                 :romaji        (romanize 発音形基本形)
                 :lemma-romaji  (romanize 語彙素読み)
-                ;;:display-lemma (str 語彙素 " /" (romanize 語彙素読み) "/")
+                ;; Note that empty annotations do not necessarily mean anything, so we cannot use them as true/false values like we can with the system NA scores.
                 :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
                 :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
                 :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
@@ -112,6 +112,7 @@
                                  (and (<= good 0.0) (pos? bad) (>= diff threshold)) false
                                  :else nil)))]
              (assoc token
+               ;; The choice of how to handle nil values is made using the following logic: when measuring the precision/recall of our system, a nil score is akin to a false (i.e. this is not wrong) score.
                     :準正用判定 (case score true true  false false nil #_nil false)
                     :準誤用判定 (case score true false false true  nil #_nil false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
@@ -164,7 +165,11 @@
 
 (comment (save-table "unidic-adverb-scored-2014-12-22-1.tsv" (score-tokens (get-tokens test-data) 0.0)))
 
-(s/defschema ConfusionMatrix {:tp s/Num :fp s/Num :fn s/Num :tn s/Num :NA s/Num})
+(def opt s/optional-key)
+(s/defschema ConfusionMatrix {:tp s/Num :fp s/Num :fn s/Num :tn s/Num
+                              (opt :xt) s/Num (opt :xf) s/Num (opt :tx) s/Num (opt :fx) s/Num
+                              (opt :NA) s/Num (opt :xx) s/Num})
+(s/defschema ConfusionMatrixWithNA {:tp s/Num :fp s/Num :fn s/Num :tn s/Num })
 
 (s/defn confusion-matrix :- ConfusionMatrix
   [tokens :- [ScoredToken]
@@ -182,6 +187,29 @@
                        :else :NA)
                 inc)))
     {:tp 0 :fp 0 :fn 0 :tn 0 :NA 0}
+    tokens))
+
+(s/defn confusion-matrix-with-na :- ConfusionMatrix
+  [tokens :- [ScoredToken]
+   true-field :- s/Keyword
+   predicted-field :- s/Keyword]
+  "Calculates the confusion matrix from tokens given the true and predicted fields, but also considers NA values."
+  (r/reduce
+    (fn [cm token]
+      (let [true-val (get token true-field)
+            predicted-val (get token predicted-field)]
+        (update cm
+                (match [true-val predicted-val]
+                       [true  true] :tp [false  true] :fp
+                       [true false] :fn [false false] :tn
+                       ;; NA variations below:
+                       [true  nil] :tx [false nil] :fx
+                       [nil false] :xf [nil  true] :xt
+                       [nil   nil] :xx)
+                inc)))
+    {:tp 0 :fp 0 :fn 0 :tn 0
+     :tx 0 :fx 0 :xf 0 :xt 0
+     :xx 0}
     tokens))
 
 (s/defn precision :- s/Num
@@ -316,17 +344,18 @@
     (let [pr-sheet (spreadsheet/select-sheet "Precision-Recall" wb)
           t :アカデミックな書き言葉-n
           p :準誤用判定
-          cm (confusion-matrix (score-tokens tokens 0.0) t p)]
+          cm (confusion-matrix-with-na (score-tokens tokens 0.0) t p)]
       (spreadsheet/add-rows! pr-sheet
-                             [[(str (name t) " : " (name p)) "" ""]
-                              ["" "Test positive" "Test negative"]
-                              ["Predicted positive" (:tp cm) (:fp cm)]
-                              ["Predicted negative" (:fn cm) (:tn cm)]
+                             [[(str (name t) " : " (name p)) "" "" ""]
+                              ["" "Test positive" "Test negative" "Test NA"]
+                              ["Predicted positive" (:tp cm) (:fp cm) (:tx cm)]
+                              ["Predicted negative" (:fn cm) (:tn cm) (:fx cm)]
+                              ["Predicted NA"       (:xt cm) (:xf cm) (:xx cm)]
 
-                              ["" "" ""]
+                              ["" "" "" ""]
 
                               ["Precision"    "Recall"    "F1"    "F0.5"   "NA"     "N"]
-                              [(precision cm) (recall cm) (f1 cm) (f05 cm) (:NA cm) (reduce + (vals cm))]])
+                              [(precision cm) (recall cm) (f1 cm) (f05 cm) (reduce + ((juxt :xx :tx :fx :xt :xf) cm)) (reduce + (vals cm))]])
       (let [header-row (first (spreadsheet/row-seq pr-sheet))]
         (spreadsheet/set-row-style! header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
 
