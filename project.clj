@@ -14,13 +14,13 @@
                  [potemkin "0.4.1"]
                  [environ "1.0.0"]
                  [meta-merge "0.1.1"]
-                 [prismatic/schema "1.0.0-alpha1"]
+                 [prismatic/schema "1.0.0"]
 
-                 [org.immutant/web "2.0.2" :exclusions [ring/ring-core]]
+                 [org.immutant/web "2.1.0" :exclusions [ring/ring-core]]
                  [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.0" :exclusions [org.slf4j/log4j-over-slf4j]]
                  [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.20.4" :exclusions [metosin/ring-swagger-ui]]
+                 [metosin/ring-swagger "0.21.0" :exclusions [metosin/ring-swagger-ui]]
                  [metosin/ring-swagger-ui "2.1.8-M1"]
                  [frankiesardo/pedestal-swagger "0.4.3"]
                  [cheshire "5.5.0"]
@@ -52,7 +52,7 @@
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.37.0"]
+                 [net.mikera/core.matrix "0.39.0"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0" :exclusions [incanter/parallelcolt]]
