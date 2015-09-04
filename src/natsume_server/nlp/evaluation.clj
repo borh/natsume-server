@@ -112,7 +112,7 @@
                                  (and (<= good 0.0) (pos? bad) (>= diff threshold)) false
                                  :else nil)))]
              (assoc token
-               ;; The choice of how to handle nil values is made using the following logic: when measuring the precision/recall of our system, a nil score is akin to a false (i.e. this is not wrong) score.
+                    ;; The choice of how to handle nil values is made using the following logic: when measuring the precision/recall of our system, a nil score is akin to a false (i.e. this is not wrong) score. We cannot make the same assumption about the test-set classification, as the nil vales have no inherent meaning there.
                     :準正用判定 (case score true true  false false nil #_nil false)
                     :準誤用判定 (case score true false false true  nil #_nil false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
