@@ -228,6 +228,7 @@ return the DDL string for creating that unlogged table."
   ;; TODO: It would be better to remove '*', allow NULLs and add partial indexes.
   [:tokens
    [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
+   [:position     :integer "NOT NULL"]
    [:pos-1        :text    "NOT NULL"]
    [:pos-2        :text    "NOT NULL"]
    [:pos-3        :text    "NOT NULL"]
@@ -623,8 +624,11 @@ return the DDL string for creating that unlogged table."
 (defn insert-tokens! [conn token-seq sentences-id]
   (i! conn
       :tokens (->> token-seq
-                   (map #(assoc (select-keys % [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu])
-                                :sentences-id sentences-id)))))
+                   (map-indexed (fn [i token]
+                                    (assoc
+                                      (select-keys token [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu])
+                                      :position i
+                                      :sentences-id sentences-id))))))
 
 ;; ## Query functions
 
