@@ -1,5 +1,7 @@
 (ns natsume-server.nlp.collocations
-  (:require [clojure.core.reducers :as r]))
+  (:require [clojure.core.reducers :as r]
+            [schema.core :as s]
+            [natsume-server.nlp.cabocha-wrapper :refer [ChunkSchema]]))
 
 ;; ## Collocation extraction
 
@@ -56,3 +58,22 @@
                               (make-collocation (subvec path 0 (inc n))))))
                     [])))
   ([tree] (extract-collocations tree 4)))
+
+(s/defn extract-unigrams :- [{:string (s/conditional not-empty s/Str)
+                              :pos s/Keyword
+                              :tags #{s/Keyword}}]
+  [tree :- [s/Any #_ChunkSchema]]
+  (->> tree
+       (r/mapcat
+         (fn [chunk]
+           [{:string (:head-string chunk)
+             :pos    (:head-pos    chunk)
+             :tags   (:head-tags   chunk)}
+            {:string (:tail-string chunk)
+             :pos    (:tail-pos    chunk)
+             :tags   (:tail-tags   chunk)}]))
+       (r/remove (fn [unigram]
+                   #_(when (or (nil? (:string unigram)) (nil? (:pos unigram)))
+                       (println unigram))
+                   (or (nil? (:string unigram)) (nil? (:pos unigram)))))
+       (into [])))

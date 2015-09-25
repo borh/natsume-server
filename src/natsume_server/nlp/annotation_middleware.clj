@@ -258,20 +258,26 @@
               ;; Defer to tail function
               (normalize-token token)))
 
-          (pos-specific-cleanup [pos tokens]
-            (case pos
-              :noun (->> tokens
-                         reverse
-                         (drop-while #(#{:auxiliary-verb :particle} (:pos %)))
-                         reverse)
-              :verb (take-while #(and (not (re-seq #"^(ます|てる?|ちゃう)$" (:lemma %)))
-                                      (not (re-seq #"助動詞-(タ|ダ|ナイ|ヌ|デス|ラシイ)" (:c-type %))) ; FIXME should be whitelist
-                                      (not (= :particle (:pos %))))
-                                tokens)
-              :adjective (take-while #(not (or (#{:auxiliary-verb :particle} (:pos %))
-                                               (seq (set/intersection #{:you :sou-dengon} (:tags %))))) ; FIXME ように
-                                     tokens)
-              tokens))]
+          (pos-specific-cleanup
+            [pos tokens]
+            (let [cleaned
+                  (case pos
+                    :noun (->> tokens
+                               reverse
+                               (drop-while #(#{:auxiliary-verb :particle} (:pos %)))
+                               reverse)
+                    :verb (take-while #(and (not (re-seq #"^(ます|てる?|ちゃう)$" (:lemma %)))
+                                            (not (re-seq #"助動詞-(タ|ダ|ナイ|ヌ|デス|ラシイ)" (:c-type %))) ; FIXME should be whitelist
+                                            (not (= :particle (:pos %))))
+                                      tokens)
+                    :adjective (take-while #(not (or (#{:auxiliary-verb :particle} (:pos %))
+                                                     (seq (set/intersection #{:you :sou-dengon} (:tags %))))) ; FIXME ように
+                                           tokens)
+                    tokens)]
+              (if (empty? cleaned)
+                (do (println "Failed to cleanup:" pos tokens "in" tokens)
+                    tokens)
+                cleaned)))]
 
     (if-let [ts (->> tokens
                      (remove discard-symbols)
@@ -461,7 +467,8 @@
        (remove nil?)
        (into #{})))
 
-(defn should-combine? [a b]
+(s/defn should-combine? :- (s/maybe clojure.lang.IFn)
+  [a :- cw/ChunkSchema b :- cw/ChunkSchema]
   (let [a-tail-token (peek (:tokens a)) ;; FIXME TODO should check for dangling commas
         b-head-token (first (:tokens b))]
     (if (and (= :particle (:pos a-tail-token))
@@ -481,15 +488,16 @@
         ;; Merge a into b: move b head to b tail and a head and tail to b head
         ;; FIXME Should only move the head of b to the tail of a if the tail of b is empty.
         (fn [b*] (-> b*
-                    (assoc :head-begin-index (:head-begin-index a))
-                    (assoc :head-end-index   (:head-end-index a))
-                    (assoc :head-tags        (:head-tags a))
-                    (assoc :head-string      (:head-string a))
-                    (assoc :head-pos         (:head-pos a))
-                    (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
-                    (assoc :tail-tags (set-union-safe (:head-tags b*) (:tail-tags a)))
-                    (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
-                    (update-in [:tail-end-index]   #(if % (+ % (count (:tokens a))) nil))))
+                     (assoc :head-begin-index (:head-begin-index a))
+                     (assoc :head-end-index   (:head-end-index a))
+                     (assoc :head-tags        (:head-tags a))
+                     (assoc :head-string      (:head-string a))
+                     (assoc :head-pos         :fukugoujosi)
+                     (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
+                     (assoc :tail-tags (set-union-safe (:head-tags b*) (:tail-tags a)))
+                     (assoc :tail-pos  :fukugoujosi)
+                     (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
+                     (update-in [:tail-end-index]   #(if % (+ % (count (:tokens a))) nil))))
         nil))))
 
 (defn- add-tags-to-tokens [chunks]
@@ -534,7 +542,7 @@
 ;; 6. replace the `orth` fields of all morphemes in CaboCha output with characters in the original string
 
 ;; TODO use transducers
-(s/defn sentence->tree :- [Chunk]
+(s/defn sentence->tree ;; :- [Chunk]
   "Converts string into CaboCha tree data structure."
   [s :- s/Str]
   (mapv
@@ -567,4 +575,5 @@
       (revert-orth-with s)))
 
 (comment
-  (s/with-fn-validation (sentence->tree "フェイスブック（ＦＢ）やツイッターなどソーシャルメディアを使った採用活動が、多くの企業に広がっている。")))
+  (s/with-fn-validation (sentence->tree "フェイスブック（ＦＢ）やツイッターなどソーシャルメディアを使った採用活動が、多くの企業に広がっている。"))
+  (s/with-fn-validation (sentence->tree "適当な措置を採るよう求める。")))

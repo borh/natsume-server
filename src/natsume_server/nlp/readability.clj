@@ -373,6 +373,7 @@
 (def core-sentence-data
   {;:tree         (fnk [sentence] (am/sentence->tree sentence))
    :tokens       (fnk [tree :- [Chunk]] (token-count tree))
+   :unigrams     (fnk [tree :- [Chunk]] (collocations/extract-unigrams tree))
    :chunks       (fnk [tree :- [Chunk]] (chunk-count tree))
    :predicates   (fnk [tree :- [Chunk]] (predicate-count-shibasaki tree))
    :collocations (fnk [tree :- [Chunk]] (collocations/extract-collocations tree))})

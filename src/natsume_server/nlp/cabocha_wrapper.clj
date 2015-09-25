@@ -51,22 +51,45 @@
    link :- s/Num
    head :- (s/maybe s/Num)
    tail :- (s/maybe s/Num)
-   head-string :- (s/maybe s/Str)
+   head-string :- (s/maybe (s/conditional not-empty s/Str))
    head-begin :- (s/maybe s/Num)
    head-end :- (s/maybe s/Num)
    head-pos :- (s/maybe s/Keyword)
-   head-tags :- (s/maybe PersistentHashSet)
+   head-tags :- (s/maybe #{s/Keyword})
    head-begin-index :- (s/maybe s/Num)
    head-end-index :- (s/maybe s/Num)
-   tail-string :- (s/maybe s/Str)
+   tail-string :- (s/maybe (s/conditional not-empty s/Str))
    tail-begin :- (s/maybe s/Num)
    tail-end :- (s/maybe s/Num)
    tail-pos :- (s/maybe s/Keyword)
-   tail-tags :- (s/maybe PersistentHashSet)
+   tail-tags :- (s/maybe #{s/Keyword})
    tail-begin-index :- (s/maybe s/Num)
    tail-end-index :- (s/maybe s/Num)
    prob :- s/Num
    tokens :- [Morpheme]])
+
+(def opt s/optional-key)
+(s/defschema ChunkSchema
+  {:id               s/Num
+   :link             s/Num
+   (opt :head)       (s/maybe s/Num)
+   (opt :tail)       (s/maybe s/Num)
+   :head-string      (s/maybe s/Str)
+   :head-begin       (s/maybe s/Num)
+   :head-end         (s/maybe s/Num)
+   :head-pos         (s/maybe s/Keyword)
+   :head-tags        (s/maybe PersistentHashSet)
+   :head-begin-index (s/maybe s/Num)
+   :head-end-index   (s/maybe s/Num)
+   :tail-string      (s/maybe s/Str)
+   :tail-begin       (s/maybe s/Num)
+   :tail-end         (s/maybe s/Num)
+   :tail-pos         (s/maybe s/Keyword)
+   :tail-tags        (s/maybe PersistentHashSet)
+   :tail-begin-index (s/maybe s/Num)
+   :tail-end-index   (s/maybe s/Num)
+   :prob             s/Num
+   :tokens           [Morpheme]})
 
 (s/defn recode-pos :- s/Keyword
   [m]
