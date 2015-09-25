@@ -229,6 +229,7 @@ return the DDL string for creating that unlogged table."
   [:tokens
    [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
    [:position     :integer "NOT NULL"]
+   [:pos          :text    "NOT NULL"]
    [:pos-1        :text    "NOT NULL"]
    [:pos-2        :text    "NOT NULL"]
    [:pos-3        :text    "NOT NULL"]
@@ -240,14 +241,19 @@ return the DDL string for creating that unlogged table."
    [:pron         :text]
    [:orth-base    :text    "NOT NULL"]
    [:pron-base    :text]
-   [:goshu        :text    "NOT NULL"]])
+   [:goshu        :text    "NOT NULL"]
+   [:tags         "text[]"]])
 
-(comment
- (def uni-gram-schema
-   [:uni-grams
-    [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
-    [:string       :text    "NOT NULL"]
-    [:pos          :text    "NOT NULL"]]))
+;; The :unigrams table is mostly equivalent to the :gram-1 table, with
+;; the exceptions (1) that it is not temporary, but persisted for later
+;; reference, and (2) its tokens are indexed with position.
+(def unigrams-schema
+  [:unigrams
+   [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
+   [:position     :integer "NOT NULL"]
+   [:string       :text    "NOT NULL"]
+   [:pos          :text    "NOT NULL"]
+   [:tags         "text[]"]])
 
 (def n-gram-schemas
   (let [sentences-column [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
@@ -280,7 +286,7 @@ return the DDL string for creating that unlogged table."
 
     ;; Append only long format.
     (apply create-table conn tokens-schema)
-    ;;(apply create-table uni-gram-schema)
+    (apply create-table conn unigrams-schema)
 
     ;; FIXME Add Natsume unit token-like table
     ;; 2, 3 and 4 collocation gram tables.
@@ -312,6 +318,10 @@ return the DDL string for creating that unlogged table."
    (create-index :tokens :sentences-id)
    (create-index :tokens :lemma)
    (create-index :tokens :orth-base)
+
+   (create-index :unigrams :sentences-id)
+   (create-index :unigrams :string)
+   (create-index :unigrams :pos)
    (h/raw "ANALYZE")])
 
 ;; ### Collocation N-gram Search Tables
@@ -620,15 +630,26 @@ return the DDL string for creating that unlogged table."
           (keyword (str "gram-" grams))
           (assoc record-map :sentences-id sentences-id)))))
 
+;; ### Unigrams
+(defn insert-unigrams! [conn unigrams sentences-id]
+  (i! conn
+      :unigrams
+      (map-indexed
+       (fn [i token]
+         (assoc token :position i :sentences-id sentences-id))
+       unigrams)))
+
 ;; ### Tokens
 (defn insert-tokens! [conn token-seq sentences-id]
   (i! conn
-      :tokens (->> token-seq
-                   (map-indexed (fn [i token]
-                                    (assoc
-                                      (select-keys token [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu])
-                                      :position i
-                                      :sentences-id sentences-id))))))
+      :tokens
+      (map-indexed
+       (fn [i token]
+         (assoc
+          (select-keys token [:pos :pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu :tags])
+          :position i
+          :sentences-id sentences-id))
+       token-seq)))
 
 ;; ## Query functions
 
@@ -642,10 +663,11 @@ return the DDL string for creating that unlogged table."
       :id))
 
 (defn get-genres [conn]
-  (distinct (map :genre (q conn
-                           (-> (select :genre)
-                               (from :sources)
-                               (order-by :genre))))))
+  (distinct (map :genre
+                 (q conn
+                    (-> (select :genre)
+                        (from :sources)
+                        (order-by :genre))))))
 
 (defn get-genre-counts [conn]
   (q conn
@@ -654,8 +676,7 @@ return the DDL string for creating that unlogged table."
       :group-by [:genre]}))
 
 (defn genres->tree [conn]
-  (-> (get-genre-counts conn)
-      seq-to-tree))
+  (seq-to-tree (get-genre-counts conn)))
 
 (defn sources-id->genres-map [conn sources-id]
   (->> (q conn
@@ -1075,11 +1096,13 @@ return the DDL string for creating that unlogged table."
                                              :sources-id sources-id))
                           first
                           :id))
-   :collocations-id (fnk get-collocations-id [conn features sentences-id]
+   :collocations-id (fnk get-collocations-id :- (s/maybe [s/Num]) [conn features sentences-id]
                       (when-let [collocations (seq (:collocations features))]
                         (map :id (insert-collocations! conn collocations sentences-id))))
-   :tokens          (fnk commit-tokens :- nil [conn tree sentences-id]
-                      (insert-tokens! conn (flatten (map :tokens tree)) sentences-id))})
+   :commit-tokens   (fnk commit-tokens :- nil [conn tree sentences-id]
+                         (insert-tokens! conn (flatten (map :tokens tree)) sentences-id))
+   :commit-unigrams (fnk commit-unigrams :- nil [conn features sentences-id]
+                         (insert-unigrams! conn (:unigrams features) sentences-id))})
 (def sentence-graph-fn (graph/eager-compile sentence-graph))
 
 (defnk insert-paragraphs! [conn paragraphs sources-id]
@@ -1090,13 +1113,15 @@ return the DDL string for creating that unlogged table."
       (let [{:keys [sentences tags]} paragraph
             sentence-count (count sentences)
             sentence-end-id (+ sentence-start-id sentence-count)]
-        ((comp dorun map) #(sentence-graph-fn
-                            {:conn               conn
-                             :tags               tags
-                             :sources-id         sources-id
-                             :sentence-order-id  %2
-                             :paragraph-order-id paragraph-id
-                             :text               %1})
+        ((comp dorun map)
+         (s/fn [text :- s/Str sentence-order-id :- s/Num]
+           (sentence-graph-fn
+            {:conn               conn
+             :tags               tags
+             :sources-id         sources-id
+             :sentence-order-id  sentence-order-id
+             :paragraph-order-id paragraph-id
+             :text               text}))
           sentences
           (range sentence-start-id sentence-end-id))
         (recur (next paragraphs*)
