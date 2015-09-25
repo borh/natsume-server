@@ -2,7 +2,7 @@
   (:require [clojure.string :as string])
   (:import [org.postgresql.util PGobject]
            [java.sql PreparedStatement Array]
-           [clojure.lang PersistentHashSet]))
+           [clojure.lang PersistentHashSet Keyword]))
 
 ;; We extend jdbc to serialize/unserialize arrays as sets (for our tags use-case).
 ;; TODO do same thing for ltree!
@@ -13,8 +13,11 @@
           meta (.getParameterMetaData stmt)
           type-name (.getParameterTypeName meta i)]
       (if-let [elem-type (when (= (first type-name) \_) (string/join (rest type-name)))]
-        (.setObject stmt i (.createArrayOf conn elem-type (to-array v)))
-        (.setObject stmt i v)))))
+        (.setObject stmt i (.createArrayOf conn elem-type (to-array (map name v))))
+        (.setObject stmt i (.createArrayOf conn "text" (to-array (map name v)))))))
+  Keyword
+  (set-parameter [v ^PreparedStatement stmt ^long i]
+    (.setObject stmt i (name v))))
 
 (extend-protocol clojure.java.jdbc/IResultSetReadColumn
   Array
