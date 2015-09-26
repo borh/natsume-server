@@ -139,7 +139,7 @@
    Word class is recorded in :pos and other tags in :tags set."
   [c]
   (reduce
-   (fn [r ^Morpheme m]
+   (fn [r m]
      (let [pos-code (.pos m)
            tags     (recode-tags m pos-code)
            ne       (if (not= "O" (.ne m)) #{(keywordize-ne (.ne m))} #{})]

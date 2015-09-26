@@ -45,6 +45,30 @@
    end :- s/Num
    tags :- (s/maybe PersistentHashSet)])
 
+(s/defschema MorphemeSchema
+  {:pos (s/maybe s/Keyword)
+   :pos-1 s/Str
+   :pos-2 s/Str
+   :pos-3 s/Str
+   :pos-4 s/Str
+   :c-type s/Str
+   :c-form s/Str
+   :l-form (s/maybe s/Str)
+   :lemma s/Str
+   :orth s/Str
+   :pron (s/maybe s/Str)
+   :orth-base s/Str
+   :pron-base s/Str
+   :goshu s/Str
+   :i-type (s/maybe s/Str)
+   :i-form (s/maybe s/Str)
+   :f-type (s/maybe s/Str)
+   :f-form (s/maybe s/Str)
+   :ne (s/maybe s/Str)
+   :begin s/Num
+   :end s/Num
+   :tags (s/maybe PersistentHashSet)})
+
 ;; TODO Check if maybe's are justified. This also comes back to the utility of the Chunk as a unified record type, as it undergoes a lot of transformations along the way (hence the maybe's). Two defschema (Chunk + AnnotatedChunk) might be the best-performing and safe solution.
 (s/defrecord Chunk
   [id :- s/Num
@@ -89,7 +113,7 @@
    :tail-begin-index (s/maybe s/Num)
    :tail-end-index   (s/maybe s/Num)
    :prob             s/Num
-   :tokens           [Morpheme]})
+   :tokens           [MorphemeSchema]})
 
 (s/defn recode-pos :- s/Keyword
   [m]
