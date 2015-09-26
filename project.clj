@@ -7,7 +7,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
-  :jvm-opts ["-server" "-XX:+UseG1GC"]
+  :jvm-opts ^:replace ["-server" "-XX:+UseG1GC"]
   :dependencies [[org.clojure/clojure "1.7.0"]
 
                  [com.stuartsierra/component "0.3.0"]
@@ -70,7 +70,7 @@
                  ;;
 
                  ;; Text processing
-                 [org.chasen/cabocha "0.68"]
+                 [org.chasen/cabocha "0.69"]
                  [com.ibm.icu/icu4j "55.1"]
                  [d3-compat-tree "0.0.8"]
                  ;;
