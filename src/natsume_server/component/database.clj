@@ -632,12 +632,13 @@ return the DDL string for creating that unlogged table."
 
 ;; ### Unigrams
 (defn insert-unigrams! [conn unigrams sentences-id]
-  (i! conn
-      :unigrams
-      (map-indexed
-       (fn [i token]
-         (assoc token :position i :sentences-id sentences-id))
-       unigrams)))
+  (when (seq unigrams)
+    (i! conn
+        :unigrams
+        (map-indexed
+         (fn [i token]
+           (assoc token :position i :sentences-id sentences-id))
+         unigrams))))
 
 ;; ### Tokens
 (defn insert-tokens! [conn token-seq sentences-id]
