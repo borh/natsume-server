@@ -38,7 +38,7 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.10"]
                  [org.clojure/tools.reader "0.10.0-alpha3"]
-                 [com.taoensso/timbre "4.1.1"]
+                 [com.taoensso/timbre "4.1.2"]
                  [org.clojure/tools.cli "0.3.3"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.3"]
