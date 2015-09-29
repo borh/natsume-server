@@ -1174,15 +1174,16 @@ return the DDL string for creating that unlogged table."
                    (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
                      (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
    :persist    (fnk [conn sources files file-bases]
-                 ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
-                 (let [sources-basenames (set (map :basename sources))]
-                   (println "basenames missing from sources.tsv: ")
-                   (doseq [f (set/difference file-bases sources-basenames)]
-                     (println f))
-                   (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases)))
-                 (insert-sources! conn sources file-bases)
-                 (->> files
-                      (dorunconc #(file-graph-fn {:conn conn :filename %}))))})
+                    ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
+                    (let [sources-basenames (set (map :basename sources))
+                          basenames-missing-source (set/difference file-bases sources-basenames)]
+                      (println "basenames missing from sources.tsv: (Warning: will be skipped!)")
+                      (println basenames-missing-source)
+                      (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases))
+                      (insert-sources! conn sources (set/difference file-bases basenames-missing-source))
+                      (->> files
+                           (remove (fn [f] (contains? basenames-missing-source (fs/base-name f true))))
+                           (dorunconc #(file-graph-fn {:conn conn :filename %})))))})
 
 (def wikipedia-graph
   (merge (dissoc corpus-graph :file-bases :sources)
