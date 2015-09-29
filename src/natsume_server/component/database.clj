@@ -92,7 +92,7 @@
   [conn tbl-name & rows]
   (let [rowseq (->> rows flatten (map #(map-keys dashes->underscores %)))]
     (try (apply j/insert! conn (dashes->underscores tbl-name) rowseq)
-         (catch Exception e (do (j/print-sql-exception-chain e) (println rowseq))))))
+         (catch Exception e (do (try (j/print-sql-exception-chain e) (catch Exception e' (println e))) (println rowseq))))))
 
 (defn u!
   [conn tbl-name new-val where-clause]
