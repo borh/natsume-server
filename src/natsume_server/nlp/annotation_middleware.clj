@@ -473,7 +473,8 @@
         b-head-token (first (:tokens b))]
     (if (and (= :particle (:pos a-tail-token))
              (= :verb     (:pos b-head-token)))
-      (condp #(seq (set/intersection %1 %2)) (pattern-match patterns (vector a-tail-token b-head-token))
+      (condp #(seq (set/intersection %1 %2))
+          (pattern-match patterns (vector a-tail-token b-head-token))
 
         #{:ni-naru :wo-suru}
         ;; Merge a into b: add a head to b head and a tail to b head a先生+に|bなる -> b>先生<+>に<なる|
@@ -482,22 +483,22 @@
                     (update :head-tags   #(set-union-safe (:head-tags a) (:tail-tags a) %))
                     (update :tail-begin-index #(if % (+ % (count (:tokens a))) nil))
                     (update :tail-end-index   #(if % (+ % (count (:tokens a))) nil))
-                    (assoc      :head-begin-index (:head-begin-index a))
+                    (assoc  :head-begin-index (:head-begin-index a))
                     (update :head-end-index #(+ % (count (:tokens a))))))
         #{:fukugoujosi}
         ;; Merge a into b: move b head to b tail and a head and tail to b head
         ;; FIXME Should only move the head of b to the tail of a if the tail of b is empty.
         (fn [b*] (-> b*
-                     (assoc :head-begin-index (:head-begin-index a))
-                     (assoc :head-end-index   (:head-end-index a))
-                     (assoc :head-tags        (:head-tags a))
-                     (assoc :head-string      (:head-string a))
-                     (assoc :head-pos         :fukugoujosi)
-                     (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
-                     (assoc :tail-tags (set-union-safe (:head-tags b*) (:tail-tags a)))
-                     (assoc :tail-pos  :fukugoujosi)
-                     (update :tail-begin-index #(if % (+ % (count (:tokens a))) nil))
-                     (update :tail-end-index   #(if % (+ % (count (:tokens a))) nil))))
+                    (assoc :head-begin-index (:head-begin-index a))
+                    (assoc :head-end-index   (:head-end-index a))
+                    (assoc :head-tags        (:head-tags a))
+                    (assoc :head-string      (:head-string a))
+                    (assoc :head-pos         (:head-pos a))
+                    (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
+                    (assoc :tail-tags (set-union-safe (:head-tags b*) (:tail-tags a)))
+                    (assoc :tail-pos  :fukugoujosi)
+                    (update :tail-begin-index #(if % (+ % (count (:tokens a))) nil))
+                    (update :tail-end-index   #(if % (+ % (count (:tokens a))) nil))))
         nil))))
 
 (defn- add-tags-to-tokens [chunks]
