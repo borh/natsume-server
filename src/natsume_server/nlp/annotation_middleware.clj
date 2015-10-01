@@ -253,7 +253,7 @@
             (if (and (#{:verb :adjective :auxiliary-verb} (:pos token))
                      (re-seq #"(未然形|連用形|仮定形)" (:c-form token)))
               (if (= *display-pos* :lemma)
-                (unidic/conjugate (update-in token [:lemma] normalize-lemma))
+                (unidic/conjugate (update token :lemma normalize-lemma))
                 (:orth token))
               ;; Defer to tail function
               (normalize-token token)))
@@ -359,10 +359,10 @@
 (defn- combine-chunks [a b update-function]
   (-> b
       (assoc :id (:id a))
-      (update-in [:link] #(if-not (= -1 %) (dec %) %))
+      (update :link #(if-not (= -1 %) (dec %) %))
       update-function ; TODO a NOOP right now
-      (update-in [:prob] #(/ (+ % (:prob a)) 2)) ;; CHECK
-      (update-in [:tokens] #(apply conj (:tokens a) %))
+      (update :prob #(/ (+ % (:prob a)) 2)) ;; CHECK
+      (update :tokens #(apply conj (:tokens a) %))
       add-begin-end-positions))
 
 ;; TODO Pattern matching definitions as data: allow chunk type and
@@ -478,12 +478,12 @@
         #{:ni-naru :wo-suru}
         ;; Merge a into b: add a head to b head and a tail to b head a先生+に|bなる -> b>先生<+>に<なる|
         (fn [b*] (-> b*
-                    (update-in [:head-string] #(str (:head-string a) (:tail-string a) %))
-                    (update-in [:head-tags]   #(set-union-safe (:head-tags a) (:tail-tags a) %))
-                    (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
-                    (update-in [:tail-end-index]   #(if % (+ % (count (:tokens a))) nil))
+                    (update :head-string #(str (:head-string a) (:tail-string a) %))
+                    (update :head-tags   #(set-union-safe (:head-tags a) (:tail-tags a) %))
+                    (update :tail-begin-index #(if % (+ % (count (:tokens a))) nil))
+                    (update :tail-end-index   #(if % (+ % (count (:tokens a))) nil))
                     (assoc      :head-begin-index (:head-begin-index a))
-                    (update-in [:head-end-index] #(+ % (count (:tokens a))))))
+                    (update :head-end-index #(+ % (count (:tokens a))))))
         #{:fukugoujosi}
         ;; Merge a into b: move b head to b tail and a head and tail to b head
         ;; FIXME Should only move the head of b to the tail of a if the tail of b is empty.
@@ -496,8 +496,8 @@
                      (assoc :tail-string (str (:tail-string a) (:head-string b*) (:tail-string b*)))
                      (assoc :tail-tags (set-union-safe (:head-tags b*) (:tail-tags a)))
                      (assoc :tail-pos  :fukugoujosi)
-                     (update-in [:tail-begin-index] #(if % (+ % (count (:tokens a))) nil))
-                     (update-in [:tail-end-index]   #(if % (+ % (count (:tokens a))) nil))))
+                     (update :tail-begin-index #(if % (+ % (count (:tokens a))) nil))
+                     (update :tail-end-index   #(if % (+ % (count (:tokens a))) nil))))
         nil))))
 
 (defn- add-tags-to-tokens [chunks]
@@ -511,8 +511,8 @@
          delete-count 0]
     (if (seq chunks)
       (let [chunk (-> (first chunks)
-                      (update-in [:id] #(- % delete-count))
-                      (update-in [:link] #(if-not (= -1 %) (- % delete-count) %)))
+                      (update :id #(- % delete-count))
+                      (update :link #(if-not (= -1 %) (- % delete-count) %)))
             previous-chunk (peek coll)
             combined (if previous-chunk (should-combine? previous-chunk chunk))]
         (recur (if combined
@@ -525,9 +525,9 @@
 (defn- revert-orth-with
   "Reverts the :orth of all tokens in tree to their pre-NFC norm form."
   [tree original-input]
-  (let [update-morpheme  #(assoc % :orth (subs original-input (:begin %) (:end %)))
-        update-morphemes #(mapv update-morpheme %)
-        update-chunk     #(update-in % [:tokens] update-morphemes)]
+  (letfn [(update-morpheme  [m]  (assoc m :orth (subs original-input (:begin m) (:end m))))
+          (update-morphemes [ms] (mapv update-morpheme ms))
+          (update-chunk     [c]  (update c :tokens update-morphemes))]
     (mapv update-chunk tree)))
 
 ;; Pre-processing (normalization, common substitutions, etc.) is done on the string before it is processed by CaboCha.
@@ -548,28 +548,28 @@
   (mapv
    cw/map->Chunk
    (-> s
-       normalize-nfc              ; 2.
-       convert-half-to-fullwidth  ; 2.
-       (string/replace "．" "。") ; 3.
-       (string/replace "，" "、") ; 3.
-       cw/parse-sentence-synchronized          ; 4.
-       add-tags-to-tokens     ; 5.
-       annotate-tree              ; 5.
-       modify-tree                ; 5.
-       (revert-orth-with s))))     ; 6.
+       normalize-nfc                  ; 2.
+       convert-half-to-fullwidth      ; 2.
+       (string/replace "．" "。")     ; 3.
+       (string/replace "，" "、")     ; 3.
+       cw/parse-sentence-synchronized ; 4.
+       add-tags-to-tokens             ; 5.
+       annotate-tree                  ; 5.
+       modify-tree                    ; 5.
+       (revert-orth-with s))))        ; 6.
 
 (defn sentence->cabocha [s]
   (-> s
-      normalize-nfc              ; 2.
-      convert-half-to-fullwidth  ; 2.
-      (string/replace "．" "。") ; 3.
-      (string/replace "，" "、") ; 3.
-      cw/parse-sentence-synchronized          ; 4.
+      normalize-nfc                  ; 2.
+      convert-half-to-fullwidth      ; 2.
+      (string/replace "．" "。")     ; 3.
+      (string/replace "，" "、")     ; 3.
+      cw/parse-sentence-synchronized ; 4.
       ))
 
 (defn cabocha->tree [cabocha-output s]
   (-> cabocha-output
-      add-tags-to-tokens     ; 5.
+      add-tags-to-tokens         ; 5.
       annotate-tree              ; 5.
       modify-tree                ; 5.
       (revert-orth-with s)))
