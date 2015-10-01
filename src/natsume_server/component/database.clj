@@ -287,7 +287,7 @@ return the DDL string for creating that unlogged table."
     ;; TODO need to add information from CopyRight_Annotation.txt as per BCCWJ usage guidelines.
     (apply create-table conn sources-schema)
     (e! conn (h/format (create-index :sources :genre :gist)))
-    (e! conn (h/format (create-index :sources :genre :btree)))
+    (e! conn (h/format (create-index :sources :genre)))
 
     (apply create-table conn sentences-schema)
     (e! conn (h/format (create-index :sentences :sources-id)))
@@ -429,6 +429,7 @@ return the DDL string for creating that unlogged table."
    WHERE se.sources_id=so.id
    GROUP BY so.genre")]
    [:seq (create-index :genre-norm :genre :gist)]
+   [:seq (create-index :genre-norm :genre)]
 
    ;; TODO: gram counts, etc.
    ;; Collocation n-gram counts are recorded under a different schema as the number of collocation types is more dynamic.
@@ -490,6 +491,7 @@ return the DDL string for creating that unlogged table."
    ;; Genre must be profiled.
    [:par (create-index :gram-norm :type)]
    [:par (create-index :gram-norm :genre :gist)]
+   [:par (create-index :gram-norm :genre)]
    [:seq (h/raw "ANALYZE")]])
 
 (def search-table
