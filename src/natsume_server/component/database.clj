@@ -415,7 +415,7 @@ return the DDL string for creating that unlogged table."
         sources AS so
    WHERE se.sources_id=so.id
    GROUP BY so.genre")
-   ;; No indexes for now as it is a small table.
+   (create-index :genre-norm :genre :gist)
 
    ;; TODO: gram counts, etc.
    ;; Collocation n-gram counts are recorded under a different schema as the number of collocation types is more dynamic.
