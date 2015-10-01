@@ -19,19 +19,37 @@
                 :password "riDJMq98LpyWgB7F"}
      :http     {:port 3000}
      :log      {:directory "./log"}
-     :dirs     [#_"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW"
-                #_"/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OM"
+     :dirs     ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OL"
                 "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT"
-                ] ;; Bench numbers for OT (all):
-     ;; Old baseline:   26.067740016833334 m
-     ;; with validation 29.325954580383332 m (slowdown probably from ext4->btrfs move)
-     ;; w/o  validation 28.0387819849 m
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OP"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/PN"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/PM"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OV"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/PB"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/LB"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OB"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OC"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OY"
+                "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OM"
+
+                "/data/STJC/nlp_annual_txt"               ;; 309.25 min
+                "/data/STJC/JNLP-Journal"                 ;;  16.55 min
+                "/data/STJC/JStage-土木学会論文集A"
+                "/data/STJC/JStage-土木学会論文集B"
+                "/data/STJC/JStage-土木学会論文集C"
+                "/data/STJC/JStage-土木学会論文集D"
+                "/data/STJC/JStage-日本医科大学医学会雑誌"
+                "/data/STJC/JStage-電気学会論文誌"
+                "/data/STJC/JStage-日本化学会誌"
+                "/data/STJC/JStage-環境資源工学"
+                ]
      :verbose  true
-     :clean    false #_true
-     :process  false #_true
-     :search   false #_true
-     :server   true                                         ;; TODO
-     :sampling {:ratio    0.0
+     :clean    #_false true
+     :process  #_false true
+     :search   #_false true
+     :server   false #_true ;; TODO
+     :sampling {:ratio    0.01 ;; 0.01 => 22.09, 0.10 => 243.34
                 :seed     2
                 :replace  false
                 :hold-out false}}))
