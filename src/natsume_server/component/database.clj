@@ -327,7 +327,7 @@ return the DDL string for creating that unlogged table."
 ;; ### Collocation N-gram Search Tables
 ;;
 ;; Collocation n-gram search tables are divided into two schemas per n.
-;; Tables beginning with search_sentences_ are for searching example sentences, while
+;; Tables beginning with search_sentences_ are for searching example sentences, while *-gram are temporary tables for holding n-gram data that are used to create search_sentences_.
 (def resorted-gram-tables
   [;; 1-gram does not need sorting
    (create-index :gram-1 :sentences-id)
