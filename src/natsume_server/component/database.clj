@@ -115,6 +115,15 @@
                        sql-stmts)]
     (e! conn [stmt])))
 
+(defn seq-par-execute!
+  [conn & sql-stmts]
+  (doseq [f (map
+             (fn [stmt]
+               (future (e! conn [stmt])))
+             (mapcat #(mapcat h/format %)
+                     sql-stmts))]
+    @f))
+
 (defn seq-print-sql
   [& sql-stmts]
   (string/join ";\n" (mapcat #(mapcat h/format %)
@@ -301,28 +310,28 @@ return the DDL string for creating that unlogged table."
 ;; FIXME !Profile if having indexes to make new table is faster than not creating them!
 ;; TODO concurrent index creation
 (def expensive-indexes
-  [(create-index :gram-1 :pos-1)
+  [[:par (create-index :gram-1 :pos-1)]
 
-   (create-index :gram-2 :pos-1)
-   (create-index :gram-2 :pos-2)
+   [:par (create-index :gram-2 :pos-1)]
+   [:par (create-index :gram-2 :pos-2)]
 
-   (create-index :gram-3 :pos-1)
-   (create-index :gram-3 :pos-2)
-   (create-index :gram-3 :pos-3)
+   [:par (create-index :gram-3 :pos-1)]
+   [:par (create-index :gram-3 :pos-2)]
+   [:par (create-index :gram-3 :pos-3)]
 
-   (create-index :gram-4 :pos-1)
-   (create-index :gram-4 :pos-2)
-   (create-index :gram-4 :pos-3)
-   (create-index :gram-4 :pos-4)
+   [:par (create-index :gram-4 :pos-1)]
+   [:par (create-index :gram-4 :pos-2)]
+   [:par (create-index :gram-4 :pos-3)]
+   [:par (create-index :gram-4 :pos-4)]
 
-   (create-index :tokens :sentences-id)
-   (create-index :tokens :lemma)
-   (create-index :tokens :orth-base)
+   [:par (create-index :tokens :sentences-id)]
+   [:par (create-index :tokens :lemma)]
+   [:par (create-index :tokens :orth-base)]
 
-   (create-index :unigrams :sentences-id)
-   (create-index :unigrams :string)
-   (create-index :unigrams :pos)
-   (h/raw "ANALYZE")])
+   [:par (create-index :unigrams :sentences-id)]
+   [:par (create-index :unigrams :string)]
+   [:par (create-index :unigrams :pos)]
+   [:seq (h/raw "ANALYZE")]])
 
 ;; ### Collocation N-gram Search Tables
 ;;
@@ -330,69 +339,72 @@ return the DDL string for creating that unlogged table."
 ;; Tables beginning with search_sentences_ are for searching example sentences, while *-gram are temporary tables for holding n-gram data that are used to create search_sentences_.
 (def resorted-gram-tables
   [;; 1-gram does not need sorting
-   (create-index :gram-1 :sentences-id)
-   (add-fk :gram-1 :sentences :id)
-   (create-index :gram-1 :string-1)
+   [:par (create-index :gram-1 :sentences-id)]
+   [:par (add-fk :gram-1 :sentences :id)]
+   [:par (create-index :gram-1 :string-1)]
 
    ;; 2-grams:
-   (rename-table :gram-2 :gram-2-renamed)
-   (create-unlogged-table-as :gram-2
-                             (-> (select :*)
-                                 (from :gram-2-renamed)
-                                 (order-by :pos-1 :pos-2 :string-1 :string-2 :tags-1 :tags-2 :sentences-id :begin-1)))
-   (h/raw "DROP TABLE gram_2_renamed CASCADE")
-   (create-index :gram-2 :sentences-id)
-   (add-fk :gram-2 :sentences :id)
-   (create-index :gram-2 :pos-1)
-   (create-index :gram-2 :pos-2)
-   (create-index :gram-2 :string-1)
-   (create-index :gram-2 :string-2)
+   [:seq (rename-table :gram-2 :gram-2-renamed)]
+   [:seq (create-unlogged-table-as
+          :gram-2
+          (-> (select :*)
+              (from :gram-2-renamed)
+              (order-by :pos-1 :pos-2 :string-1 :string-2 :tags-1 :tags-2 :sentences-id :begin-1)))]
+   [:seq (h/raw "DROP TABLE gram_2_renamed CASCADE")]
+   [:par (create-index :gram-2 :sentences-id)]
+   [:par (add-fk :gram-2 :sentences :id)]
+   [:par (create-index :gram-2 :pos-1)]
+   [:par (create-index :gram-2 :pos-2)]
+   [:par (create-index :gram-2 :string-1)]
+   [:par (create-index :gram-2 :string-2)]
    ;; TODO benchmark CLUSTER
 
    ;; 4-grams:
 
-   (rename-table :gram-4 :gram-4-renamed)
-   (create-unlogged-table-as :gram-4
-                             (-> (select :*)
-                                 (from :gram-4-renamed)
-                                 (order-by :pos-1 :pos-2 :pos-3 :pos-4 :string-1 :string-2 :string-3 :string-4 :tags-1 :tags-2 :tags-3 :tags-4 :sentences-id :begin-1)))
-   (h/raw "DROP TABLE gram_4_renamed CASCADE")
-   (create-index :gram-4 :sentences-id)
-   (add-fk :gram-4 :sentences :id)
-   (create-index :gram-4 :pos-1)
-   (create-index :gram-4 :pos-2)
-   (create-index :gram-4 :pos-3)
-   (create-index :gram-4 :pos-4)
-   (create-index :gram-4 :string-1)
-   (create-index :gram-4 :string-2)
-   (create-index :gram-4 :string-3)
-   (create-index :gram-4 :string-4)
+   [:seq (rename-table :gram-4 :gram-4-renamed)]
+   [:seq (create-unlogged-table-as
+          :gram-4
+          (-> (select :*)
+              (from :gram-4-renamed)
+              (order-by :pos-1 :pos-2 :pos-3 :pos-4 :string-1 :string-2 :string-3 :string-4 :tags-1 :tags-2 :tags-3 :tags-4 :sentences-id :begin-1)))]
+   [:seq (h/raw "DROP TABLE gram_4_renamed CASCADE")]
+   [:par (create-index :gram-4 :sentences-id)]
+   [:par (add-fk :gram-4 :sentences :id)]
+   [:par (create-index :gram-4 :pos-1)]
+   [:par (create-index :gram-4 :pos-2)]
+   [:par (create-index :gram-4 :pos-3)]
+   [:par (create-index :gram-4 :pos-4)]
+   [:par (create-index :gram-4 :string-1)]
+   [:par (create-index :gram-4 :string-2)]
+   [:par (create-index :gram-4 :string-3)]
+   [:par (create-index :gram-4 :string-4)]
 
    ;; Doc FIXME UNION with 1,2,3 of gram_4 -- but be careful when talking about absolute number of n-grams (emphasize we are talking about grams in 2 dependent chunks).
    ;; 3-grams:
 
-   (rename-table :gram-3 :gram-3-renamed)
+   [:seq (rename-table :gram-3 :gram-3-renamed)]
 
-   (h/raw "CREATE UNLOGGED TABLE gram_3 AS
+   [:seq
+    (h/raw "CREATE UNLOGGED TABLE gram_3 AS
 
    WITH temporary_union AS (
    (SELECT * FROM gram_3_renamed)
    UNION
    (SELECT sentences_id, string_1, pos_1, tags_1, begin_1, end_1, string_2, pos_2, tags_2, begin_2, end_2, string_3, pos_3, tags_3, begin_3, end_3 FROM gram_4))
 
-   SELECT * FROM temporary_union ORDER BY pos_1, pos_2, pos_3, string_1, string_2, string_3, tags_1, tags_2, tags_3, sentences_id, begin_1")
+   SELECT * FROM temporary_union ORDER BY pos_1, pos_2, pos_3, string_1, string_2, string_3, tags_1, tags_2, tags_3, sentences_id, begin_1")]
 
-   (h/raw "DROP TABLE gram_3_renamed CASCADE")
-   (create-index :gram-3 :sentences-id)
-   (add-fk :gram-3 :sentences :id)
-   (create-index :gram-3 :pos-1)
-   (create-index :gram-3 :pos-2)
-   (create-index :gram-3 :pos-3)
-   (create-index :gram-3 :string-1)
-   (create-index :gram-3 :string-2)
-   (create-index :gram-3 :string-3)
+   [:seq (h/raw "DROP TABLE gram_3_renamed CASCADE")]
+   [:par (create-index :gram-3 :sentences-id)]
+   [:par (add-fk :gram-3 :sentences :id)]
+   [:par (create-index :gram-3 :pos-1)]
+   [:par (create-index :gram-3 :pos-2)]
+   [:par (create-index :gram-3 :pos-3)]
+   [:par (create-index :gram-3 :string-1)]
+   [:par (create-index :gram-3 :string-2)]
+   [:par (create-index :gram-3 :string-3)]
 
-   (h/raw "ANALYZE")])
+   [:seq (h/raw "ANALYZE")]])
 
 (def norm-table
   ;; ### Normalization Tables
@@ -404,8 +416,8 @@ return the DDL string for creating that unlogged table."
   ;;(let [g2-keys (set (with-dbmacro (j/with-query-results res [""])))])
   ;; FIXME: anything to be done with pivot tables....?
 
-  [(h/raw
-    "CREATE TABLE genre_norm AS
+  [[:seq (h/raw
+          "CREATE TABLE genre_norm AS
    SELECT so.genre,
           sum(se.tokens)::integer         AS token_count,
           sum(se.chunks)::integer         AS chunk_count,
@@ -414,12 +426,12 @@ return the DDL string for creating that unlogged table."
    FROM sentences AS se,
         sources AS so
    WHERE se.sources_id=so.id
-   GROUP BY so.genre")
-   (create-index :genre-norm :genre :gist)
+   GROUP BY so.genre")]
+   [:seq (create-index :genre-norm :genre :gist)]
 
    ;; TODO: gram counts, etc.
    ;; Collocation n-gram counts are recorded under a different schema as the number of collocation types is more dynamic.
-   (h/raw "CREATE TABLE gram_norm AS
+   [:seq (h/raw "CREATE TABLE gram_norm AS
    (SELECT g1.pos_1 AS type,
            so.genre,
            count(*) AS count,
@@ -472,105 +484,114 @@ return the DDL string for creating that unlogged table."
         sources AS so
    WHERE g4.sentences_id=se.id AND se.sources_id=so.id
    GROUP BY so.genre, g4.pos_1, g4.pos_2, g4.pos_3, g4.pos_4
-   ORDER BY type, so.genre, count)")
+   ORDER BY type, so.genre, count)")]
    ;; We commonly dispatch on type, so the index here can be justified.
    ;; Genre must be profiled.
-   (create-index :gram-norm :type)
-   (h/raw "ANALYZE")])
+   [:par (create-index :gram-norm :type)]
+   [:par (create-index :gram-norm :genre :gist)]
+   [:seq (h/raw "ANALYZE")]])
 
 (def search-table
   ;; TODO: find right place to filter rare collocations, especially on Wikipedia data (probably filter with HAVING clause).
   ;; TODO: should the token search table include computed measures like tf-idf?
   ;; TODO: cast counts as integer
   ;; FIXME 助動詞 (everything but 動詞?) should have c-form added to pos-2(1?) to differentiate between だ、な、に etc.
-  [(create-table-as :search-tokens
-                    {:select [:pos-1 :pos-2 :c-form :orth-base :lemma :genre
-                              [(h/call :count :pos-1) :count]
-                              [(h/call :count-distinct :sentences.id) :sentences-count]
-                              [(h/call :count-distinct :sources.id) :sources-count]]
-                     :from [:tokens :sentences :sources]
-                     :where [:and
-                             [:= :tokens.sentences-id :sentences.id]
-                             [:= :sentences.sources-id :sources.id]]
-                     :group-by [:pos-1 :pos-2 :c-form :orth-base :lemma :genre]
-                     :order-by [:lemma :orth-base :pos-1 :pos-2 :c-form :genre :count]})
-   (create-index :search-tokens :genre :gist)
-   (create-index :search-tokens :genre)
-   (create-index :search-tokens :pos-1)
-   (create-index :search-tokens :pos-2)
-   (create-index :search-tokens :orth-base)
-   (create-index :search-tokens :lemma)
+  [[:seq (create-table-as
+          :search-tokens
+          {:select [:pos-1 :pos-2 :c-form :orth-base :lemma :genre
+                    [(h/call :count :pos-1) :count]
+                    [(h/call :count-distinct :sentences.id) :sentences-count]
+                    [(h/call :count-distinct :sources.id) :sources-count]]
+           :from [:tokens :sentences :sources]
+           :where [:and
+                   [:= :tokens.sentences-id :sentences.id]
+                   [:= :sentences.sources-id :sources.id]]
+           :group-by [:pos-1 :pos-2 :c-form :orth-base :lemma :genre]
+           :order-by [:lemma :orth-base :pos-1 :pos-2 :c-form :genre :count]})]
+   [:par (create-index :search-tokens :genre :gist)]
+   [:par (create-index :search-tokens :genre)]
+   [:par (create-index :search-tokens :pos-1)]
+   [:par (create-index :search-tokens :pos-2)]
+   [:par (create-index :search-tokens :orth-base)]
+   [:par (create-index :search-tokens :lemma)]
 
    ;; FIXME TODO consider adding array of sentence ids per row?
    ;; TODO need a clear search case for these (and for normal gram_X tables for that matter).
-   (h/raw
-    "CREATE TABLE search_gram_1 AS
+   [:seq (h/raw
+          "CREATE TABLE search_gram_1 AS
    SELECT pos_1 AS type, g1.string_1, so.genre, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_1 AS g1, sentences AS se, sources AS so
    WHERE g1.sentences_id=se.id AND se.sources_id=so.id GROUP BY pos_1, g1.string_1, so.genre
-   ORDER BY pos_1, g1.string_1, so.genre, count")
-   (create-index :search-gram-1 :genre :gist)
-   (create-index :search-gram-1 :genre)
-   (create-index :search-gram-1 :type)
-   (create-index :search-gram-1 :string-1)
+   ORDER BY pos_1, g1.string_1, so.genre, count")]
+   [:par (create-index :search-gram-1 :genre :gist)]
+   [:par (create-index :search-gram-1 :genre)]
+   [:par (create-index :search-gram-1 :type)]
+   [:par (create-index :search-gram-1 :string-1)]
 
-   (h/raw
-    "CREATE TABLE search_gram_2 AS
+   [:seq
+    (h/raw
+     "CREATE TABLE search_gram_2 AS
     WITH
       f_ix AS (SELECT (pos_1 || '_' || pos_2) AS t, string_1, genre, count(string_2)::integer FROM gram_2, sentences, sources WHERE gram_2.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_1, genre),
       f_xi AS (SELECT (pos_1 || '_' || pos_2) AS t, string_2, genre, count(string_1)::integer FROM gram_2, sentences, sources WHERE gram_2.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_2, genre)
     SELECT (pos_1 || '_' || pos_2) AS type, g2.string_1, g2.string_2, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_2 AS g2, sentences AS se, sources AS so, f_ix, f_xi
     WHERE g2.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2) AND f_xi.t=(pos_1 || '_' || pos_2) AND f_ix.string_1=g2.string_1 and f_xi.string_2=g2.string_2 AND f_ix.genre=so.genre AND f_xi.genre=so.genre
     GROUP BY pos_1, pos_2, g2.string_1, g2.string_2, so.genre, f_ix, f_xi
-    ORDER BY (pos_1 || '_' || pos_2), g2.string_1, g2.string_2, so.genre, count")
+    ORDER BY (pos_1 || '_' || pos_2), g2.string_1, g2.string_2, so.genre, count")]
 
-   (create-index :search-gram-2 :genre :gist)
-   (create-index :search-gram-2 :genre)
-   (create-index :search-gram-2 :type)
-   (create-index :search-gram-2 :string-1)
-   (create-index :search-gram-2 :string-2)
+   [:par (create-index :search-gram-2 :genre :gist)]
+   [:par (create-index :search-gram-2 :genre)]
+   [:par (create-index :search-gram-2 :type)]
+   [:par (create-index :search-gram-2 :string-1)]
+   [:par (create-index :search-gram-2 :string-2)]
 
-
-   (h/raw
-    "CREATE TABLE search_gram_3 AS
+   [:seq
+    (h/raw
+     "CREATE TABLE search_gram_3 AS
     WITH
       f_ix AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS t, string_1, genre, count(string_3)::integer FROM gram_3, sentences, sources WHERE gram_3.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_1, genre),
       f_xi AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS t, string_3, genre, count(string_1)::integer FROM gram_3, sentences, sources WHERE gram_3.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_3, genre)
     SELECT (pos_1 || '_' || pos_2 || '_' || pos_3) AS type, g3.string_1, g3.string_2, g3.string_3, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_3 AS g3, sentences AS se, sources AS so, f_ix, f_xi
     WHERE g3.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2 || '_' || pos_3) AND f_xi.t=(pos_1 || '_' || pos_2 || '_' || pos_3) AND f_ix.string_1=g3.string_1 and f_xi.string_3=g3.string_3 AND f_ix.genre=so.genre AND f_xi.genre=so.genre
     GROUP BY pos_1, pos_2, pos_3, g3.string_1, g3.string_2, g3.string_3, so.genre, f_ix, f_xi
-    ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3), g3.string_1, g3.string_2, g3.string_3, so.genre, count")
+    ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3), g3.string_1, g3.string_2, g3.string_3, so.genre, count")]
 
-   (create-index :search-gram-3 :genre :gist)
-   (create-index :search-gram-3 :genre)
-   (create-index :search-gram-3 :type)
-   (create-index :search-gram-3 :string-1)
-   (create-index :search-gram-3 :string-2)
-   (create-index :search-gram-3 :string-3)
+   [:par (create-index :search-gram-3 :genre :gist)]
+   [:par (create-index :search-gram-3 :genre)]
+   [:par (create-index :search-gram-3 :type)]
+   [:par (create-index :search-gram-3 :string-1)]
+   [:par (create-index :search-gram-3 :string-2)]
+   [:par (create-index :search-gram-3 :string-3)]
 
    ;; Note: f-io and f-oi are fixed to string-1 and string-3 in 4-grams too (FIXME).
-   (h/raw
-    "CREATE TABLE search_gram_4 AS
+   [:seq (h/raw
+          "CREATE TABLE search_gram_4 AS
     WITH
       f_ix AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS t, string_1, genre, count(string_3)::integer FROM gram_4, sentences, sources WHERE gram_4.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_1, genre),
       f_xi AS (SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS t, string_3, genre, count(string_1)::integer FROM gram_4, sentences, sources WHERE gram_4.sentences_id=sentences.id AND sentences.sources_id=sources.id GROUP BY t, string_3, genre)
     SELECT (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AS type, g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, f_ix.count AS f_ix, f_xi.count AS f_xi, count(*)::integer AS count, count(DISTINCT se.id)::integer as sentences_count, count(DISTINCT so.id)::integer as sources_count FROM gram_4 AS g4, sentences AS se, sources AS so, f_ix, f_xi
     WHERE g4.sentences_id=se.id AND se.sources_id=so.id AND f_ix.t=(pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AND f_xi.t=(pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4) AND f_ix.string_1=g4.string_1 and f_xi.string_3=g4.string_3 AND f_ix.genre=so.genre AND f_xi.genre=so.genre
     GROUP BY pos_1, pos_2, pos_3, pos_4, g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, f_ix, f_xi
-    ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4), g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, count")
+    ORDER BY (pos_1 || '_' || pos_2 || '_' || pos_3 || '_' || pos_4), g4.string_1, g4.string_2, g4.string_3, g4.string_4, so.genre, count")]
 
-   (create-index :search-gram-4 :genre :gist)
-   (create-index :search-gram-4 :genre)
-   (create-index :search-gram-4 :type)
-   (create-index :search-gram-4 :string-1)
-   (create-index :search-gram-4 :string-2)
-   (create-index :search-gram-4 :string-3)
-   (create-index :search-gram-4 :string-4)
-   (h/raw "ANALYZE")])
+   [:par (create-index :search-gram-4 :genre :gist)]
+   [:par (create-index :search-gram-4 :genre)]
+   [:par (create-index :search-gram-4 :type)]
+   [:par (create-index :search-gram-4 :string-1)]
+   [:par (create-index :search-gram-4 :string-2)]
+   [:par (create-index :search-gram-4 :string-3)]
+   [:par (create-index :search-gram-4 :string-4)]
+   [:seq (h/raw "ANALYZE")]])
 
 (defn create-search-tables! [conn & {:keys [resort?] :or {resort? true}}]
-  (if resort? ;; FIXME one big transaction might be overkill?
-    (seq-execute! conn expensive-indexes resorted-gram-tables norm-table search-table)
-    (seq-execute! conn norm-table search-table)))
+  (let [stmts-vec
+        (if resort?
+          [expensive-indexes resorted-gram-tables norm-table search-table]
+          [norm-table search-table])]
+    (doseq [stmts stmts-vec
+            part-stmts (partition-by first stmts)]
+      (case (-> part-stmts ffirst)
+        :par (seq-par-execute! conn (map second part-stmts))
+        :seq (seq-execute! conn (map second part-stmts))))))
 
 (defn drop-search-tables! [conn]
   (doseq [t [(ddl/drop-table :genre_norm)
@@ -653,10 +674,12 @@ return the DDL string for creating that unlogged table."
       :tokens
       (map-indexed
        (fn [i token]
-         (assoc
-          (select-keys token [:pos :pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu :tags])
-          :position i
-          :sentences-id sentences-id))
+         (-> token
+             (select-keys [:pos :pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu :tags])
+             (assoc :position i
+                    :sentences-id sentences-id)
+             ;; For the tokens table, we prefer getting rid of extraneous whitespace for better matching capabilities.
+             (update :orth (fn [s] (string/replace s #"[\n\t　\s]" "")))))
        token-seq)))
 
 ;; ## Query functions
