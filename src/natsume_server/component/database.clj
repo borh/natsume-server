@@ -117,11 +117,12 @@
 
 (defn seq-par-execute!
   [conn & sql-stmts]
-  (doseq [f (map
-             (fn [stmt]
-               (future (e! conn [stmt])))
-             (mapcat #(mapcat h/format %)
-                     sql-stmts))]
+  (doseq [f (doall
+             (map
+              (fn [stmt]
+                (future (e! conn [stmt])))
+              (mapcat #(mapcat h/format %)
+                      sql-stmts)))]
     @f))
 
 (defn seq-print-sql
