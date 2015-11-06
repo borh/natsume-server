@@ -14,30 +14,30 @@
                  [potemkin "0.4.1"]
                  [environ "1.0.1"]
                  [meta-merge "0.1.1"]
-                 [prismatic/schema "1.0.1"]
+                 [prismatic/schema "1.0.3"]
 
                  [org.immutant/web "2.1.0" :exclusions [ring/ring-core]]
-                 [io.pedestal/pedestal.service "0.4.0" :exclusions [com.fasterxml.jackson.core/jackson-core]]
-                 [io.pedestal/pedestal.service-tools "0.4.0" :exclusions [org.slf4j/log4j-over-slf4j]]
-                 [io.pedestal/pedestal.immutant "0.4.0" :exclusions [org.immutant/web]]
+                 [io.pedestal/pedestal.service "0.4.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 [io.pedestal/pedestal.service-tools "0.4.1" :exclusions [org.slf4j/log4j-over-slf4j]]
+                 [io.pedestal/pedestal.immutant "0.4.1" :exclusions [org.immutant/web]]
                  [metosin/ring-swagger "0.21.0" :exclusions [metosin/ring-swagger-ui]]
                  [metosin/ring-swagger-ui "2.1.8-M1"]
                  [frankiesardo/pedestal-swagger "0.4.4"]
                  [cheshire "5.5.0"]
 
                  ;; Database
-                 [org.postgresql/postgresql "9.4-1203-jdbc42"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.4-1205-jdbc42"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.4.2"]
                  [java-jdbc/dsl "0.1.3"]
-                 [com.alibaba/druid "1.0.15"]
-                 [honeysql "0.6.1"]
+                 [com.alibaba/druid "1.0.16"]
+                 [honeysql "0.6.2"]
                  ;;[yesql "0.4.0" :exclusions [instaparse]]
                  ;;
 
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.10"]
-                 [org.clojure/tools.reader "0.10.0-alpha3"]
+                 [org.clojure/tools.reader "1.0.0-alpha1"]
                  [com.taoensso/timbre "4.1.4"]
                  [org.clojure/tools.cli "0.3.3"]
                  [me.raynes/fs "1.4.6"]
@@ -45,18 +45,19 @@
                  [org.clojure/data.csv "0.1.3"]
                  [dk.ative/docjure "1.9.0"]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
+                 [automat "0.2.0-alpha2"]
                  [org.apache.commons/commons-math3 "3.5"]
-                 [fipp "0.6.2"]
+                 [fipp "0.6.3"]
                  [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.3.2" :exclusions [org.clojure/clojure]]
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.41.0"]
+                 [net.mikera/core.matrix "0.43.0"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0" :exclusions [incanter/parallelcolt]]
-                 [prismatic/plumbing "0.5.0" :exclusions [fs potemkin prismatic/schema]]
+                 [prismatic/plumbing "0.5.1" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -71,7 +72,7 @@
 
                  ;; Text processing
                  [org.chasen/cabocha "0.69"]
-                 [com.ibm.icu/icu4j "55.1"]
+                 [com.ibm.icu/icu4j "56.1"]
                  [d3-compat-tree "0.0.8"]
                  ;;
 
@@ -87,7 +88,7 @@
    :profiles/test {}
    :project/dev   {:source-paths ["dev"]
                    :repl-options {:init-ns user}
-                   :dependencies [[reloaded.repl "0.2.0"]
+                   :dependencies [[reloaded.repl "0.2.1"]
                                   [org.clojure/tools.namespace "0.3.0-alpha1"]]
                    :env {:db {:subname "//localhost:5432/natsumedev"
                               :user "natsumedev"
