@@ -139,7 +139,7 @@
    Word class is recorded in :pos and other tags in :tags set."
   [c]
   (reduce
-   (fn [r m]
+   (fn [r ^Morpheme m]
      (let [pos-code (.pos m)
            tags     (recode-tags m pos-code)
            ne       (if (not= "O" (.ne m)) #{(keywordize-ne (.ne m))} #{})]
@@ -275,7 +275,7 @@
                                            tokens)
                     tokens)]
               (if (empty? cleaned)
-                (do (println "Failed to cleanup:" pos tokens "in" tokens)
+                (do #_(println "Failed to cleanup:" pos tokens "in" tokens)
                     tokens)
                 cleaned)))]
 
