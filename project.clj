@@ -20,8 +20,8 @@
                  [io.pedestal/pedestal.service "0.4.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  [io.pedestal/pedestal.service-tools "0.4.1" :exclusions [org.slf4j/log4j-over-slf4j]]
                  [io.pedestal/pedestal.immutant "0.4.1" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.21.0" :exclusions [metosin/ring-swagger-ui]]
-                 [metosin/ring-swagger-ui "2.1.8-M1"]
+                 [metosin/ring-swagger "0.22.0" :exclusions [metosin/ring-swagger-ui]]
+                 [metosin/ring-swagger-ui "2.1.3-2"]
                  [frankiesardo/pedestal-swagger "0.4.4"]
                  [cheshire "5.5.0"]
 
@@ -53,7 +53,7 @@
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.43.0"]
+                 [net.mikera/core.matrix "0.44.0"]
                  [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0" :exclusions [incanter/parallelcolt]]
