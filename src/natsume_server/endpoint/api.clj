@@ -39,7 +39,7 @@
   view-sources-genre
   {:summary    "Returns a D3-compatible tree structure of counts (default = sources) by genre"
    :parameters {:query {(opt :norm) allowed-norms}} ;; FIXME default parameters with swagger?
-   :responses  {200 {:schema s/Any #_D3Tree}}}
+   :responses  {200 {:schema #_s/Any D3Tree}}}
   [{:keys [query-params]}]
   (response ((or (->> query-params :norm keyword)
                  :sources)
@@ -206,17 +206,20 @@
                          (opt :relation-limit) Long
                          ;;(opt :scale) s/Bool ;; TODO not implemented
                          (opt :compact-numbers) s/Bool)}
-   :responses  {200 {:schema [(ordered-map (opt :string-1) s/Str
-                                           (opt :string-2) s/Str
-                                           (opt :string-3) s/Str
-                                           (opt :string-4) s/Str
-                                           (req :data) [{s/Keyword s/Any} #_(assoc      ;; FIXME s/enum not valid as key?
-                                                  (for-map [measure allowed-measures]
-                                                    (opt measure) s/Num)
-                                                  (opt :string-1) s/Str
-                                                  (opt :string-2) s/Str
-                                                  (opt :string-3) s/Str
-                                                  (opt :string-4) s/Str)])]}}}
+   :responses  {200 {:schema
+                     [(into (ordered-map)
+                            (assoc (for-map [measure (-> allowed-measures first second)]
+                                       (opt measure) s/Num)
+                                   (opt :string-1) s/Str
+                                   (opt :string-2) s/Str
+                                   (opt :string-3) s/Str
+                                   (opt :string-4) s/Str
+                                   (opt :data) [(assoc (for-map [measure (-> allowed-measures first second)]
+                                                           (opt measure) s/Num)
+                                                       (opt :string-1) s/Str
+                                                       (opt :string-2) s/Str
+                                                       (opt :string-3) s/Str
+                                                       (opt :string-4) s/Str)]))]}}}
   [{:keys [conn query-params]}]
   ;; TODO (log-)scaling from 0-100 for display.
   (let [q (merge {:type :noun-particle-verb
