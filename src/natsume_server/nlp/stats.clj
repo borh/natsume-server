@@ -1,7 +1,7 @@
 (ns natsume-server.nlp.stats
-  (:require [incanter.stats :as stats]
-            [plumbing.core :refer [defnk for-map]]
-            [plumbing.graph :as graph]))
+  (:require [plumbing.core :refer [defnk for-map]]
+            [plumbing.graph :as graph]
+            [schema.core :as s]))
 
 ;; # Statistical Measures and Utility Functions
 
@@ -452,17 +452,33 @@
 
 ;; ## Register measures
 
-(defn sd [xs]
-  (stats/sd xs))
+(s/defn mean :- Double
+  [xs :- [s/Num]]
+  (double (/ (reduce + xs) (count xs))))
 
-(defn mean [xs]
-  (stats/mean xs))
+(s/defn variance :- Double
+  "Bias-corrected sample variance"
+  [xs :- [s/Num]]
+  (let [n (count xs)
+        m (mean xs)
+        square (map (fn [x] (* x x)))
+        deviation (map (fn [x] (- x m)))]
+    (/
+     (transduce (comp deviation square)
+                +
+                0.0
+                xs)
+     (dec n))))
 
-(defn chisq-thresh [n]
-  (first (stats/sample-chisq 0.05 :df n)))
+(s/defn sd :- Double
+  [xs :- [s/Num]]
+  (Math/sqrt (variance xs)))
 
-(defn chisq-test [xs]
-  (stats/chisq-test :table xs))
+;; (defn chisq-thresh [n]
+;;   (first (stats/sample-chisq 0.05 :df n)))
+;;
+;; (defn chisq-test [xs]
+;;   (stats/chisq-test :table xs))
 
 (defn register
   "Based on tree similarities."
