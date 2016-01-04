@@ -54,7 +54,7 @@
                 :replace  false
                 :hold-out false}}))
 
-(when (io/resource "local.clj")
-  (load "local"))
+;; (when (io/resource "local.clj")
+;;   (load "local"))
 
 (reloaded.repl/set-init! #(system/new-system config))
