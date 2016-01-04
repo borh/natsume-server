@@ -919,7 +919,7 @@ return the DDL string for creating that unlogged table."
          (map-vals (fn [x] (reduce #(+ %1 (-> %2 val :count)) 0 x))
                    (group-by #(let [wcs (clojure.string/split (name (key %)) #"-")
                                     aux-count (count (filter (fn [wc] (= "auxiliary" wc)) wcs))]
-                               (- (count wcs) aux-count))
+                                (- (count wcs) aux-count))
                              @!gram-totals))))
 
 ;; TODO custom-query to supplement and-query type queries (i.e. text match LIKE "%考え*%")
@@ -1015,7 +1015,7 @@ return the DDL string for creating that unlogged table."
         where-clause (-> query-clause
                          (conj [:= :type (fmt/to-sql type)])
                          (?> genre (conj [:tilda :genre genre])))
-        merge-fns (for-map [m measure] m (if (#{:count :f-xi :f-ix #_:f-io #_:f-oi} m) + #(if %1 %1 %2)))
+        merge-fns (for-map [m measure] m (if (#{:count :f-xi :f-ix #_:f-io #_:f-oi} m) + #(or %1 %2)))
         clean-up-fn (fn [data] (->> data
                                    (?>> compact-numbers (map (fn [r] (for-map [[k v] r] k (if (measure k) (compact-number v) v)))))))]
     (if (= (count query) n) ;; Only fully-specified queries are allowed.
