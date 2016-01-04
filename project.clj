@@ -16,14 +16,10 @@
                  [meta-merge "0.1.1"]
                  [prismatic/schema "1.0.4"]
 
-                 [org.immutant/web "2.1.0" :exclusions [ring/ring-core]]
-                 [io.pedestal/pedestal.service "0.4.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
-                 [io.pedestal/pedestal.service-tools "0.4.1" :exclusions [org.slf4j/log4j-over-slf4j]]
-                 [io.pedestal/pedestal.immutant "0.4.1" :exclusions [org.immutant/web]]
-                 [metosin/ring-swagger "0.22.0" :exclusions [metosin/ring-swagger-ui]]
-                 [metosin/ring-swagger-ui "2.1.3-2"]
-                 [frankiesardo/pedestal-swagger "0.4.4"]
+                 ;; Web
                  [cheshire "5.5.0"]
+                 [yada "1.1.0-SNAPSHOT"]
+                 [aleph "0.4.1-beta2"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4.1207"] ; https://github.com/kdubb/pgjdbc-ng

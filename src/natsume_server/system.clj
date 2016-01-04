@@ -2,9 +2,7 @@
   (:require [com.stuartsierra.component :as component]
             [meta-merge.core :refer [meta-merge]]
             [natsume-server.component.database :refer [database]]
-            [natsume-server.component.http-server :refer [http-server]]
-            [natsume-server.component.service :refer [service]]
-            [natsume-server.endpoint.api :refer [api-endpoint]]))
+            [natsume-server.endpoint.api :refer [new-api-app]]))
 
 (def base-config
   {:http {:port 3000}})
@@ -13,11 +11,9 @@
   (let [config (meta-merge base-config config)]
     (if (:server config)
       (-> (component/system-map
-            :http (http-server (:http config))
-            :database (database config)
-            :api (service api-endpoint :api))
+           :database (database config)
+           :api (new-api-app (:http config)))
           (component/system-using
-            {:http [:api #_:webapp]
-             :api  [:database]}))
+           {:api [:database]}))
       ;; Offline mode for data loading.
       (component/system-map :database (database config)))))

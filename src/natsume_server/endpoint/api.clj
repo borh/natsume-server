@@ -1,20 +1,34 @@
 (ns natsume-server.endpoint.api
-  (:require [io.pedestal.http.route.definition :refer [defroutes]]
-            [io.pedestal.http :as http]
-            [natsume-server.endpoint.interceptors :as mw]
-
-            [ring.util.response :refer [response]]
-            [pedestal.swagger.core :as swagger]
-            ;; [flatland.ordered.map :refer [ordered-map]] ;; FIXME change when new schema version released
-
-            [schema.core :as s]
-            [plumbing.core :refer [for-map map-keys ?>]]
-
+  (:require [aleph.http :as http]
+            [bidi.bidi :refer [RouteProvider] :as bidi]
+            [bidi.ring :refer [make-handler]]
+            [cheshire.core :as json]
+            [clojure.core.reducers :as r]
+            [clojure.string :as str]
+            [com.stuartsierra.component :refer [start system-map Lifecycle system-using using]]
             [d3-compat-tree.tree :refer [D3Tree]]
+            [hiccup.page :refer [html5]]
             [natsume-server.component.database :as db]
+            [natsume-server.config :as config]
+            [natsume-server.nlp.error :as error]
             [natsume-server.nlp.stats :refer [association-measures-graph]]
-            [natsume-server.nlp.collocations :refer [extract-collocations]]
-            [natsume-server.nlp.error :as error]))
+            [natsume-server.utils.naming :refer [dashes->lower-camel]]
+            [plumbing.core :refer [for-map map-keys ?>]]
+            [schema.core :as s]
+
+            ;;[flatland.ordered.map :as f]
+            [yada.methods :refer [PostResult GetResult]]
+            [yada.swagger :refer [swaggered]]
+            [yada.yada :refer [yada] :as yada]))
+
+;; Ugly workaround to get connection
+
+(def !connection (atom nil))
+
+(defn client-db-connection []
+  (if-not @!connection
+    (reset! !connection (db/druid-pool (:db config/defaults)))
+    @!connection))
 
 (def ordered-map hash-map) ;; FIXME change when new schema version released
 
@@ -24,287 +38,446 @@
 ;; FIXME The following functions need to complete loading in the db ns before we can define the schema below. (Race condition!)
 ;; (set-norm-map! conn)
 ;; (set-gram-information! conn)
-(s/defschema allowed-types    (apply s/enum #{:noun-particle-verb :noun-particle-adjective :adjective-noun} #_@db/!gram-types))
-(s/defschema allowed-measures (apply s/enum (set (conj (keys association-measures-graph) :count))))
-(s/defschema allowed-norms    (apply s/enum (set (keys @db/!norm-map))))
+(s/defschema allowed-types (s/enum :adjective :adverb :auxiliary-verb :fukugoujosi :noun :particle :prefix :preposition :utterance :verb)
+  #_(apply s/enum #_#{:noun-particle-verb :noun-particle-adjective :adjective-noun} (map dashes->lower-camel @db/!gram-types)))
+(s/defschema allowed-measures (apply s/enum (set (map identity #_dashes->lower-camel (conj (keys association-measures-graph) :count)))))
+(s/defschema allowed-norms    (apply s/enum (set (map identity #_dashes->lower-camel (keys @db/!norm-map)))))
 
-(swagger/defhandler
-  view-sources-api
-  {:summary    "Returns general summary information on the corpora and documents included in Natsume"
-   :parameters {}}
-  [request]
-  (response "TODO"))
+;; API component
 
-(swagger/defhandler
-  view-sources-genre
-  {:summary    "Returns a D3-compatible tree structure of counts (default = sources) by genre"
-   :parameters {:query {(opt :norm) allowed-norms}} ;; FIXME default parameters with swagger?
-   :responses  {200 {:schema #_s/Any D3Tree}}}
-  [{:keys [query-params]}]
-  (response ((or (->> query-params :norm keyword)
-                 :sources)
-              @db/!norm-map)))
+#_(extend-protocol schema.core/Schema
+  flatland.ordered.map.OrderedMap
+  (spec [this] (s/spec (into {} this)))
+  (explain [this] (s/explain (into {} this))))
 
-(swagger/defhandler
-  view-genre-similarity
-  {:summary    "Return a D3-compatible tree of similarity scores for queried genre"
-   :parameters {:query {:genre [s/Str]}}
-   :responses  {200 {:schema {}}}}
-  [{:keys [query-params]}]
-  (if-let [genre (-> query-params :genre first (clojure.string/split #"\."))]
-    (response :TODO #_(lm/get-genre-similarities genre))))
+(extend-protocol PostResult
+  clojure.lang.PersistentArrayMap
+  (interpret-post-result [m ctx]
+    (assoc-in ctx [:response :body] (json/generate-string m #_{:key-fn dashes->lower-camel}))))
 
-(swagger/defhandler
-  view-tokens
-  {:summary    "Returns D3-compatible tree of genre occurrences for queried (SUW) token"
-   :parameters {:query
-                #_(s/either
-                  {(req :orth-base) s/Str
-                   (opt :lemma)     s/Str
-                   (opt :pos-1)     s/Str
-                   (opt :pos-2)     s/Str
-                   (opt :norm)      allowed-norms})
+(extend-protocol GetResult
+  clojure.lang.LazySeq
+  (interpret-get-result [r ctx]
+    (assoc-in ctx [:response :body] (json/generate-string r #_{:key-fn dashes->lower-camel})))
+  clojure.lang.PersistentArrayMap
+  (interpret-get-result [m ctx]
+    (assoc-in ctx [:response :body] (json/generate-string m #_{:key-fn dashes->lower-camel}))))
 
-                (ordered-map
-                  (opt :orth-base) s/Str
-                  (req :lemma) s/Str
-                  (opt :pos-1) s/Str
-                  (opt :pos-2) s/Str
-                  (opt :norm) allowed-norms)}
-   :responses  {200 {:schema D3Tree}}}
-  [{:keys [conn query-params]}]
-  (let [{:keys [genre norm] :or {norm :tokens}} query-params] ; TODO :norm should include other measures like tf-idf, dice, etc.
-    ;; FIXME actually, norm should not be settable, but only indirectly available through other measures like tf-idf, etc.
-    (if query-params
-      (response (db/get-one-search-token conn query-params :norm (keyword norm))))))
+;; curl -i -X POST http://localhost:3006/errors -d "THERE IS DATA HERE" -H "Content-Type: text/plain"
 
-(swagger/defhandler
-  view-sentences-by-collocation
-  {:summary    "Returns sentences matching queried collocation"
-   :parameters {:query (ordered-map
-                         (opt :string-1) s/Str
-                         (opt :string-2) s/Str
-                         (opt :string-3) s/Str
-                         (opt :string-4) s/Str
-                         (opt :genre) [s/Str]
-                         (req :type) allowed-types
-                         (opt :limit) Long
-                         (opt :offset) Long
-                         (opt :html) s/Bool
-                         (opt :sort) s/Str)}
-   :responses  {200 {:schema [(ordered-map
-                                (req :text) s/Str
-                                (req :genre) [s/Str]
-                                (req :title) s/Str
-                                (req :author) s/Str
-                                (req :year) s/Int
-                                (opt :begin-1) s/Int
-                                (opt :end-1) s/Int
-                                (opt :begin-2) s/Int
-                                (opt :end-2) s/Int
-                                (opt :begin-3) s/Int
-                                (opt :end-3) s/Int
-                                (opt :begin-4) s/Int
-                                (opt :end-4) s/Int)]}}}
-  [{:keys [conn query-params]}]
-  ;; FIXME validate: sort order; n <=> string-{1,2,3,4} sanity check
-  (println query-params)
-  (let [sentences (db/query-sentences conn query-params)]
-    (if (not-empty sentences)
-      (response sentences))))
+(defn extract-query-type [q]
+  (or
+   (some->> q
+            (juxt :string-1-pos :string-2-pos :string-3-pos :string-4-pos)
+            (remove nil?)
+            (map name)
+            (str/join "-")
+            keyword)
+   :noun-particle-verb))
 
-(swagger/defhandler
-  view-sentences-by-token
-  {:summary    "Returns sentences matching queried (SUW) token"
-   :parameters {:query (ordered-map
-                         (opt :orth) s/Str
-                         (opt :orth-base) s/Str
-                         (opt :pron) s/Str
-                         (opt :pron-base) s/Str
-                         (opt :lemma) s/Str
-                         (opt :pos-1) s/Str
-                         (opt :pos-2) s/Str
-                         (opt :pos-3) s/Str
-                         (opt :pos-4) s/Str
-                         (opt :c-type) s/Str
-                         (opt :c-form) s/Str
-                         (opt :goshu) s/Str                 ;; FIXME
-                         (opt :genre) [s/Str]
-                         (opt :limit) Long
-                         (opt :offset) Long
-                         (opt :html) s/Bool
-                         (opt :sort) s/Str)}
-   :responses  {200 {:schema [{(req :text)   s/Str
-                               (req :genre)  [s/Str]
-                               (req :title)  s/Str
-                               (req :author) s/Str
-                               (req :year)   s/Int}]}}}
-  [{:keys [conn query-params]}]
-  ;; validate: html sort order
-  (let [sentences (db/query-sentences-tokens conn query-params)] ;; FIXME
-    (if (not-empty sentences)
-      (response sentences))))
+(s/defn get-resource ;; :- yada.resource/Resource
+  [summary :- s/Str
+   description :- s/Str
+   params :- {s/Keyword s/Any}
+   fn :- clojure.lang.IFn]
+  (yada/resource
+   {:methods
+    {:get
+     {:consumes [{:media-type #{"application/x-www-form-urlencoded" "multipart/form-data"} :charset "UTF-8"}]
+      :produces {:media-type "application/json" #_#{"application/json" "application/json;pretty=true" #_"application/edn"} :charset "UTF-8"}
+      ;;:responses {404 {:description "Resource not found"}}
+      :summary summary
+      :description description
+      :parameters params
+      :response fn}}}))
 
+;; Sources
 
-(swagger/defhandler
-  view-collocations-tree
-  {:summary    "Returns D3-compatible tree of counts matching queried collocation or 1-gram"
-   :parameters {:query (ordered-map
-                         (opt :string-1) s/Str
-                         (opt :string-2) s/Str
-                         (opt :string-3) s/Str
-                         (opt :string-4) s/Str
-                         (opt :genre) [s/Str]
-                         (req :type) allowed-types
-                         (opt :limit) Long                  ;; FIXME these are not used, right???
-                         (opt :offset) Long
-                         (opt :html) s/Bool
-                         (opt :sort) s/Str)}
-   :responses  {200 {:schema #_D3Tree {s/Keyword s/Any}}}}
-  [{:keys [conn query-params]}]
-  (let [query-params (assoc query-params :compact-numbers true :scale true)
-        n (count (clojure.string/split (name (:type query-params)) #"-"))]
-    ;; FIXME quick-and-dirty validation
-    (if (or (and (= n 1) (:string-1 query-params))
-            (and (= n 2) (:string-1 query-params) (:string-2 query-params))
-            (and (= n 3) (:string-1 query-params) (:string-2 query-params)
-                 (:string-3 query-params))
-            (and (= n 4) (:string-1 query-params) (:string-2 query-params)
-                 (:string-3 query-params) (:string-4 query-params)))
-      (if-let [r (db/query-collocations-tree conn query-params)]
-        (response r)))))
+(defn sources-genre-resource []
+  (get-resource
+   "Genre statistics"
+   "Returns a D3-compatible tree structure of counts (default = sources) by genre"
+   {:query {(opt :norm) allowed-norms}}
+   (s/fn :- D3Tree [ctx]
+     ((or (->> ctx :parameters :query :norm keyword)
+          :sources)
+      @db/!norm-map))))
 
-(swagger/defhandler
-  get-text-register
-  {:summary    "Returns positions of errors by error type and confidence
-現状では、エラータイプの指摘範囲をレジスター選択誤りに限定する。"
-   :parameters {:body s/Any #_{:text s/Str}} ;; FIXME Does not work (middleware problem?). Currently "Content-Type: text/plain" needs to be set for client query to work.
-   :responses  {200 {:schema {s/Keyword s/Any}}}}
-  [{:keys [conn body-params body] :as request}]
-  ;; FIXME update-in all morphemes all positions with value equal to the end position of the last sentence (or 0 for first sentence).
-  (let [body-text (slurp body) #_(:text body-params)]
-    (if-let [results (error/get-error conn body-text)]
-      (response results))))
+(defn sources-genre-similarity-resource []
+  (get-resource
+   "Genre similarity statistics"
+   "[TODO] Return a D3-compatible tree of similarity scores for queried genre"
+   {:query {:genre s/Str}}
+   (s/fn [ctx]
+     (-> ctx :parameters :query :genre
+         (clojure.string/split #"\.")))))
 
-;; TODO Any way to standardize this query in, results out step w/ perhaps custom function/macro?
-;; FIXME Follow JSON API recommendations: http://jsonapi.org/format/#url-based-json-api as well as d3 use-cases.
-;; TODO Add links to sentence view queries etc. (with link-for Pedestal equiv.)
-;; FIXME Collocation view: we want genre to be settable -> default to top-level only (we don't need the genre tree?) and never return genre information (except perhaps as a separate field in the response.)
-;; FIXME Genre collocation view: use tree structure, but for one or more fully-specified collocations only! Should this be split into another api path?
-(swagger/defhandler
-  view-collocations
-  {:summary    "Returns collocations of queried (Natsume-specific) units"
-   :parameters {:query (ordered-map
-                         (opt :string-1) s/Str
-                         (opt :string-2) s/Str
-                         (opt :string-3) s/Str
-                         (opt :string-4) s/Str
-                         (req :type) allowed-types
-                         (opt :measure) allowed-measures
-                         (opt :limit) Long
-                         (opt :offset) Long
-                         (opt :relation-limit) Long
-                         ;;(opt :scale) s/Bool ;; TODO not implemented
-                         (opt :compact-numbers) s/Bool)}
-   :responses  {200 {:schema
-                     [(into (ordered-map)
-                            (assoc (for-map [measure (-> allowed-measures first second)]
-                                       (opt measure) s/Num)
-                                   (opt :string-1) s/Str
-                                   (opt :string-2) s/Str
-                                   (opt :string-3) s/Str
-                                   (opt :string-4) s/Str
-                                   (opt :data) [(assoc (for-map [measure (-> allowed-measures first second)]
-                                                           (opt measure) s/Num)
-                                                       (opt :string-1) s/Str
-                                                       (opt :string-2) s/Str
-                                                       (opt :string-3) s/Str
-                                                       (opt :string-4) s/Str)]))]}}}
-  [{:keys [conn query-params]}]
-  ;; TODO (log-)scaling from 0-100 for display.
-  (let [q (merge {:type :noun-particle-verb
-                  :measure :count
-                  ;;:aggregates [:count :f-ix :f-xi]
-                  :offset 0
-                  :limit 80
-                  :relation-limit 8
-                  :compact-numbers true
-                  :scale false}
-                 query-params)]
-    (if-let [r (db/query-collocations conn q)]
-      (response r))))
+;; Sentences
 
-(defn get-suggestions-tokens [])
+(defn sentences-collocations-resource []
+  (get-resource
+   "Collocation-based sentence search"
+   "Returns sentences matching queried collocation"
+   {:query (ordered-map
+            (opt :string-1) s/Str
+            (opt :string-2) s/Str
+            (opt :string-3) s/Str
+            (opt :string-4) s/Str
+            (opt :string-1-pos) allowed-types
+            (opt :string-2-pos) allowed-types
+            (opt :string-3-pos) allowed-types
+            (opt :string-4-pos) allowed-types
+            (opt :genre) s/Str
+            (opt :limit) Long
+            (opt :offset) Long
+            (opt :html) s/Bool
+            (opt :sort) s/Str)}
+   (s/fn :- [(ordered-map
+              (req :text) s/Str
+              (req :genre) [s/Str]
+              (req :title) s/Str
+              (req :author) s/Str
+              (req :year) s/Int
+              (opt :begin-1) s/Int
+              (opt :end-1) s/Int
+              (opt :begin-2) s/Int
+              (opt :end-2) s/Int
+              (opt :begin-3) s/Int
+              (opt :end-3) s/Int
+              (opt :begin-4) s/Int
+              (opt :end-4) s/Int)]
+     [ctx]
+     (let [q (-> ctx :parameters :query)]
+       (db/query-sentences (client-db-connection)
+                           (assoc q :type (extract-query-type q)))))))
 
-(swagger/defroutes
-  api-endpoint
-  {:info {:title       "Natsume Server API"
-          :description "Documentation for the Natsume Server API"
-          :version     "1.0"
-          :contact     {:name  "Bor Hodošček"
-                        :email "hinoki-project@googlegroups.com"
-                        :url   "https://hinoki-project.org"}
-          :license     {:name "Eclipse Public License"
-                        :url  "http://www.eclipse.org/legal/epl-v10.html"}}
-   #_:tags #_[{:name        "Sources"
-           :description "methods returning corpus information"}
-          {:name        "Sentences"
-           :description "methods returning sentences"}
-          {:name        "Tokens"
-           :description "methods returning tokens"}
-          {:name        "Collocations"
-           :description "methods returning collocations"}
-          {:name        "Errors"
-           :description "methods for error-checking text"}
-          {:name        "Suggestions"
-           :description "methods for token/collocation suggestions"}]}
-  [[["/api" {:get identity} ;; FIXME (redirect to root?)
+(defn sentences-tokens-resource []
+  (get-resource
+   "Token-based sentence search"
+   "Returns sentences matching queried (SUW) token"
+   {:query (ordered-map
+            (opt :orth) s/Str
+            (opt :orth-base) s/Str
+            (opt :pron) s/Str
+            (opt :pron-base) s/Str
+            (opt :lemma) s/Str
+            (opt :pos-1) s/Str
+            (opt :pos-2) s/Str
+            (opt :pos-3) s/Str
+            (opt :pos-4) s/Str
+            (opt :c-type) s/Str
+            (opt :c-form) s/Str
+            (opt :goshu) s/Str                 ;; FIXME
+            (opt :genre) s/Str
+            (opt :limit) Long
+            (opt :offset) Long
+            (opt :html) s/Bool
+            (opt :sort) s/Str)}
+   (s/fn :- [{(req :text)   s/Str
+              (req :genre)  [s/Str]
+              (req :title)  s/Str
+              (req :author) s/Str
+              (req :year)   s/Int}]
+     [ctx]
+     (db/query-sentences-tokens (client-db-connection)
+                                (-> ctx :parameters :query)))))
 
-     ^:interceptors
-     [;; before ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Tokens
 
-      mw/insert-db
-      mw/utf8-default
-      mw/custom-decode-params
-      (swagger/coerce-request)
+(defn tokens-resource []
+  (get-resource
+   "Tokens statistics"
+   "Returns D3-compatible tree of genre occurrences for queried (SUW) token"
+   {:query #_(s/either
+              {(req :orth-base) s/Str
+               (opt :lemma)     s/Str
+               (opt :pos-1)     s/Str
+               (opt :pos-2)     s/Str
+               (opt :norm)      allowed-norms})
+    (ordered-map
+     (opt :orth-base) s/Str
+     (req :lemma) s/Str
+     (opt :pos-1) s/Str
+     (opt :pos-2) s/Str
+     (opt :norm) allowed-norms)}
+   (s/fn :- D3Tree [ctx]
+     (let [q (-> ctx :parameters :query)
+           {:keys [norm] :or {norm :tokens}} q]
+       (db/get-one-search-token (client-db-connection) q :norm (keyword norm))))))
 
-      ;; on-request ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; Collocations
 
-      mw/custom-body-params
-      mw/kebab-case-params
-      (swagger/body-params)
+(defn collocations-resource []
+  (get-resource
+   "Collocations statistics"
+   "Returns collocations of queried (Natsume-specific) units"
+   {:query (ordered-map
+            (opt :string-1) s/Str
+            (opt :string-2) s/Str
+            (opt :string-3) s/Str
+            (opt :string-4) s/Str
+            (opt :string-1-pos) allowed-types
+            (opt :string-2-pos) allowed-types
+            (opt :string-3-pos) allowed-types
+            (opt :string-4-pos) allowed-types
+            (opt :measure) allowed-measures
+            (opt :limit) Long
+            (opt :offset) Long
+            (opt :relation-limit) Long
+            ;;(opt :scale) s/Bool ;; TODO not implemented
+            (opt :compact-numbers) s/Bool)}
+   (s/fn :- [(into (ordered-map)
+                   (assoc (for-map [measure (-> allowed-measures first second)]
+                              (opt measure) s/Num)
+                          (opt :string-1) s/Str
+                          (opt :string-2) s/Str
+                          (opt :string-3) s/Str
+                          (opt :string-4) s/Str
+                          (opt :data) [(assoc (for-map [measure (-> allowed-measures first second)]
+                                                  (opt measure) s/Num)
+                                              (opt :string-1) s/Str
+                                              (opt :string-2) s/Str
+                                              (opt :string-3) s/Str
+                                              (opt :string-4) s/Str)]))]
+     [ctx]
+     (let [q (merge
+              {:measure :count
+               ;;:aggregates [:count :f-ix :f-xi]
+               :offset 0
+               :limit 80
+               :relation-limit 8
+               :compact-numbers true
+               :scale false}
+              (-> ctx :parameters :query))
+           types (extract-query-type q)
+           q (if types (assoc q :type types) q)]
+       (db/query-collocations (client-db-connection) q)))))
 
-      ;; on-response ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn collocations-tree-resource []
+  (get-resource
+   "Collocations genre statistics"
+   "Returns D3-compatible tree of counts matching queried collocation or 1-gram"
+   {:query (ordered-map
+            (opt :string-1) s/Str
+            (opt :string-2) s/Str
+            (opt :string-3) s/Str
+            (opt :string-4) s/Str
+            (opt :string-1-pos) allowed-types
+            (opt :string-2-pos) allowed-types
+            (opt :string-3-pos) allowed-types
+            (opt :string-4-pos) allowed-types
+            (opt :genre) s/Str
+            (opt :tags) [s/Keyword]
+            (opt :measure) allowed-measures
+            (opt :compact-numbers) s/Bool
+            (opt :normalize) s/Bool)}
+   (s/fn :- D3Tree
+     [ctx]
+     (let [q (merge
+              {:compact-numbers true
+               :scale true}
+              (-> ctx :parameters :query))
+           q (assoc q :type (extract-query-type q))
+           n (count (clojure.string/split (name (:type q)) #"-"))]
+       (if (or (and (= n 1) (:string-1 q))
+               (and (= n 2) (:string-1 q) (:string-2 q))
+               (and (= n 3) (:string-1 q) (:string-2 q)
+                    (:string-3 q))
+               (and (= n 4) (:string-1 q) (:string-2 q)
+                    (:string-3 q) (:string-4 q)))
+         (db/query-collocations-tree (client-db-connection) q))))))
 
-      ;;http/json-body
-      mw/json-response
+;; Errors
 
-      ;; after ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(defn errors-register-resource []
+  (yada/resource
+   {:methods
+    {:post
+     {:summary "Text register error analysis"
+      :description "Returns positions of register-related errors by error type (tokens or grams) and confidence"
+      :consumes [{:media-type #{"text/plain"} :charset "UTF-8"}]
+      :produces [{:media-type #{"application/json" "application/edn"} :charset "UTF-8"}]
+      :parameters {:body s/Str}
+      :response
+      (s/fn :- {s/Keyword s/Any}
+        [ctx]
+        (error/get-error (client-db-connection) (:body ctx)))}}}))
 
-      (swagger/validate-response)]
+;; Routing
 
-     ["/sources" {:get view-sources-api} ;; TODO
-      ["/genre" {:get view-sources-genre}
-       ["/similarity" {:get view-genre-similarity}]]]
-     ["/sentences"
-      ["/collocations" {:get view-sentences-by-collocation}]
-      ["/tokens" {:get view-sentences-by-token}]] ;; TODO
-     ["/tokens" {:get view-tokens}]
-     ["/collocations" {:get view-collocations}
-      ["/tree" {:get view-collocations-tree}]]
-     ["/errors"
-      ["/register"                                          ;; ^:interceptors [mw/read-body]
-       {:post get-text-register}]]
-     ["/suggestions" ;; TODO Suggest correct orthography given token/collocation.
-      ;; TODO Look into how we integrate suggestions with the error API--specifically, how to deal with information on before-after differences (c.f. kosodo data).
-      ["/tokens" {:get get-suggestions-tokens}]]]
+(def swagger-info
+  {:info
+   {:title       "Natsume Server API"
+    :description "Documentation for the Natsume Server API"
+    :version     "1.0"
+    :contact     {:name  "Bor Hodošček"
+                  :email "hinoki-project@googlegroups.com"
+                  :url   "https://hinoki-project.org"}
+    :license     {:name "Eclipse Public License"
+                  :url  "http://www.eclipse.org/legal/epl-v10.html"}}
+   :basePath "/api"})
 
-    ;; Swagger Documentation
-    ["/swagger/swagger.json" ^:interceptors [mw/json-response] {:get [(swagger/swagger-json)]}]
-    ["/swagger/*resource" {:get [(swagger/swagger-ui)]}]
-    #_["/doc" ^:interceptors [mw/custom-decode-params
-                            (swagger/coerce-request)
-                            (swagger/body-params :json-params)
-                            mw/json-response]
-     {:get [(swagger/swagger-json)]}]
-    #_["/*resource" {:get [(swagger/swagger-ui)]}]]])
+(defn api []
+  ["/api"
+   {"/sources"      {"/genre" {""            (yada (sources-genre-resource))
+                               "/similarity" (yada (sources-genre-similarity-resource))}}
+    "/sentences"    {"/collocations"         (yada (sentences-collocations-resource))
+                     "/tokens"               (yada (sentences-tokens-resource))}
+    "/tokens"                                (yada (tokens-resource))
+    "/collocations" {""                      (yada (collocations-resource))
+                     "/tree"                 (yada (collocations-tree-resource))}
+    "/errors"       {"/register"             (yada (errors-register-resource))}
+    "/suggestions"  {"/tokens"               (yada "TODO")}}])
+
+(s/defrecord ApiComponent []
+  RouteProvider
+  (routes [_] (api)))
+
+(defn new-api-component []
+  (map->ApiComponent {}))
+
+;; System setup
+
+(defn describe-routes
+  "An example of the kind of thing you can do when your routes are data"
+  [api]
+  (for [{:keys [path handler]} (bidi/route-seq (bidi/routes api))]
+    {:path (apply str path)
+     :description (get-in handler [:properties :doc/description])
+     :handler handler}))
+
+(defprotocol ISchemaPrint
+  (schema-print [s]))
+
+(extend-protocol ISchemaPrint
+
+  schema.core.OptionalKey
+  (schema-print [s]
+    (str (-> s vals first schema-print)))
+
+  schema.core.EnumSchema
+  (schema-print [s]
+    (let [es (-> s first second sort)
+          es (if (> (count es) 10) (concat (take 10 es) '("...")) es)]
+      (->> es
+           (map schema-print)
+           (str/join "' | '")
+           (format "Enum( '%s' )"))))
+
+  schema.core.Predicate
+  (schema-print [s]
+    (case (some-> s :pred-name str)
+      "keyword?" "String"))
+
+  ;;clojure.lang.MapEntry
+  ;;(schema-print [s] [(schema-print (key s))
+  ;;                   (schema-print (val s))])
+
+  clojure.lang.Keyword
+  (schema-print [s] (name s #_(dashes->lower-camel s)))
+
+  java.lang.String
+  (schema-print [s] s)
+
+  ;;java.util.regex.Pattern
+  ;;(schema-print [s] (schema-print (str s)))
+
+  clojure.lang.PersistentVector
+  (schema-print [s] (do #_(println s) #_(println (mapv schema-print (sort s))) (format "Vec( %s )" (str/join ", " (mapv schema-print (sort s))))))
+
+  clojure.lang.PersistentHashSet
+  (schema-print [s] (str (schema-print (class (first s))) " (" (str/join " | " (map schema-print s)) ")"))
+
+  ;;clojure.lang.PersistentHashMap
+  ;;(schema-print [s] (mapv schema-print s))
+
+  java.lang.Class
+  (schema-print [s] (schema-print (last (str/split (.getName s) #"\."))))
+
+  nil
+  (schema-print [s] "nil"))
+
+(schema-print [s/Str])
+
+(defn index-page [api port]
+  (yada/yada
+   (merge
+    (yada/as-resource
+     (html5 {:encoding "UTF-8"}
+      [:link {:type "text/css" :href "http://yui.yahooapis.com/pure/0.6.0/pure-min.css" :rel "stylesheet"}]
+      [:div.pure-g
+       [:div.pure-u-1-24]
+       [:div.pure-u-22-24
+        [:h1 "natsume-server API Documentation"]
+        (for [{:keys [path description handler]} (describe-routes api)]
+          [:div
+           [:h2 path]
+           [:ul
+            (for [method (clojure.set/intersection #{:get :post} (:allowed-methods handler))
+                  :let [meth (str/upper-case (str (name method)))
+                        param-type (case method :get :query :post :body :head nil :options nil)
+                        {:keys [description summary consumes produces]} (-> handler :resource :methods method)]]
+              [:li
+               [:h3 summary]
+               [:p [:b "Description: "] description]
+               [:p [:b "Method: "] meth]
+               [:pre (format "curl -i -X %s http://localhost:%d%s" meth port path)]
+               [:p [:b "Input media types: "] (schema-print (apply s/enum (mapv :name (map :media-type consumes))))]
+               [:p [:b "Output media types: "] (schema-print (apply s/enum (mapv :name (map :media-type produces))))]
+               (if-let [ps (some-> handler :resource :methods method :parameters)]
+                 (case method
+                   :get
+                   [:div
+                    [:h4 "Parameters"]
+                    [:table.pure-table
+                     [:thead [:td [:b "Field"]] [:td [:b "Value schema"]]]
+                     [:tbody
+                      (for [[k v] (into (sorted-map-by (fn [a b] (compare (schema-print a) (schema-print b)))) (param-type ps))]
+                        [:tr [:td (schema-print k)] [:td (schema-print v)]])]]]
+                   :post
+                   [:div
+                    [:h4 "Parameters"]
+                    [:table.pure-table
+                     [:thead
+                      [:td [:b "Body"]]
+                      [:td (schema-print (param-type ps))]]]]))])]])]]))
+    {:produces {:media-type "text/html" :charset "UTF-8"}})))
+
+(defn create-routes [api port]
+  [""
+   [["/" (index-page api port)]
+    (bidi/routes api)
+    [true (yada/yada nil)]]])
+
+(defrecord ServerComponent [api port]
+  Lifecycle
+  (start [component]
+    (let [routes (create-routes api port)]
+      (assoc component
+             :routes routes
+             :server (http/start-server (make-handler routes) {:port port :raw-stream? true}))))
+  (stop [component]
+    (when-let [server (:server component)]
+      (.close server))
+    (dissoc component :server)))
+
+(defn new-server-component [config]
+  (map->ServerComponent config))
+
+(defn new-system-map [config]
+  (system-map
+   :api (new-api-component)
+   :server (new-server-component config)))
+
+(defn new-dependency-map []
+  {:api {}
+   :server [:api]})
+
+(defn new-co-dependency-map []
+  {:api {:server :server}})
+
+(s/defschema UserPort (s/both s/Int (s/pred #(<= 1024 % 65535))))
+
+(s/defn new-api-app [config :- {:port UserPort}]
+  (-> (new-system-map config)
+      (system-using (new-dependency-map))))
