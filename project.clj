@@ -87,7 +87,8 @@
    :profiles/dev  {}
    :profiles/test {}
    :project/dev   {:source-paths ["dev"]
-                   :repl-options {:init-ns user}
+                   :repl-options {:init-ns user
+                                  :timeout 120000}
                    :dependencies [[reloaded.repl "0.2.1"]
                                   [org.clojure/tools.namespace "0.3.0-alpha1"]]
                    :env {:db {:subname "//localhost:5432/natsumedev"
