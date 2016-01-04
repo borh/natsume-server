@@ -8,13 +8,13 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ^:replace ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.7.0"]
+  :dependencies [[org.clojure/clojure "1.8.0-RC4"]
 
-                 [com.stuartsierra/component "0.3.0"]
-                 [potemkin "0.4.1"]
+                 [com.stuartsierra/component "0.3.1"]
+                 [potemkin "0.4.2"]
                  [environ "1.0.1"]
                  [meta-merge "0.1.1"]
-                 [prismatic/schema "1.0.3"]
+                 [prismatic/schema "1.0.4"]
 
                  [org.immutant/web "2.1.0" :exclusions [ring/ring-core]]
                  [io.pedestal/pedestal.service "0.4.1" :exclusions [com.fasterxml.jackson.core/jackson-core]]
@@ -26,7 +26,7 @@
                  [cheshire "5.5.0"]
 
                  ;; Database
-                 [org.postgresql/postgresql "9.4-1205-jdbc42"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.4.1207"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.4.2"]
                  [java-jdbc/dsl "0.1.3"]
                  [com.alibaba/druid "1.0.16"]
@@ -38,7 +38,7 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.10"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
-                 [com.taoensso/timbre "4.1.4"]
+                 [com.taoensso/timbre "4.2.0"]
                  [org.clojure/tools.cli "0.3.3"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.3"]
@@ -47,17 +47,17 @@
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [automat "0.2.0-alpha2"]
                  [org.apache.commons/commons-math3 "3.5"]
-                 [fipp "0.6.3"]
+                 [fipp "0.6.4"]
                  [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.3.2" :exclusions [org.clojure/clojure]]
                  ;;
 
                  ;; Stats/models/ML
-                 [net.mikera/core.matrix "0.44.0"]
-                 [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
+                 ;; [net.mikera/core.matrix "0.48.0"] ;; >0.44.0 breaks incanter
+                 ;; [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
-                 [bigml/sampling "3.0" :exclusions [incanter/parallelcolt]]
-                 [prismatic/plumbing "0.5.1" :exclusions [fs potemkin prismatic/schema]]
+                 [bigml/sampling "3.0"]
+                 [prismatic/plumbing "0.5.2" :exclusions [fs potemkin prismatic/schema]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
@@ -73,12 +73,11 @@
                  ;; Text processing
                  [org.chasen/cabocha "0.69"]
                  [com.ibm.icu/icu4j "56.1"]
-                 [d3-compat-tree "0.0.8"]
+                 [d3-compat-tree "0.0.9"]
                  ;;
 
                  ]
   :plugins [[lein-environ "1.0.1"]]
-  :duct {:ns-prefix natsume-server}
   :main ^:skip-aot natsume-server.main
   :profiles
   {:dev  [:project/dev  :profiles/dev]
