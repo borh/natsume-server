@@ -17,7 +17,10 @@
     {:db       {:subname  "//localhost:5432/natsumedev"
                 :user     "natsumedev"
                 :password "riDJMq98LpyWgB7F"}
-     :http     {:port 3000}
+     :http     {:port 3000
+                :server-address
+                #_"https://wombat.hinoki-project.org/natsume-server"
+                "http://localhost:3000"}
      :log      {:directory "./log"}
      :dirs     ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW"
                 "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OL"
