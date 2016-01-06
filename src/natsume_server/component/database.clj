@@ -346,7 +346,7 @@ return the DDL string for creating that unlogged table."
 
    ;; 2-grams:
    [:seq (rename-table :gram-2 :gram-2-renamed)]
-   [:seq (create-unlogged-table-as
+   [:seq (create-table-as
           :gram-2
           (-> (select :*)
               (from :gram-2-renamed)
@@ -363,7 +363,7 @@ return the DDL string for creating that unlogged table."
    ;; 4-grams:
 
    [:seq (rename-table :gram-4 :gram-4-renamed)]
-   [:seq (create-unlogged-table-as
+   [:seq (create-table-as
           :gram-4
           (-> (select :*)
               (from :gram-4-renamed)
@@ -386,7 +386,7 @@ return the DDL string for creating that unlogged table."
    [:seq (rename-table :gram-3 :gram-3-renamed)]
 
    [:seq
-    (h/raw "CREATE UNLOGGED TABLE gram_3 AS
+    (h/raw "CREATE TABLE gram_3 AS
 
    WITH temporary_union AS (
    (SELECT * FROM gram_3_renamed)
@@ -963,14 +963,14 @@ return the DDL string for creating that unlogged table."
                  (?> (not-empty selected) (assoc :group-by selected))))
          #_(map genre-ltree-transform)
          (?>> (> n 1) (map #(let [contingency-table (stats/expand-contingency-table
-                                                      {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
-                                                       ;; FIXME : we probably want to have the option of using the total count per n-gram order...
-                                                       :f-xx (-> @!gram-totals type :count)})] ;; FIXME Should add :genre filtering to !gram-totals when we specify some genre filter!
-                             (case measure
-                               :log-dice (merge % contingency-table)
-                               :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
-                               (assoc % measure
-                                        ((measure stats/association-measures-graph) contingency-table))))))
+                                                     {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
+                                                      ;; FIXME : we probably want to have the option of using the total count per n-gram order...
+                                                      :f-xx (-> @!gram-totals type :count)})] ;; FIXME Should add :genre filtering to !gram-totals when we specify some genre filter!
+                              (case measure
+                                :log-dice (merge % contingency-table)
+                                :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
+                                (assoc % measure
+                                       ((measure stats/association-measures-graph) contingency-table))))))
          (?>> (= :log-dice measure) ((fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1)))))
          (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) (dissoc :count))))
          (sort-by (comp - measure)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
@@ -1163,7 +1163,6 @@ return the DDL string for creating that unlogged table."
         query-fields (select-keys m [:orth :orth-base :lemma :pron :pron-base :pos-1 :pos-2 :pos-3 :pos-4 :c-form :c-type :goshu])
         selected-fields [:sources.genre :sources.title :sources.author :sources.year :sentences.text]
         search-table :tokens]
-    (println query-fields)
     (q conn {:select [(h/call :setseed 0.2)]}) ; FIXME Better way to get consistent ordering? -> when setting connection?
     (qm conn
         {:select [:*]
@@ -1380,8 +1379,8 @@ return the DDL string for creating that unlogged table."
       (when search?
         (create-search-tables! conn))
 
-      (set-norm-map! conn)
-      (set-gram-information! conn)
+      (future (set-norm-map! conn))
+      (future (set-gram-information! conn))
 
       (assoc this :connection conn)))
 
