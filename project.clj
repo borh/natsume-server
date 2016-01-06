@@ -42,7 +42,7 @@
                  [dk.ative/docjure "1.9.0"]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [automat "0.2.0-alpha2"]
-                 [org.apache.commons/commons-math3 "3.5"]
+                 [org.apache.commons/commons-math3 "3.6"]
                  [fipp "0.6.4"]
                  [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.3.2" :exclusions [org.clojure/clojure]]
