@@ -232,7 +232,7 @@
       (opt :pos_1) s/Str
       (opt :pos_2) s/Str
       (opt :norm) allowed-norms)}
-    :example-query {:query {:lemma "花" :orth_base "はな" :norm "sentences"}}}
+    :example-query {:query {:lemma "花" #_:orth_base #_"はな" :norm "sentences"}}}
    (s/fn :- D3Tree [ctx]
      (let [q (extract-query-params ctx)
            {:keys [norm] :or {norm :tokens}} q]
