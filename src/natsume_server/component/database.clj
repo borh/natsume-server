@@ -50,10 +50,7 @@
                (.setMaxActive 80))]
     {:datasource cpds}))
 
-
 ;; (def ^{:dynamic true} *conn*)
-
-
 
 ;; ## Database wrapper functions
 (defn q
