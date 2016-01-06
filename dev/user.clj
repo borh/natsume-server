@@ -45,11 +45,11 @@
                 "/data/STJC/JStage-環境資源工学"
                 ]
      :verbose  true
-     :clean    #_false true
-     :process  #_false true
-     :search   #_false true
-     :server   false #_true ;; TODO
-     :sampling {:ratio    0.01 ;; 0.01 => 22.09, 0.10 => 243.34
+     :clean    false #_true
+     :process  false #_true
+     :search   false #_true
+     :server   true  #_false ;; TODO
+     :sampling {:ratio    0.001 ;; 0.01 => 22.09, 0.10 => 243.34
                 :seed     2
                 :replace  false
                 :hold-out false}}))
