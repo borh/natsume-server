@@ -100,6 +100,7 @@
       "来る"   #{:kuru}
       "貰う"   #{:morau}
       "上げる" #{:ageru}
+      ;; FIXME 始まる
       #{})
     :adjective
     (condp = (:lemma m)
@@ -191,6 +192,53 @@
              [:adverb         :noun]      :noun
              [:noun           :particle]  :noun
              [:noun           :symbol]    :noun)))
+
+(comment
+  (require '[automat.viz :refer [view save]])
+  (require '[automat.core :as a])
+
+  (defn make-transition-graph! []
+    ;; TODO use transitions above
+    (view
+     (apply a/or (for [t transitions] (flatten t)))
+     #_(a/or [:verb :noun :verb]
+             [:adjective :noun :adjective]
+             [:adjective :verb :adjective])))
+
+  (defn make-pos-rename-graph! []
+    (save (apply
+           a/or
+           [[#"^動詞" :verb]
+            [#"^(副詞|名詞.+副詞可能)" :adverb] ;; TODO FIXME 副詞可能は名詞にする
+            [#"^(代?名詞[^副]+|記号文字)" :noun]
+            [#"^(形(容|状)詞|接尾辞形(容|状)詞的)" :adjective]
+            [#"^助詞" (a/or
+                       ["IF ((POS2==接続助詞 AND LEMMA==^(て|ば)$) OR LEMMA==^たり$)" :auxiliary-verb]
+                       ["ELSE" :particle]
+                       #_(if (or (and (= "接続助詞" (:pos-2 m)([)<0;86;25M
+                                      (re-seq #"^(て|ば)$" (:lemma m)))
+                                 (re-seq #"^たり$" (:lemma m)))
+                           :auxiliary-verb
+                           :particle))]
+            [#"^接続詞" :particle]
+            [#"^((補助)?記号|空白)" :symbol]
+            [#"^助動詞" (a/or ["IF C-TYPE==^助動詞-(ダ|デス)$" :particle]
+                              ["ELSE" :auxiliary-verb]
+                              #_(if (re-seq #"^助動詞-(ダ|デス)$" (:c-type m))
+                                  :particle
+                                  :auxiliary-verb))]
+            [#"^連体詞" :preposition]
+            [#"^感動詞" :utterance]
+            [#"^接頭辞" :prefix]
+            [#"^接尾辞"
+             (a/or ["IF POS2==動詞的" :adjective]
+                   ["IF POS2==名詞的" :noun]
+                   ["ELSE" :suffix]
+                   #_(cond (= (:pos-2 m) "動詞的") :adjective ; ~がかった
+                           (= (:pos-2 m) "名詞的") :noun ; ~ら
+                           :else :suffix))]])
+          "pos-renames.png")))
+
 
 (defn- reduce-with-transitions
   [reversed-tokens]

@@ -3,7 +3,6 @@
             [schema.core :as s]
             [bidi.bidi :as bidi]
             [yada.yada :as yada]
-            [cheshire.core :as json]
             [hiccup.page :refer [html5]]))
 
 ;; API printing
@@ -115,8 +114,15 @@
                              (fn [a [k v]]
                                (conj a [:div.form-group.form-group-sm
                                         [:label.col-sm-2.control-label (name k)]
-                                        [:div.col-sm-2 [:input.form-control {:type "text" :name (name k) :placeholder (str v) :value (if-not empty? v (str v))}]]]))
-                             [[:div.form-group.form-group-sm [:div.col-sm-offset-2.col-sm-2 [:button.btn.btn-default {:type "submit"} "Execute query"]]]])
+                                        [:div.col-sm-2
+                                         [:input.form-control
+                                          {:type "text"
+                                           :name (name k)
+                                           :placeholder (str v)
+                                           :value (if-not empty? v (str v))}]]]))
+                             [[:div.form-group.form-group-sm
+                               [:div.col-sm-offset-2.col-sm-2
+                                [:button.btn.btn-default {:type "submit"} "Execute query"]]]])
                             (into [:form.form-horizontal
                                    {:action api-url
                                     ;;:target "_blank"

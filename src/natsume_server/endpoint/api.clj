@@ -1,16 +1,18 @@
 (ns natsume-server.endpoint.api
-  (:require [aleph.http :as http]
-            [bidi.bidi :refer [RouteProvider] :as bidi]
-            [bidi.ring :refer [make-handler]]
+  (:require [bidi.bidi :as bidi]
+
             [cheshire.core :as json]
             [clojure.core.reducers :as r]
             [clojure.string :as str]
-            [com.stuartsierra.component :refer [start system-map Lifecycle system-using using]]
 
             [d3-compat-tree.tree :refer [D3Tree]]
 
-            [natsume-server.component.database :as db]
-            [natsume-server.config :as config]
+            [mount.core :refer [defstate]]
+
+            [natsume-server.component.database :refer [connection !norm-map !gram-types] :as db]
+            [natsume-server.component.query :as q]
+            [natsume-server.config :refer [run-mode config]]
+
             [natsume-server.nlp.error :as error]
             [natsume-server.nlp.stats :refer [association-measures-graph]]
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]
@@ -21,17 +23,7 @@
             ;;[flatland.ordered.map :as f]
             [natsume-server.endpoint.api-schema-docs :as docs]
             [yada.methods :refer [PostResult GetResult]]
-            [yada.swagger :refer [swaggered]]
             [yada.yada :refer [yada] :as yada]))
-
-;; FIXME Ugly workaround to get connection
-
-(def !connection (atom nil))
-
-(defn client-db-connection []
-  (if-not @!connection
-    (reset! !connection (db/druid-pool (:db config/defaults)))
-    @!connection))
 
 (def ordered-map hash-map) ;; FIXME change when new schema version released
 
@@ -43,7 +35,7 @@
 ;; (set-gram-information! conn)
 (s/defschema allowed-types (s/enum :adjective :adverb :auxiliary-verb :fukugoujosi :noun :particle :prefix :preposition :utterance :verb) #_(apply s/enum @db/!gram-types))
 (s/defschema allowed-measures (apply s/enum (set (map #_identity (comp keyword dashes->underscores) (conj (keys association-measures-graph) :count)))))
-(s/defschema allowed-norms    (apply s/enum (set (map #_identity (comp keyword dashes->underscores) (keys @db/!norm-map)))))
+(s/defschema allowed-norms    (apply s/enum [:tokens :chunks :sentences :sources] #_(set (map #_identity (comp keyword dashes->underscores) (keys (delay (deref db/!norm-map)))))))
 
 ;; API component
 
@@ -52,7 +44,7 @@
     (spec [this] (s/spec (into {} this)))
     (explain [this] (s/explain (into {} this))))
 
-(def ^:dynamic *pretty-print?* (-> config/defaults :http :pretty-print?))
+(def ^:dynamic *pretty-print?* (-> config :http :pretty-print?))
 
 (extend-protocol PostResult
   clojure.lang.PersistentArrayMap
@@ -121,7 +113,7 @@
    (s/fn :- D3Tree [ctx]
      ((or (->> ctx :parameters :query :norm keyword)
           :sources)
-      @db/!norm-map))))
+      db/!norm-map))))
 
 (defn sources-genre-similarity-resource []
   (get-resource
@@ -176,7 +168,7 @@
      [ctx]
      (let [q (extract-query-params ctx)]
        {:response
-        (db/query-sentences (client-db-connection)
+        (q/query-sentences connection
                             (assoc q :type (extract-query-type q)))}))))
 
 (defn sentences-tokens-resource []
@@ -211,7 +203,7 @@
                (req :year)   s/Int}]}
      [ctx]
      {:response
-      (db/query-sentences-tokens (client-db-connection) (extract-query-params ctx))})))
+      (q/query-sentences-tokens connection (extract-query-params ctx))})))
 
 ;; Tokens
 
@@ -236,7 +228,7 @@
    (s/fn :- D3Tree [ctx]
      (let [q (extract-query-params ctx)
            {:keys [norm] :or {norm :tokens}} q]
-       (db/get-one-search-token (client-db-connection) q :norm (keyword norm))))))
+       (q/get-one-search-token connection q :norm (keyword norm))))))
 
 ;; Collocations
 
@@ -293,7 +285,7 @@
            types (extract-query-type q)
            q (if types (assoc q :type types) q)]
        {:response
-        (db/query-collocations (client-db-connection) q)}))))
+        (q/query-collocations connection q)}))))
 
 (defn collocations-tree-resource []
   (get-resource
@@ -333,7 +325,7 @@
                     (:string-3 q))
                (and (= n 4) (:string-1 q) (:string-2 q)
                     (:string-3 q) (:string-4 q)))
-         (db/query-collocations-tree (client-db-connection) q))))))
+         (q/query-collocations-tree connection q))))))
 
 ;; Errors
 
@@ -350,14 +342,15 @@
       :response
       (s/fn :- {s/Keyword s/Any}
         [ctx]
-        (error/get-error (client-db-connection) (:body ctx)))}}}))
+        (error/get-error connection (:body ctx)))}}}))
 
 ;; Routing
 
 (defn api []
   ["/api"
    {"/sources"      {"/genre" {""            (yada (sources-genre-resource))
-                               #_"/similarity" #_(yada (sources-genre-similarity-resource))}}
+                               ;;"/similarity" (yada (sources-genre-similarity-resource))
+                               }}
     "/sentences"    {"/collocations"         (yada (sentences-collocations-resource))
                      "/tokens"               (yada (sentences-tokens-resource))}
     "/tokens"                                (yada (tokens-resource))
@@ -367,52 +360,21 @@
     ;;"/suggestions"  {"/tokens"               (yada "TODO")}
     }])
 
-(s/defrecord ApiComponent []
-  RouteProvider
+(defn create-routes [routes port server-address]
+  [""
+   [["/" (docs/index-page routes port !examples server-address)]
+    (bidi/routes routes)
+    [true (yada/yada nil)]]])
+
+(s/defrecord ApiRoute []
+  bidi/RouteProvider
   (routes [_] (api)))
 
-(defn new-api-component []
-  (map->ApiComponent {}))
+(defn api-route []
+  (map->ApiRoute {}))
 
 ;; System setup
 
-(defn create-routes [api port server-address]
-  [""
-   [["/" (docs/index-page api port !examples server-address)]
-    (bidi/routes api)
-    [true (yada/yada nil)]]])
-
-(defrecord ServerComponent [api port server-address]
-  Lifecycle
-  (start [component]
-    (let [routes (create-routes api port server-address)]
-      (assoc component
-             :routes routes
-             :server (http/start-server (make-handler routes) {:port port :raw-stream? true}))))
-  (stop [component]
-    (when-let [server (:server component)]
-      (.close server))
-    (dissoc component :server)))
-
-(defn new-server-component [config]
-  (map->ServerComponent config))
-
-(defn new-system-map [config]
-  (system-map
-   :api (new-api-component)
-   :server (new-server-component config)))
-
-(defn new-dependency-map []
-  {:api {}
-   :server [:api]})
-
-(defn new-co-dependency-map []
-  {:api {:server :server}})
-
-(s/defschema UserPort (s/both s/Int (s/pred #(<= 1024 % 65535))))
-
-(s/defn new-api-app
-  [config :- {:port UserPort
-              :server-address s/Str}]
-  (-> (new-system-map config)
-      (system-using (new-dependency-map))))
+(defstate api-routes
+  :start (when (:server config)
+           (create-routes (api-route) (-> config :http :port) (-> config :http :server-address))))

@@ -1,7 +1,7 @@
 (ns natsume-server.nlp.collocations
   (:require [clojure.core.reducers :as r]
             [schema.core :as s]
-            [natsume-server.nlp.cabocha-wrapper :refer [ChunkSchema]]))
+            #_[natsume-server.nlp.cabocha-wrapper :refer [ChunkSchema]]))
 
 ;; ## Collocation extraction
 

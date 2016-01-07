@@ -5,6 +5,7 @@
             [natsume-server.nlp.text :as text]
             [natsume-server.nlp.annotation-middleware :as anno]
             [natsume-server.component.database :as db]
+            [natsume-server.component.query :as q]
             [natsume-server.nlp.collocations :as coll]
             [natsume-server.nlp.stats :as stats]
             [natsume-server.utils.numbers :refer [compact-number]]
@@ -16,22 +17,22 @@
    tree :- {s/Keyword s/Any}]
   (let [raw-freqs
         (let [m (->> tree ;; TODO/FIXME: actually, token frequencies should be normalized based on (corpus, pos) and not just on (corpus)
-                     ;; (#(normalize-tree (:pos @db/!pos-genre-tokens) %)) ;; TODO
+                     ;; (#(normalize-tree (:pos db/!pos-genre-tokens) %)) ;; TODO
                      :children
                      (map (juxt :name :count))
                      (into {}))]
-          (for-map [genre @db/!genre-names]
+          (for-map [genre db/!genre-names]
             genre (or (get m genre) 0)))
 
         freqs
         (->> tree
-             (#(normalize-tree (:tokens @db/!norm-map) %))
+             (#(normalize-tree (:tokens db/!norm-map) %))
              :children
              (map (juxt :name :count))
              (into {}))]
     (if-not (seq freqs)
       {:found? false}
-      (let [freqs (for-map [genre @db/!genre-names]
+      (let [freqs (for-map [genre db/!genre-names]
                     genre (or (get freqs genre) 0.0))
             mean (stats/mean (vals freqs))
             ;;sd (stats/sd (vals freqs))
@@ -39,7 +40,7 @@
             ;; 0.10      	0.05 	0.025 	0.01 	0.005
             ;; 17.275 	19.675 	21.920 	24.725 	26.757
             good-unfiltered-ppm (* (/ (reduce + (vals (select-keys raw-freqs ["白書" "科学技術論文" "法律"])))
-                                      (reduce + (vals (select-keys @db/!genre-tokens-map ["白書" "科学技術論文" "法律"]))))
+                                      (reduce + (vals (select-keys db/!genre-tokens-map ["白書" "科学技術論文" "法律"]))))
                                    1000000)
             chisq-line (case pos
                          :noun 26.757
@@ -78,7 +79,7 @@
   (let [n (count (:type-vector collocation))
         strings [:string-1 :string-2 :string-3 :string-4]
         ;; Get counts for each string-*, if possible.
-        db-results (map (partial db/query-collocations-tree conn)
+        db-results (map (partial q/query-collocations-tree conn)
                         (for [i (take n (range (count strings)))]
                           (-> (apply dissoc collocation strings)
                               (assoc :measure #{:count :mi}
@@ -86,7 +87,7 @@
                                      :type (nth (:type-vector collocation) i)
                                      :string-1 ((nth strings i) collocation)))))
         freqs (->> db-results (map :count) (map #(if (or (nil? %) (zero? %)) 1.0 %)))
-        f-xx (get @db/!tokens-by-gram n) #_(:count ((:type collocation) @!gram-totals)) ;; Count for all genres.
+        f-xx (get db/!tokens-by-gram n) #_(:count ((:type collocation) @!gram-totals)) ;; Count for all genres.
         mi-scores (let [f-ii 1.0
                         f-ix (first freqs)
                         f-xi (if (= 2 (count freqs)) (nth freqs 1) (nth freqs 2))]
@@ -109,7 +110,7 @@
                                           (map name)
                                           (clojure.string/join "-")
                                           keyword)))
-        tree (db/query-collocations-tree conn collocation)
+        tree (q/query-collocations-tree conn collocation)
         n (count (:type-vector collocation))]
     (if (seq (:children tree))
       (sigma-score :collocation n tree)
@@ -120,7 +121,7 @@
 (s/defn token-register-score
   "Old formula, but includes measures other than chi-sq."
   [conn query]
-  (let [results (db/get-one-search-token conn query :compact-numbers false :norm nil)]
+  (let [results (q/get-one-search-token conn query :compact-numbers false :norm nil)]
     (sigma-score (:pos query) 1 results)))
 
 (s/defn score-sentence [conn tree sentence]
