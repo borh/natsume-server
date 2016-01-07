@@ -10,10 +10,10 @@
   :jvm-opts ^:replace ["-server" "-XX:+UseG1GC"]
   :dependencies [[org.clojure/clojure "1.8.0-RC4"]
 
-                 [com.stuartsierra/component "0.3.1"]
-                 [potemkin "0.4.2"]
+                 [mount "0.1.8"]
+                 [potemkin "0.4.3"]
                  [environ "1.0.1"]
-                 [meta-merge "0.1.1"]
+                 ;;[meta-merge "0.1.1"]
                  [prismatic/schema "1.0.4"]
 
                  ;; Web
@@ -35,17 +35,21 @@
                  [org.apache.commons/commons-compress "1.10"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
                  [com.taoensso/timbre "4.2.0"]
+                 [robert/hooke "1.3.0"]
+                 [reloaded.repl "0.2.1"] ;; FIXME uberjar
+                 [org.clojure/tools.namespace "0.3.0-alpha1"] ;; FIXME uberjar
                  [org.clojure/tools.cli "0.3.3"]
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.3"]
                  [org.clojure/data.csv "0.1.3"]
-                 [dk.ative/docjure "1.9.0"]
+                 [dk.ative/docjure "1.9.0" :exclusions [commons-codec]]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [automat "0.2.0-alpha2"]
                  [org.apache.commons/commons-math3 "3.6"]
                  [fipp "0.6.4"]
                  [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.3.2" :exclusions [org.clojure/clojure]]
+                 [org.clojure/core.cache "0.6.4"]
                  ;;
 
                  ;; Stats/models/ML
@@ -57,7 +61,7 @@
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
-                 [org.clojure/core.match "0.3.0-alpha5-SNAPSHOT"]
+                 [org.clojure/core.match "0.3.0-alpha5-SNAPSHOT" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
                  ;;;; word2vec/doc2vec TODO:
                  ;;[org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
                  ;;[org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
@@ -78,26 +82,12 @@
   :profiles
   {:dev  [:project/dev  :profiles/dev]
    :test [:project/test :profiles/test]
-   :uberjar {:aot :all :resource-paths ["swagger-ui"]}
+   :uberjar {:aot :all :resource-paths ["data" "dev"]}
    :profiles/dev  {}
    :profiles/test {}
    :project/dev   {:source-paths ["dev"]
                    :repl-options {:init-ns user
                                   :timeout 120000}
                    :dependencies [[reloaded.repl "0.2.1"]
-                                  [org.clojure/tools.namespace "0.3.0-alpha1"]]
-                   :env {:db {:subname "//localhost:5432/natsumedev"
-                              :user "natsumedev"
-                              :password "riDJMq98LpyWgB7F"}
-                         :http {:port 3000}
-                         :log {:directory "./log"}
-                         :dirs ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OT"]
-                         :verbose false
-                         :clean true
-                         :process true
-                         :search true
-                         :sampling {:ratio 0.0
-                                    :seed 2
-                                    :replace false
-                                    :hold-out false}}}
+                                  [org.clojure/tools.namespace "0.3.0-alpha1"]]}
    :project/test  {}})
