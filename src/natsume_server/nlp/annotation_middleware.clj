@@ -215,7 +215,7 @@
             [#"^助詞" (a/or
                        ["IF ((POS2==接続助詞 AND LEMMA==^(て|ば)$) OR LEMMA==^たり$)" :auxiliary-verb]
                        ["ELSE" :particle]
-                       #_(if (or (and (= "接続助詞" (:pos-2 m)([)<0;86;25M
+                       #_(if (or (and (= "接続助詞" (:pos-2 m))
                                       (re-seq #"^(て|ば)$" (:lemma m)))
                                  (re-seq #"^たり$" (:lemma m)))
                            :auxiliary-verb
@@ -238,7 +238,6 @@
                            (= (:pos-2 m) "名詞的") :noun ; ~ら
                            :else :suffix))]])
           "pos-renames.png")))
-
 
 (defn- reduce-with-transitions
   [reversed-tokens]
