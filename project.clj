@@ -82,7 +82,7 @@
   :profiles
   {:dev  [:project/dev  :profiles/dev]
    :test [:project/test :profiles/test]
-   :uberjar {:aot :all :resource-paths ["data" "dev"]}
+   :uberjar {:aot :all :resource-paths ["data"]}
    :profiles/dev  {}
    :profiles/test {}
    :project/dev   {:source-paths ["dev"]
