@@ -55,14 +55,6 @@
 (defhelper add-fk [m args]
   (assoc m :add-fk args))
 
-(defmethod fmt/fn-handler "union" [_ & preds]
-  (string/join " UNION " (map h/format preds)))
-(defmethod fmt/format-clause :union [[& preds] sql-map]
-  (println preds)
-  (string/join " UNION " (map fmt/to-sql preds)))
-(defhelper union [m args]
-  (assoc m :union args))
-
 (defmethod fmt/format-clause :create-index [[_ [tbl-name col-name & idx-type]] sql-map]
   (let [type (fmt/to-sql (or (first idx-type) :btree))]
     (<< "CREATE INDEX idx_~(fmt/to-sql tbl-name)_~(fmt/to-sql col-name)_~{type} ON ~(fmt/to-sql tbl-name) USING ~{type}(~(fmt/to-sql col-name))")))
