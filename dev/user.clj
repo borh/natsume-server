@@ -36,6 +36,7 @@
 
   (when (:server config)
     (mount/start
+     #'natsume-server.endpoint.api/pretty
      #'natsume-server.endpoint.api/api-routes
      #'natsume-server.component.server/server)))
 

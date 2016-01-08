@@ -66,5 +66,4 @@
                                      :verbose true})
                              (assoc-in [:sampling :ratio] 0.001))
                :prod-server default-config
-               :dev-server  (-> default-config
-                                (assoc-in [:http :pretty-print?] true))))))
+               :dev-server  (assoc-in default-config [:http :pretty-print?] true)))))

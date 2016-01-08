@@ -31,8 +31,10 @@
 
 ;; API component
 
+(defstate pretty :start (-> config :http :pretty-print?))
 (defn get-pretty-header [ctx]
-  (some-> ctx :request :headers :accept (string/includes? "pretty=true")))
+  (or pretty
+      (some-> ctx :request :headers :accept (string/includes? "pretty=true"))))
 
 (extend-protocol PostResult
   clojure.lang.PersistentArrayMap
