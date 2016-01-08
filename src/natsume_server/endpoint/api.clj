@@ -62,7 +62,7 @@
 (defn extract-query-params [ctx]
   (let [q (->> ctx :parameters :query (map-keys underscores->dashes))]
     (if (:measure q)
-      (update q :measure (fn [ms] (if (keyword? ms) #{ms} (into #{} (r/map underscores->dashes ms)))))
+      (update q :measure (fn [ms] (if (keyword? ms) #{(underscores->dashes ms)} (into #{} (r/map underscores->dashes ms)))))
       q)))
 
 (defn extract-query-type [q]
