@@ -1,9 +1,10 @@
 (ns natsume-server.endpoint.api-schema-docs
-  (:require [clojure.string :as str]
+  (:require [bidi.bidi :as bidi]
+            [cheshire.core :as json]
+            [clojure.string :as str]
+            [hiccup.page :refer [html5]]
             [schema.core :as s]
-            [bidi.bidi :as bidi]
-            [yada.yada :as yada]
-            [hiccup.page :refer [html5]]))
+            [yada.yada :as yada]))
 
 ;; API printing
 
@@ -58,7 +59,7 @@
      :description (get-in handler [:properties :doc/description])
      :handler handler}))
 
-(defn index-page [api port !examples server-address]
+(defn index-page [api port !resources-schema-map server-address]
   (yada/yada
    (merge
     (yada/as-resource
@@ -102,10 +103,14 @@
                        [:thead
                         [:td [:b "Body"]]
                         [:td (schema-print (param-type ps))]]]))]
+                 [:dt "Return schema"]
+                 [:dd
+                  (if-let [{:keys [output-schema]} (get @!resources-schema-map summary)]
+                    [:pre (json/generate-string output-schema {:pretty true})])]
                  ;; Examples
                  [:dt "Example query"]
                  [:dd
-                  (if-let [example (get @!examples summary)]
+                  (if-let [{:keys [example]} (get @!resources-schema-map summary)]
                     [:div
                      (for [[example-type example-query] example]
                        (->> example-query

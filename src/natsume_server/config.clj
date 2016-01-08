@@ -48,7 +48,7 @@
                   :seed     2
                   :replace  false
                   :hold-out false}}]
-  (defstate run-mode :start (do (println (env :run-mode)) (or (some-> env :run-mode underscores->dashes) :dev-server)))
+  (defstate run-mode :start (do (println (env :run-mode)) (or (some-> env :run-mode underscores->dashes) :prod-server)))
   (defstate config
     :start (do
              (println "Running in" (name run-mode) "mode...")

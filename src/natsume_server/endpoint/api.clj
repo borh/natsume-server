@@ -77,7 +77,7 @@
             keyword)
    :noun-particle-verb))
 
-(def !examples (atom {})) ;; FIXME Workaround for inability to attach metadata or new keys to yada Resource
+(def !resource-schema-map (atom {})) ;; FIXME Workaround for inability to attach metadata or new keys to yada Resource
 (s/defn get-resource ;; :- yada.resource/Resource
   "GET resource helper"
   [options-map :- {(opt :summary) s/Str
@@ -85,17 +85,19 @@
                    (opt :example-query) {(s/enum :query :body) s/Any #_(s/enum s/Str {s/Keyword s/Any})}
                    :parameters {s/Keyword s/Any}}
    handler-fn :- clojure.lang.IFn]
-  (swap! !examples
-         assoc (:summary options-map)
-         (update (:example-query options-map) :query
-                 (fn [m]
-                   (merge (zipmap (->> options-map :parameters :query keys
-                                       (map (fn [k]
-                                              (if (instance? schema.core.OptionalKey k)
-                                                (:k k)
-                                                k))))
-                                  (repeat ""))
-                          m))))
+  (swap! !resource-schema-map
+         assoc (:summary options-map) ;; Used as PK
+         {:output-schema (-> handler-fn s/fn-schema :output-schema s/explain)
+          :example
+          (update (:example-query options-map) :query
+                  (fn [m]
+                    (merge (zipmap (->> options-map :parameters :query keys
+                                        (map (fn [k]
+                                               (if (instance? schema.core.OptionalKey k)
+                                                 (:k k)
+                                                 k))))
+                                   (repeat ""))
+                           m)))})
   (yada/resource
    {:methods
     {:get
@@ -330,7 +332,7 @@
 ;; Errors
 
 (defn errors-register-resource []
-  (swap! !examples assoc "Text register error analysis" {:body {:body "おちょこちょい書き方がまずいよ！"}})
+  (swap! !resource-schema-map assoc "Text register error analysis" {:body {:body "おちょこちょい書き方がまずいよ！"}})
   (yada/resource
    {:methods
     {:post
@@ -362,7 +364,7 @@
 
 (defn create-routes [routes port server-address]
   [""
-   [["/" (docs/index-page routes port !examples server-address)]
+   [["/" (docs/index-page routes port !resource-schema-map server-address)]
     (bidi/routes routes)
     [true (yada/yada nil)]]])
 
