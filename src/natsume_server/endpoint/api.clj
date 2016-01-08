@@ -33,7 +33,7 @@
 
 (defstate pretty :start (-> config :http :pretty-print?))
 (defn get-pretty-header [ctx]
-  (or pretty
+  (or (true? pretty)
       (some-> ctx :request :headers :accept (string/includes? "pretty=true"))))
 
 (extend-protocol PostResult
