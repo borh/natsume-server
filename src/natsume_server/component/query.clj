@@ -223,7 +223,7 @@
   (let [query (if (< (count genre) 4) (conj genre "*") genre)]
     (println query)
     (mapcat vals
-            (db/q conn #_(h/raw (str "SELECT string_agg(tokens.orth, ' ') FROM tokens, sentences, sources WHERE tokens.sentences_id=sentences.id AND sentences.sources_id=sources.id AND sources.genre ~ '" query "' GROUP BY tokens.sentences_id"))
+            (db/q conn
                   (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
                       (from :tokens :sentences :sources)
                       (where [:and
@@ -295,12 +295,9 @@
            genre-ltree-transform)
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
-       (?>> (and norm (contains? db/!norm-map norm)) (#(normalize-tree (norm db/!norm-map) % {:clean-up-fn (if compact-numbers compact-number identity)})))
-       ;; Below is for API/JSON TODO (might want to move below to service.clj) as it is more JSON/d3-specific
-       ))
+       (?>> (and norm (contains? db/!norm-map norm)) (#(normalize-tree (norm db/!norm-map) % {:clean-up-fn (if compact-numbers compact-number identity)})))))
 
 ;; TODO custom-query to supplement and-query type queries (i.e. text match LIKE "%考え*%")
-;; TODO break function into two for streamlined API: general collocation query and tree-seq query
 ;; FIXME shape of data returned should be the same for all types of queries.
 ;; FIXME normalization is needed for seq-tree -- another reason to split function. The implementation should address the issue of normalizing before measure calculations, otherwise they will not be done correctly???? Is the contingency table per genre????
 (defn query-collocations
