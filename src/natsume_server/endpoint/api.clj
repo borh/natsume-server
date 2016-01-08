@@ -348,6 +348,31 @@
         [ctx]
         (error/get-error connection (:body ctx)))}}}))
 
+(defn suggestions-tokens-resource []
+  (get-resource
+   {:summary "Token suggestions"
+    :description "Returns a sorted list of suggestions for given lemma"
+    :parameters {:query {:lemma s/Str}}
+    :example-query {:query {:lemma "事"}}}
+   (s/fn :- {:response [{:orth-base s/Str :pos-1 s/Str :score s/Num}]}
+     [ctx]
+     (let [q (extract-query-params ctx)]
+       {:response
+        (->> (db/q db/connection
+                   {:select [:orth-base :pos-1]
+                    :modifiers [:distinct]
+                    :from [:search-tokens]
+                    :group-by [:lemma :orth-base :pos-1]
+                    :where [:= :lemma (:lemma q)]})
+             (map (fn [m]
+                    (assoc m :score
+                           (->> m
+                                (q/get-one-search-token db/connection)
+                                (error/sigma-score :default-pos 1)
+                                :register-score
+                                :good))))
+             (sort-by :score >))}))))
+
 ;; Routing
 
 (defn api []
@@ -361,8 +386,7 @@
     "/collocations" {""                      (yada (collocations-resource))
                      "/tree"                 (yada (collocations-tree-resource))}
     "/errors"       {"/register"             (yada (errors-register-resource))}
-    ;;"/suggestions"  {"/tokens"               (yada "TODO")}
-    }])
+    "/suggestions"  {"/tokens"               (yada (suggestions-tokens-resource))}}])
 
 (defn create-routes [routes port server-address]
   [""
