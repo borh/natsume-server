@@ -58,7 +58,7 @@
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
                  [bigml/sampling "3.0"]
                  [prismatic/plumbing "0.5.2" :exclusions [fs potemkin prismatic/schema]]
-                 [lonocloud/synthread "1.4.0"]
+                 [lonocloud/synthread "1.4.0" :exclusions [org.clojure/clojurescript]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
                  [cc.qbits/knit "0.3.0"]
                  [org.clojure/core.incubator "0.1.3"]
