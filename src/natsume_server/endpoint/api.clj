@@ -332,7 +332,9 @@
 ;; Errors
 
 (defn errors-register-resource []
-  (swap! !resource-schema-map assoc "Text register error analysis" {:body {:body "おちょこちょい書き方がまずいよ！"}})
+  (swap! !resource-schema-map assoc "Text register error analysis"
+         {:output-schema {:results [{s/Keyword s/Any}] :parsed-tokens [{s/Keyword s/Any}]}
+          :example {:body {:body "おちょこちょい書き方がまずいよ！"}}})
   (yada/resource
    {:methods
     {:post
