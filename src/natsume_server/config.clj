@@ -9,9 +9,11 @@
                   :password (or (env :db-password) "riDJMq98LpyWgB7F")}
        :http     {:port (or (some-> env :http-port Integer.) 3000)
                   :pretty-print? false
-                  :server-address (format "%s:%s"
-                                          (or (env :http-url) "http://localhost")
-                                          (or (some-> env :http-port Integer.) 3000))}
+                  :server-address (or
+                                   (some-> env :server-address)
+                                   (format "%s:%s"
+                                           (or (env :http-url) "http://localhost")
+                                           (or (some-> env :http-port Integer.) 3000)))}
        :log      {:directory "./log"}
        :dirs     ["/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OW"
                   "/data/BCCWJ-2012-dvd1/C-XML/VARIABLE/OL"
