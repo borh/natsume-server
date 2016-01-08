@@ -1,27 +1,22 @@
 (ns natsume-server.endpoint.api
   (:require [bidi.bidi :as bidi]
-
             [cheshire.core :as json]
             [clojure.core.reducers :as r]
             [clojure.string :as str]
-
+            [clojure.string :as string]
             [d3-compat-tree.tree :refer [D3Tree]]
-
+            ;;[flatland.ordered.map :as f]
+            [natsume-server.endpoint.api-schema-docs :as docs]
+            [lonocloud.synthread :as ->]
             [mount.core :refer [defstate]]
-
             [natsume-server.component.database :refer [connection !norm-map !gram-types] :as db]
             [natsume-server.component.query :as q]
             [natsume-server.config :refer [run-mode config]]
-
             [natsume-server.nlp.error :as error]
             [natsume-server.nlp.stats :refer [association-measures-graph]]
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]
-
             [plumbing.core :refer [for-map map-keys ?>]]
             [schema.core :as s]
-
-            ;;[flatland.ordered.map :as f]
-            [natsume-server.endpoint.api-schema-docs :as docs]
             [yada.methods :refer [PostResult GetResult]]
             [yada.yada :refer [yada] :as yada]))
 
@@ -30,40 +25,45 @@
 (def opt s/optional-key)
 (def req s/required-key)
 
-;; FIXME The following functions need to complete loading in the db ns before we can define the schema below. (Race condition!)
-;; (set-norm-map! conn)
-;; (set-gram-information! conn)
 (s/defschema allowed-types (s/enum :adjective :adverb :auxiliary-verb :fukugoujosi :noun :particle :prefix :preposition :utterance :verb) #_(apply s/enum @db/!gram-types))
 (s/defschema allowed-measures (apply s/enum (set (map #_identity (comp keyword dashes->underscores) (conj (keys association-measures-graph) :count)))))
 (s/defschema allowed-norms    (apply s/enum [:tokens :chunks :sentences :sources] #_(set (map #_identity (comp keyword dashes->underscores) (keys (delay (deref db/!norm-map)))))))
 
 ;; API component
 
-#_(extend-protocol schema.core/Schema
-    flatland.ordered.map.OrderedMap
-    (spec [this] (s/spec (into {} this)))
-    (explain [this] (s/explain (into {} this))))
-
-(def ^:dynamic *pretty-print?* (-> config :http :pretty-print?))
+(defn get-pretty-header [ctx]
+  (some-> ctx :request :headers :accept (string/includes? "pretty=true")))
 
 (extend-protocol PostResult
   clojure.lang.PersistentArrayMap
   (interpret-post-result [m ctx]
-    (assoc-in ctx [:response :body] (json/generate-string m {:key-fn dashes->underscores :pretty *pretty-print?*}))))
+    (assoc-in ctx [:response :body]
+              (json/generate-string m {:key-fn dashes->underscores
+                                       :pretty (get-pretty-header ctx)}))))
 
 (extend-protocol GetResult
   clojure.lang.LazySeq
   (interpret-get-result [r ctx]
-    (assoc-in ctx [:response :body] (json/generate-string r {:key-fn dashes->underscores :pretty *pretty-print?*})))
+    (assoc-in ctx [:response :body]
+              (json/generate-string r {:key-fn dashes->underscores
+                                       :pretty (get-pretty-header ctx)})))
   clojure.lang.PersistentArrayMap
   (interpret-get-result [m ctx]
-    (assoc-in ctx [:response :body] (json/generate-string m {:key-fn dashes->underscores :pretty *pretty-print?*}))))
+    (assoc-in ctx [:response :body]
+              (json/generate-string m {:key-fn dashes->underscores
+                                       :pretty (get-pretty-header ctx)}))))
 
 (defn extract-query-params [ctx]
-  (let [q (->> ctx :parameters :query (map-keys underscores->dashes))]
-    (if (:measure q)
-      (update q :measure (fn [ms] (if (keyword? ms) #{(underscores->dashes ms)} (into #{} (r/map underscores->dashes ms)))))
-      q)))
+  (let [keywordize-set (fn [xs]
+                         (if (keyword? xs)
+                           #{(underscores->dashes xs)}
+                           (into #{} (r/map underscores->dashes xs))))]
+    (-> (->> ctx :parameters :query (map-keys underscores->dashes))
+        (->/as m
+               (->/when (:measure m)
+                 (update :measure keywordize-set))
+               (->/when (:tags m)
+                 (update :tags keywordize-set))))))
 
 (defn extract-query-type [q]
   (or
@@ -98,7 +98,7 @@
    {:methods
     {:get
      (-> {:consumes [{:media-type #{"application/x-www-form-urlencoded" "multipart/form-data"} :charset "UTF-8"}]
-          :produces {:media-type #_"application/json" #{"application/json" "application/json;pretty=true" #_"application/edn"} :charset "UTF-8"}
+          :produces {:media-type #{"application/json" "application/json;pretty=true"} :charset "UTF-8"}
           :response handler-fn}
          (merge (select-keys options-map [:summary :description :parameters])))}}))
 
@@ -321,10 +321,8 @@
            n (count (clojure.string/split (name (:type q)) #"-"))]
        (if (or (and (= n 1) (:string-1 q))
                (and (= n 2) (:string-1 q) (:string-2 q))
-               (and (= n 3) (:string-1 q) (:string-2 q)
-                    (:string-3 q))
-               (and (= n 4) (:string-1 q) (:string-2 q)
-                    (:string-3 q) (:string-4 q)))
+               (and (= n 3) (:string-1 q) (:string-2 q) (:string-3 q))
+               (and (= n 4) (:string-1 q) (:string-2 q) (:string-3 q) (:string-4 q)))
          (q/query-collocations-tree connection q))))))
 
 ;; Errors
