@@ -287,7 +287,8 @@
   (not= (get-search-tokens {:orth-base "こと"} :norm :sentences)
         (get-search-tokens {:orth-base "こと"})))
 
-(defn get-one-search-token [conn query-map & {:keys [norm compact-numbers] :or {norm :tokens compact-numbers true}}]
+(defn get-one-search-token
+  [conn query-map & {:keys [norm compact-numbers] :or {norm :tokens compact-numbers true}}]
   (->> (qm conn
            {:select [:*]
             :from [:search-tokens]
