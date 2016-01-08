@@ -113,26 +113,27 @@
                   (if-let [{:keys [example]} (get @!resources-schema-map summary)]
                     [:div
                      (for [[example-type example-query] example]
-                       (->> example-query
-                            sort
-                            (reduce
-                             (fn [a [k v]]
-                               (conj a [:div.form-group.form-group-sm
-                                        [:label.col-sm-2.control-label (name k)]
-                                        [:div.col-sm-2
-                                         [:input.form-control
-                                          {:type "text"
-                                           :name (name k)
-                                           :placeholder (str v)
-                                           :value (if-not empty? v (str v))}]]]))
-                             [[:div.form-group.form-group-sm
-                               [:div.col-sm-offset-2.col-sm-2
-                                [:button.btn.btn-default {:type "submit"} "Execute query"]]]])
-                            (into [:form.form-horizontal
-                                   {:action api-url
-                                    ;;:target "_blank"
-                                    :method (case example-type :body "post" :query "get")
-                                    :enctype (case example-type :body "text/plain" :query "application/x-www-form-urlencoded")}])))])]]])]])]]
+                       (conj
+                        (->> example-query
+                              sort
+                              (reduce
+                               (fn [a [k v]]
+                                 (conj a [:div.form-group.form-group-sm
+                                          [:label.col-sm-2.control-label (name k)]
+                                          [:div.col-sm-2
+                                           [:input.form-control
+                                            {:type "text"
+                                             :name (name k)
+                                             :placeholder (str v)
+                                             :value (if-not empty? v (str v))}]]]))
+                               [:form.form-horizontal
+                                {:action api-url
+                                 ;;:target "_blank"
+                                 :method (case example-type :body "post" :query "get")
+                                 :enctype (case example-type :body "text/plain" :query "application/x-www-form-urlencoded")}]))
+                        [:div.form-group.form-group-sm
+                         [:div.col-sm-offset-2.col-sm-2
+                          [:button.btn.btn-default {:type "submit"} "Execute query"]]]))])]]])]])]]
        ;; Remove empty form fields:
        [:script {:src "//code.jquery.com/jquery-1.11.3.min.js"}]
        [:script "$('form').submit(function() {
