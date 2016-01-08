@@ -63,7 +63,6 @@
                                      :server false
                                      :verbose true})
                              (assoc-in [:sampling :ratio] 0.001))
-               :prod-server (-> default-config
-                                (assoc-in [:http :server-address] "//wombat.hinoki-project.org/natsume-server"))
+               :prod-server default-config
                :dev-server  (-> default-config
                                 (assoc-in [:http :pretty-print?] true))))))
