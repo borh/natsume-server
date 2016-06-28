@@ -46,13 +46,13 @@
   (let [rowseq (->> rows flatten (map #(->> %
                                             row-fn
                                             (map-keys dashes->underscores))))]
-    (try (apply j/insert! conn (dashes->underscores tbl-name) rowseq)
+    (try (j/insert-multi! conn (dashes->underscores tbl-name) rowseq)
          (catch Exception e (do (j/print-sql-exception-chain e) (println rowseq))))))
 
 (defn i!
   [conn tbl-name & rows]
   (let [rowseq (->> rows flatten (map #(map-keys dashes->underscores %)))]
-    (try (apply j/insert! conn (dashes->underscores tbl-name) rowseq)
+    (try (j/insert-multi! conn (dashes->underscores tbl-name) rowseq)
          (catch Exception e (do (try (j/print-sql-exception-chain e) (catch Exception e' (println e))) (println rowseq))))))
 
 (defn u!

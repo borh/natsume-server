@@ -43,11 +43,11 @@
   [conn q & trans]
   (j/query conn
            (h/format q)
-           :row-fn (if trans
-                     (reduce comp trans)
-                     identity)
-           :identifiers underscores->dashes
-           :entities dashes->underscores))
+           {:row-fn (if trans
+                      (reduce comp trans)
+                      identity)
+            :identifiers underscores->dashes
+            :entities dashes->underscores}))
 
 ;; Memoized q using LRU (Least Recently Used) strategy.
 ;; TODO: consider using LU.
@@ -57,13 +57,13 @@
   (let [rowseq (->> rows flatten (map #(->> %
                                             row-fn
                                             (map-keys dashes->underscores))))]
-    (try (apply j/insert! conn (dashes->underscores tbl-name) rowseq)
+    (try (j/insert-multi! conn (dashes->underscores tbl-name) rowseq)
          (catch Exception e (do (j/print-sql-exception-chain e) (println rowseq))))))
 
 (defn i!
   [conn tbl-name & rows]
   (let [rowseq (->> rows flatten (map #(map-keys dashes->underscores %)))]
-    (try (apply j/insert! conn (dashes->underscores tbl-name) rowseq)
+    (try (j/insert-multi! conn (dashes->underscores tbl-name) rowseq)
          (catch Exception e (do (try (j/print-sql-exception-chain e) (catch Exception e' (println e))) (println rowseq))))))
 
 (defn u!
@@ -152,7 +152,7 @@ return the DDL string for creating that unlogged table."
             table-spec-str)))
 
 (defn create-table [conn tbl-name & specs]
-  (j/db-do-commands conn (string/replace (apply j/create-table-ddl tbl-name specs) #"-" "_")))
+  (j/db-do-commands conn (string/replace (j/create-table-ddl tbl-name specs) #"-" "_")))
 
 (defn create-unlogged-table [conn tbl-name & specs]
   (j/db-do-commands conn (string/replace (apply create-unlogged-table-ddl tbl-name specs) #"-" "_")))
