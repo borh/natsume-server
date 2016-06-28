@@ -18,7 +18,7 @@
 
                  ;; Web
                  [cheshire "5.6.3"]
-                 [yada "1.1.0-SNAPSHOT"]
+                 [yada "1.1.26"]
                  [aleph "0.4.1"]
 
                  ;; Database
@@ -26,8 +26,8 @@
                  [org.clojure/java.jdbc "0.6.1"]
                  [java-jdbc/dsl "0.1.3"]
                  [com.alibaba/druid "1.0.20"]
-                 [honeysql "0.6.2"]
-                 ;;[yesql "0.4.0" :exclusions [instaparse]]
+                 [honeysql "0.7.0"]
+                 ;;[com.layerware/hugsql "0.4.7"]
                  ;;
 
                  ;; Utils
@@ -48,7 +48,7 @@
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [fipp "0.6.5"]
                  [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
-                 [camel-snake-kebab "0.3.2" :exclusions [org.clojure/clojure]]
+                 [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
                  [org.clojure/core.cache "0.6.5"]
                  ;;
 
