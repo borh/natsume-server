@@ -8,24 +8,24 @@
   :min-lein-version "2.0.0"
   :repositories {"sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"}
   :jvm-opts ^:replace ["-server" "-XX:+UseG1GC"]
-  :dependencies [[org.clojure/clojure "1.8.0"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha10"]
 
                  [mount "0.1.10"]
                  [potemkin "0.4.3"]
-                 [environ "1.0.3"]
+                 [environ "1.0.1"]
                  ;;[meta-merge "0.1.1"]
                  [prismatic/schema "1.1.2"]
 
                  ;; Web
                  [cheshire "5.6.3"]
-                 [yada "1.1.26"]
+                 [yada "1.1.28"]
                  [aleph "0.4.1"]
 
                  ;; Database
-                 [org.postgresql/postgresql "9.4.1208"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.4.1209"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.6.1"]
                  [java-jdbc/dsl "0.1.3"]
-                 [com.alibaba/druid "1.0.20"]
+                 [com.alibaba/druid "1.0.22"]
                  [honeysql "0.7.0"]
                  ;;[com.layerware/hugsql "0.4.7"]
                  ;;
@@ -34,7 +34,7 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.12"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
-                 [com.taoensso/timbre "4.5.0"]
+                 [com.taoensso/timbre "4.6.0"]
                  [robert/hooke "1.3.0"]
                  [reloaded.repl "0.2.2"] ;; FIXME uberjar
                  [org.clojure/tools.namespace "0.3.0-alpha1"] ;; FIXME uberjar
@@ -47,7 +47,7 @@
                  [automat "0.2.0-alpha2"]
                  [org.apache.commons/commons-math3 "3.6.1"]
                  [fipp "0.6.5"]
-                 [org.flatland/ordered "1.5.3"] ;; For ordered routes in Swagger
+                 [org.flatland/ordered "1.5.4"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
                  [org.clojure/core.cache "0.6.5"]
                  ;;
