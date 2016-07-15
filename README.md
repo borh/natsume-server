@@ -40,7 +40,7 @@ user=> (reset)
 All development is done on the IcedTea 8 JVM (OpenJDK), though other versions (7) should work.
 
 A PostgreSQL database is required as well.
-Currently all testing is done on the 9.4 release.
+Currently all testing is done on the 9.5 release.
 
 `natsume-server` additionally makes use of [MeCab](https://taku910.github.io/mecab/) and [CaboCha](https://taku910.github.io/cabocha/).
 
@@ -49,7 +49,7 @@ Currently all testing is done on the 9.4 release.
 Unfortunately, the following free-floating jars need to be downloaded and installed into a local maven repo:
 
 ```bash
-mvn install:install-file -DgroupId=org.chasen -DartifactId=cabocha -Dpackaging=jar -Dversion=0.66 -Dfile=/usr/share/java/cabocha/CaboCha.jar -DgeneratePom=true
+mvn install:install-file -DgroupId=org.chasen -DartifactId=cabocha -Dpackaging=jar -Dversion=0.69 -Dfile=/usr/share/java/cabocha/CaboCha.jar -DgeneratePom=true
 ```
 
 ## Usage
@@ -102,6 +102,6 @@ lein run /path/to/corpus/dir/
 
 ## License
 
-Copyright © 2012-2015 Bor Hodošček
+Copyright © 2012-2016 Bor Hodošček
 
 Distributed under the Eclipse Public License, the same as Clojure.
