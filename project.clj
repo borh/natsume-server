@@ -18,14 +18,14 @@
 
                  ;; Web
                  [cheshire "5.6.3"]
-                 [yada "1.1.28"]
+                 [yada "1.1.29"]
                  [aleph "0.4.1"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4.1209"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.6.1"]
                  [java-jdbc/dsl "0.1.3"]
-                 [com.alibaba/druid "1.0.22"]
+                 [com.alibaba/druid "1.0.23"]
                  [honeysql "0.7.0"]
                  ;;[com.layerware/hugsql "0.4.7"]
                  ;;
@@ -34,7 +34,7 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.12"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
-                 [com.taoensso/timbre "4.6.0"]
+                 [com.taoensso/timbre "4.7.0"]
                  [robert/hooke "1.3.0"]
                  [reloaded.repl "0.2.2"] ;; FIXME uberjar
                  [org.clojure/tools.namespace "0.3.0-alpha1"] ;; FIXME uberjar
