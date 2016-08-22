@@ -14,19 +14,19 @@
                  [potemkin "0.4.3"]
                  [environ "1.0.1"]
                  ;;[meta-merge "0.1.1"]
-                 [prismatic/schema "1.1.2"]
+                 [prismatic/schema "1.1.3"]
 
                  ;; Web
                  [cheshire "5.6.3"]
-                 [yada "1.1.29"]
+                 [yada "1.1.31"]
                  [aleph "0.4.1"]
 
                  ;; Database
                  [org.postgresql/postgresql "9.4.1209"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.6.1"]
                  [java-jdbc/dsl "0.1.3"]
-                 [com.alibaba/druid "1.0.23"]
-                 [honeysql "0.7.0"]
+                 [com.alibaba/druid "1.0.25"]
+                 [honeysql "0.8.0"]
                  ;;[com.layerware/hugsql "0.4.7"]
                  ;;
 
@@ -34,7 +34,7 @@
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.12"]
                  [org.clojure/tools.reader "1.0.0-alpha1"]
-                 [com.taoensso/timbre "4.7.0"]
+                 [com.taoensso/timbre "4.7.3"]
                  [robert/hooke "1.3.0"]
                  [reloaded.repl "0.2.2"] ;; FIXME uberjar
                  [org.clojure/tools.namespace "0.3.0-alpha1"] ;; FIXME uberjar
@@ -44,9 +44,9 @@
                  [org.clojure/data.csv "0.1.3"]
                  [dk.ative/docjure "1.10.0" :exclusions [commons-codec]]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
-                 [automat "0.2.0-alpha2"]
+                 [automat "0.2.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]
-                 [fipp "0.6.5"]
+                 [fipp "0.6.6"]
                  [org.flatland/ordered "1.5.4"] ;; For ordered routes in Swagger
                  [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
                  [org.clojure/core.cache "0.6.5"]
