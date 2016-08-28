@@ -27,14 +27,14 @@
                  [java-jdbc/dsl "0.1.3"]
                  [com.alibaba/druid "1.0.25"]
                  [honeysql "0.8.0"]
-                 ;;[com.layerware/hugsql "0.4.7"]
+                 [com.layerware/hugsql "0.4.7"]
                  ;;
 
                  ;; Utils
                  [org.tukaani/xz "1.5"]
                  [org.apache.commons/commons-compress "1.12"]
-                 [org.clojure/tools.reader "1.0.0-alpha1"]
-                 [com.taoensso/timbre "4.7.3"]
+                 [org.clojure/tools.reader "1.0.0-beta1"]
+                 [com.taoensso/timbre "4.7.4"]
                  [robert/hooke "1.3.0"]
                  [reloaded.repl "0.2.2"] ;; FIXME uberjar
                  [org.clojure/tools.namespace "0.3.0-alpha1"] ;; FIXME uberjar
@@ -66,9 +66,15 @@
                  ;;;; word2vec/doc2vec TODO:
                  ;;[org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
                  ;;[org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
-                 ;;[org.deeplearning4j/deeplearning4j-core "0.0.3.3.2.alpha1" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind]]
-                 ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.0.3.3.2.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
-                 ;;[org.deeplearning4j/deeplearning4j-nlp "0.0.3.3.2.alpha1" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [byte-streams "0.2.2"]
+                 [org.nd4j/nd4j-native "0.5.0" :exclusions [org.javassist/javassist]]
+                 [org.nd4j/nd4j-native-platform "0.5.0" :exclusions [org.javassist/javassist]]
+                 [org.deeplearning4j/deeplearning4j-core "0.5.0" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
+                 ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.4-rc3.9" :exclusions [org.slf4j/slf4j-api commons-io]]
+                 [org.deeplearning4j/deeplearning4j-nlp "0.5.0" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
+                 [cc.mallet/mallet "2.0.8"]
+                 [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
+                 ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
                  ;;
 
                  ;; Text processing
