@@ -1,0 +1,74 @@
+(ns natsume-server.nlp.topic-model
+  (:require [clojure.java.io :as io]
+            [clojure.data.csv :as csv]
+            [clojure.string :as str]
+            [schema.core :as s]
+            [plumbing.core :refer [for-map]]
+            [mount.core :refer [defstate]]
+            [natsume-server.config :refer [run-mode config]]
+            [marcliberatore.mallet-lda :refer [make-instance-list lda]]
+            [me.raynes.fs :as fs])
+  (:import (cc.mallet.topics ParallelTopicModel)))
+
+(s/defn load-or-create-model! :- ParallelTopicModel
+  [unit-type :- (s/enum :suw :unigrams)
+   features :- [s/Keyword]]
+  (let [model-filename (format "%s/corpus-documents-%s-%s.model.bin"
+                               (System/getProperty "user.dir")
+                               (name unit-type)
+                               (str/join "_" (map name features)))
+        corpus-filename (format "%s/corpus-documents-%s-%s.csv"
+                                (System/getProperty "user.dir")
+                                (name unit-type)
+                                (str/join "_" (map name features)))]
+    (if (fs/exists? model-filename)
+      (ParallelTopicModel/read (io/as-file model-filename))
+      (let [model
+            (lda ;; alpha = 0.5, beta = 0.01
+             (->> (with-open [reader (io/reader corpus-filename)]
+                    (doall (csv/read-csv reader :separator \tab :quote 0)))
+                  (map (fn [[basename genre tokens-string]]
+                         [basename (str/split tokens-string #"\s")]))
+                  make-instance-list)
+             :num-topics 100
+             :num-iter 1000
+             :optimize-interval 10
+             :optimize-burn-in 200
+             :random-seed 0)]
+        (.write ^ParallelTopicModel model (io/file model-filename))
+        model))))
+
+(defstate !topic-models :start
+  (for-map [{:keys [unit-type features] :as m} (:topic-models config)]
+      m (load-or-create-model! unit-type features)))
+
+(defn get-probability [^ParallelTopicModel model document]
+  (let [inferencer (.getInferencer model)]
+    (.getSampledDistribution inferencer document 0 0 0)))
+
+(defn get-instance [text]
+  (first (make-instance-list [["user_text" (str/split text #"\s")]])))
+
+(defn make-prediction
+  "Infers the top topics for given text and returns the topics with their top words (default: 5 and 5)."
+  ([^ParallelTopicModel model text]
+   (make-prediction model text 5 5))
+  ([^ParallelTopicModel model text n-topics n-words]
+   (let [probabilities (->> text
+                            get-instance
+                            (get-probability model))
+         top-words (->> (.getTopWords model n-words)
+                        (seq)
+                        (mapv #(seq %)))]
+     (clojure.pprint/pprint probabilities)
+
+     (->> (map vector (range (count probabilities)) probabilities top-words)
+          (sort-by second)
+          (reverse)
+          (take n-topics)
+          (map (fn [[topic-id prob tokens]]
+                 {:id topic-id
+                  :prob prob
+                  :tokens tokens}))))))
+
+;; TODO topic-document NNS functionality
