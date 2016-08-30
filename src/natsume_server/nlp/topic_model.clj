@@ -51,24 +51,24 @@
 
 (defn make-prediction
   "Infers the top topics for given text and returns the topics with their top words (default: 5 and 5)."
-  ([^ParallelTopicModel model text]
-   (make-prediction model text 5 5))
-  ([^ParallelTopicModel model text n-topics n-words]
-   (let [probabilities (->> text
+  ([unit-type features text]
+   (make-prediction unit-type features text 5 5))
+  ([unit-type features text n-topics n-words]
+   (let [model ^ParallelTopicModel (get !topic-models {:unit-type unit-type :features features})
+         probabilities (->> text
                             get-instance
                             (get-probability model))
          top-words (->> (.getTopWords model n-words)
                         (seq)
                         (mapv #(seq %)))]
-     (clojure.pprint/pprint probabilities)
-
      (->> (map vector (range (count probabilities)) probabilities top-words)
           (sort-by second)
           (reverse)
           (take n-topics)
-          (map (fn [[topic-id prob tokens]]
-                 {:id topic-id
-                  :prob prob
-                  :tokens tokens}))))))
+          (mapv (fn [[topic-id prob tokens]]
+                  {:id topic-id
+                   :prob prob
+                   :tokens tokens}))))))
 
 ;; TODO topic-document NNS functionality
+;; https://www.postgresql.org/message-id/52687CEA.9060903@xavvy.com
