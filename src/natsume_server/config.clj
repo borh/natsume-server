@@ -55,7 +55,9 @@
                   {:unit-type :unigrams
                    :features [:string]}]
        :topic-models [{:unit-type :suw
-                       :features [:orth]}]}]
+                       :features [:orth]}
+                      {:unit-type :suw
+                       :features [:lemma]}]}]
   (defstate run-mode :start (do (println (env :run-mode)) (or (some-> env :run-mode underscores->dashes) :dev-server)))
   (defstate config
     :start (do
