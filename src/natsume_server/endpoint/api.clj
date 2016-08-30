@@ -12,8 +12,11 @@
             [natsume-server.component.database :refer [connection !norm-map !gram-types] :as db]
             [natsume-server.component.query :as q]
             [natsume-server.config :refer [run-mode config]]
+            [natsume-server.nlp.annotation-middleware :as anno]
             [natsume-server.nlp.error :as error]
             [natsume-server.nlp.stats :refer [association-measures-graph]]
+            [natsume-server.nlp.word2vec :as word2vec]
+            [natsume-server.nlp.topic-model :as topic-model]
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]
             [plumbing.core :refer [for-map map-keys ?>]]
             [schema.core :as s]
@@ -224,7 +227,7 @@
                 (opt :norm)      allowed-norms})
      (ordered-map
       (opt :orth_base) s/Str
-      (req :lemma) s/Str
+      (opt :lemma) s/Str
       (opt :pos_1) s/Str
       (opt :pos_2) s/Str
       (opt :norm) allowed-norms)}
@@ -233,6 +236,53 @@
      (let [q (extract-query-params ctx)
            {:keys [norm] :or {norm :tokens}} q]
        (q/get-one-search-token connection q :norm (keyword norm))))))
+
+(defn tokens-similarity-resource []
+  (get-resource
+   {:summary "Tokens similarity"
+    :description "Returns the similarity between two tokens"
+    :parameters
+    {:query
+     (ordered-map
+      (req :unit-type) (s/enum :suw :unigrams)
+      (req :features) [s/Keyword]
+      (req :a) s/Str
+      (req :b) s/Str)}
+    :example-query {:query {:unit-type :suw :features [:lemma]}}}
+   (s/fn :- s/Num [ctx]
+     (let [{:keys [unit-type features a b]} (extract-query-params ctx)]
+       (word2vec/similarity unit-type features a b)))))
+
+(defn tokens-nearest-tokens-resource []
+  (get-resource
+   {:summary "Nearest tokens by similarity"
+    :description "Returns the nearest tokens to given token"
+    :parameters
+    {:query
+     (ordered-map
+      (req :unit-type) (s/enum :suw :unigrams)
+      (req :features) [s/Keyword]
+      (req :token) s/Str)}
+    :example-query {:query {:unit-type :suw :features [:lemma]}}}
+   (s/fn :- [s/Str] [ctx]
+     (let [{:keys [unit-type features token]} (extract-query-params ctx)]
+       (word2vec/nearest-tokens unit-type features token)))))
+
+(defn tokens-similar-tokens-with-accuracy-resource []
+  (get-resource
+   {:summary "Nearest tokens by similarity given accuracy threshold"
+    :description "Returns the nearest tokens to given token given accuracy threshold"
+    :parameters
+    {:query
+     (ordered-map
+      (req :unit-type) (s/enum :suw :unigrams)
+      (req :features) [s/Keyword]
+      (req :token) s/Str
+      (req :accuracy) s/Num)}
+    :example-query {:query {:unit-type :suw :features [:lemma]}}}
+   (s/fn :- [s/Str] [ctx]
+     (let [{:keys [unit-type features token accuracy]} (extract-query-params ctx)]
+       (word2vec/similar-tokens-with-accuracy unit-type features token accuracy)))))
 
 ;; Collocations
 
@@ -348,6 +398,31 @@
         [ctx]
         (error/get-error connection (:body ctx)))}}}))
 
+;; Topic modeling
+
+(defn topics-infer-resource []
+  (swap! !resource-schema-map assoc "Infer text topics"
+         {:output-schema {:results [s/Any #_{:id s/Num :prob s/Num :tokens [s/Str]}]}
+          :example {:body {:body "おちょこちょい書き方がまずいよ！"}}})
+  (yada/resource
+   {:methods
+    {:post
+     {:summary "Infer text topics"
+      :description "Returns positions of register-related errors by error type (tokens or grams) and confidence"
+      :consumes [{:media-type #{"text/plain"} :charset "UTF-8"}]
+      :produces [{:media-type #{"application/json" "application/edn"} :charset "UTF-8"}]
+      :parameters {:body s/Str}
+      :response
+      (s/fn :- {:results [{:id s/Num :prob s/Num :tokens [s/Str]}]}
+        [ctx]
+        {:results
+         (topic-model/make-prediction :suw [:lemma]
+                                      (->> (:body ctx)
+                                           (anno/sentence->cabocha)
+                                           (mapcat :tokens)
+                                           (map :lemma)
+                                           (str/join " ")))})}}}))
+
 (defn suggestions-tokens-resource []
   (get-resource
    {:summary "Token suggestions"
@@ -377,15 +452,20 @@
 
 (defn api []
   ["/api"
-   {"/sources"      {"/genre" {""            (yada (sources-genre-resource))
+   {"/status"       (yada/handler "Online")
+    "/sources"      {"/genre" {""            (yada (sources-genre-resource))
                                ;;"/similarity" (yada (sources-genre-similarity-resource))
                                }}
     "/sentences"    {"/collocations"         (yada (sentences-collocations-resource))
                      "/tokens"               (yada (sentences-tokens-resource))}
-    "/tokens"                                (yada (tokens-resource))
+    "/tokens"       {""                      (yada (tokens-resource))
+                     "/similarity"           (yada (tokens-similarity-resource))
+                     "/nearest-words"        (yada (tokens-nearest-tokens-resource))
+                     "/similarity-with-accuracy" (yada (tokens-similar-tokens-with-accuracy-resource))}
     "/collocations" {""                      (yada (collocations-resource))
                      "/tree"                 (yada (collocations-tree-resource))}
     "/errors"       {"/register"             (yada (errors-register-resource))}
+    "/topics"       {"/infer"                (yada (topics-infer-resource))}
     "/suggestions"  {"/tokens"               (yada (suggestions-tokens-resource))}}])
 
 (defn create-routes [routes port server-address]
