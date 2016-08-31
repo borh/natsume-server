@@ -80,10 +80,8 @@
                  ;; Text processing
                  [org.chasen/cabocha "0.69"]
                  [com.ibm.icu/icu4j "57.1"]
-                 [d3-compat-tree "0.0.9"]
-                 ;;
+                 [d3-compat-tree "0.0.9"]]
 
-                 ]
   :plugins [[lein-environ "1.0.3"]]
   :main ^:skip-aot natsume-server.main
   :profiles
@@ -95,6 +93,6 @@
    :project/dev   {:source-paths ["dev"]
                    :repl-options {:init-ns user
                                   :timeout 120000}
-                   :dependencies [[reloaded.repl "0.2.2"]
-                                  [org.clojure/tools.namespace "0.3.0-alpha1"]]}
+                   :dependencies [[org.clojure/tools.namespace "0.3.0-alpha3"]
+                                  [reloaded.repl "0.2.2"]]}
    :project/test  {}})
