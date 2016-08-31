@@ -8,6 +8,8 @@
             [natsume-server.component.server :as server]
             [natsume-server.component.load :as load]
             [natsume-server.endpoint.api :as api]
+            [natsume-server.nlp.word2vec]
+            [natsume-server.nlp.topic-model]
             [natsume-server.component.logging :refer [with-logging-status]]))
 
 (defn start []
@@ -28,7 +30,9 @@
      #'natsume-server.component.database/!genre-tokens-map
      #'natsume-server.component.database/!gram-totals
      #'natsume-server.component.database/!gram-types
-     #'natsume-server.component.database/!tokens-by-gram))
+     #'natsume-server.component.database/!tokens-by-gram
+     #'natsume-server.nlp.word2vec/!word2vec-models
+     #'natsume-server.nlp.topic-model/!topic-models))
 
   (when (:process config)
     (mount/start
