@@ -1,23 +1,21 @@
 (ns natsume-server.main
   (:gen-class)
-  (:require ;;[user :as user]
-            [natsume-server.config :refer [run-mode config]]
-            [natsume-server.component.database]
-            [natsume-server.component.server]
-            [natsume-server.component.load]
-            [natsume-server.endpoint.api]
-            [natsume-server.nlp.word2vec]
-            [natsume-server.nlp.topic-model]
-            [natsume-server.component.logging :refer [with-logging-status]]
-            [mount.core :as mount]))
+  (:require
+   [natsume-server.config :refer [config]]
+   [natsume-server.component.database]
+   [natsume-server.component.server]
+   [natsume-server.component.load]
+   [natsume-server.endpoint.api]
+   [natsume-server.nlp.word2vec]
+   [natsume-server.nlp.topic-model]
+   [natsume-server.component.logging :refer [with-logging-status]]
+   [aero.core :as aero]
+   [mount.core :as mount]))
 
 (defn -main [& args]
-  #_(user/start)
+  (clojure.pprint/pprint {:new-config natsume-server.config/config})
   (with-logging-status)
-  (mount/start #'natsume-server.config/run-mode
-               #'natsume-server.config/config
-
-               #'natsume-server.component.database/connection)
+  (mount/start #'natsume-server.component.database/connection)
 
   (when (:clean config)
     (mount/start
@@ -42,3 +40,13 @@
     (mount/start
      #'natsume-server.endpoint.api/api-routes
      #'natsume-server.component.server/server)))
+
+(defn run-with-profile [profile dev?]
+  (let [config (-> (aero/read-config "config.edn" {:profile profile})
+                   (assoc :verbose dev?)
+                   (update-in [:sampling :ratio] (fn [m] (if dev? (:dev m) (:prod m)))))]
+    (clojure.pprint/pprint {:runtime-config config})
+    (-> (mount/only #{#'natsume-server.config/config})
+        (mount/swap {#'natsume-server.config/config config})
+        (mount/start))
+    (-main)))

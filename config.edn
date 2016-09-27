@@ -1,0 +1,31 @@
+{:db           {:subname  "//localhost:5432/natsumedev"
+                :user     "natsumedev"
+                :password #or [#env DB_PASSWORD "riDJMq98LpyWgB7F"]}
+ :http         {:port #long #or [#env PORT 3000]
+                :pretty-print? #profile {:dev true
+                                         :prod false}
+                :server-address #or [#env SERVER_ADDRESS
+                                     #join["//localhost:" #or [#env PORT 3000]]]}
+ :log          {:directory "./log"}
+ :dirs         #include "corpora.edn"
+ :verbose      false
+ :clean        #profile {:load true  :server false}
+ :process      #profile {:load true  :server false}
+ :search       #profile {:load true  :server false}
+ :server       #profile {:load false :server true}
+ :sampling     {:ratio    {:dev 0.001 :prod 0.0}
+                :seed     2
+                :replace  false
+                :hold-out false}
+ :word2vec     [{:unit-type :suw
+                 :features [:orth]}
+                {:unit-type :suw
+                 :features [:lemma]}
+                {:unit-type :unigrams
+                 :features [:string]}]
+ :topic-models [{:unit-type :suw
+                 :features [:orth]}
+                {:unit-type :suw
+                 :features [:lemma]}
+                {:unit-type :unigrams
+                 :features [:string]}]}
