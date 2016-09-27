@@ -17,7 +17,7 @@
             [plumbing.core :refer [fn->> map-keys for-map map-vals]]
             [schema.core :as s]
 
-            [natsume-server.config :refer [run-mode config]]
+            [natsume-server.config :refer [config]]
 
             [mount.core :refer [defstate]])
   (:import [com.alibaba.druid.pool DruidDataSource]))

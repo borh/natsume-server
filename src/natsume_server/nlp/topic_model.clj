@@ -5,7 +5,8 @@
             [schema.core :as s]
             [plumbing.core :refer [for-map]]
             [mount.core :refer [defstate]]
-            [natsume-server.config :refer [run-mode config]]
+            [natsume-server.config :refer [config]]
+            [natsume-server.nlp.importers.local :as local]
             [marcliberatore.mallet-lda :refer [make-instance-list lda]]
             [me.raynes.fs :as fs])
   (:import (cc.mallet.topics ParallelTopicModel)))

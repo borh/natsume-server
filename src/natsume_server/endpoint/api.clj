@@ -11,7 +11,7 @@
             [mount.core :refer [defstate]]
             [natsume-server.component.database :refer [connection !norm-map !gram-types] :as db]
             [natsume-server.component.query :as q]
-            [natsume-server.config :refer [run-mode config]]
+            [natsume-server.config :refer [config]]
             [natsume-server.nlp.annotation-middleware :as anno]
             [natsume-server.nlp.error :as error]
             [natsume-server.nlp.stats :refer [association-measures-graph]]

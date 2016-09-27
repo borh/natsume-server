@@ -3,12 +3,11 @@
             [plumbing.core :refer [for-map]]
             [clojure.java.io :as io]
             [byte-streams :refer [convert]]
-            [natsume-server.component.database :refer [connection]]
-            [hugsql.core :as hugsql]
+            [natsume-server.nlp.importers.local :as local]
             [clojure.string :as str]
             [me.raynes.fs :as fs]
             [mount.core :refer [defstate]]
-            [natsume-server.config :refer [run-mode config]])
+            [natsume-server.config :refer [config]])
   (:import [org.deeplearning4j.models.word2vec.wordstore.inmemory InMemoryLookupCache]
            [org.deeplearning4j.text.sentenceiterator LineSentenceIterator BasicLineIterator]
            [org.deeplearning4j.text.tokenization.tokenizerfactory TokenizerFactory DefaultTokenizerFactory]

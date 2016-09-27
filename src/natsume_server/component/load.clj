@@ -10,7 +10,7 @@
             [natsume-server.nlp.readability :as rd]
             [natsume-server.component.database :as db :refer [connection database-init]]
             [natsume-server.component.query :as q]
-            [natsume-server.config :refer [run-mode config]]
+            [natsume-server.config :refer [config]]
 
             [bigml.sampling.simple :as sampling]
             [plumbing.core :refer [map-keys fnk defnk ?>>]]

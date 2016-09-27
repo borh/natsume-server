@@ -3,7 +3,7 @@
             [bidi.ring :refer [make-handler]]
             [aleph.http :as http]
             [natsume-server.endpoint.api :refer [api-routes]]
-            [natsume-server.config :refer [run-mode config]]))
+            [natsume-server.config :refer [config]]))
 
 (defstate server
   :start (http/start-server
