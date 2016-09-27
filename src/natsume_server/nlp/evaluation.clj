@@ -33,30 +33,57 @@
 
 (s/defn get-tokens :- [Token]
   [test-file :- s/Str]
-  (->>
-    (with-open [test-reader (xz-reader test-file)]
-      (doall (csv/read-csv test-reader :separator \tab :quote 0)))
-    (sequence
+  (let [filter-map
+        (reduce
+         (fn [a [語彙素
+                 書字形出現形
+                 発音形出現形
+                 アカデミックな書き言葉
+                 一般的な書き言葉
+                 公的な話し言葉
+                 日常の話し言葉]]
+           (assoc a
+                  {:orth-base 書字形出現形
+                   :lemma 語彙素}
+                  {:アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
+                   :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
+                   :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
+                   :公的な話し言葉       (case 公的な話し言葉 "○" true "×" false nil)
+                   :日常の話し言葉       (case 日常の話し言葉 "○" true "×" false nil)}))
+         {}
+         (with-open [ratings-reader (xz-reader "data/unidic-adverbs-ratings-final.tsv.xz")]
+           (doall (csv/read-csv ratings-reader :separator \tab :quote 0))))]
+    (->>
+     (with-open [test-reader (xz-reader test-file)]
+       (doall (csv/read-csv test-reader :separator \tab :quote 0)))
+     (sequence
       (comp
-        (drop 1)
-        (map (fn [[表層形 左文脈ID 右文脈ID コスト 品詞大分類 品詞中分類 品詞小分類 品詞細分類 活用型 活用形 語彙素読み 語彙素 書字形出現形 発音形出現形 書字形基本形 発音形基本形 語種 語頭変化型 語頭変化形 語末変化型 語末変化形 アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉 備考]]
-               ;; We only need a few features to match.
-               ;; FIXME How to handle "？" in annotation?
-               {:orth-base     書字形出現形
-                :lemma         語彙素
-                :pos-1         品詞大分類
-                :pos           :adverb #_(recode-pos 品詞大分類)
-                :romaji        (romanize 発音形基本形)
-                :lemma-romaji  (romanize 語彙素読み)
-                ;; Note that empty annotations do not necessarily mean anything, so we cannot use them as true/false values like we can with the system NA scores.
-                :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
-                :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
-                :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
-                :公的な話し言葉       (case 公的な話し言葉 "○" true "×" false nil)
-                :日常の話し言葉       (case 日常の話し言葉 "○" true "×" false nil)}))
-        ;; FIXME Care needs to be taken when interpreting overall frequenices based on this list, because the distinct here does not just look at orth-base and lemma values but also annotations which are outside the system
-        (distinct)))
-    (reduce
+       (drop 1)
+       (map (fn [[表層形 左文脈ID 右文脈ID コスト 品詞大分類 品詞中分類 品詞小分類 品詞細分類 活用型 活用形 語彙素読み 語彙素 書字形出現形 発音形出現形 書字形基本形 発音形基本形 語種 語頭変化型 語頭変化形 語末変化型 語末変化形 アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉 備考]]
+              ;; We only need a few features to match.
+              ;; FIXME How to handle "？" in annotation?
+              {:orth-base     書字形出現形
+               :lemma         語彙素
+               :pos-1         品詞大分類
+               :pos           :adverb #_(recode-pos 品詞大分類)
+               :romaji        (romanize 発音形基本形)
+               :lemma-romaji  (romanize 語彙素読み)
+               ;; Note that empty annotations do not necessarily mean anything, so we cannot use them as true/false values like we can with the system NA scores.
+               :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
+               :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
+               :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
+               :公的な話し言葉       (case 公的な話し言葉 "○" true "×" false nil)
+               :日常の話し言葉       (case 日常の話し言葉 "○" true "×" false nil)}))
+       ;; FIXME Care needs to be taken when interpreting overall frequenices based on this list, because the distinct here does not just look at orth-base and lemma values but also annotations which are outside the system
+       (distinct)
+       (filter (fn [{:keys [orth-base lemma]}]
+                 (get filter-map {:orth-base orth-base :lemma lemma} false)))
+       (map (fn [{:keys [orth-base lemma] :as m}]
+              (let [changed (merge m (get filter-map {:orth-base orth-base :lemma lemma}))]
+                #_(if (not= changed m)
+                    (println "Change:" m changed)) ;; shirashira/shirajira
+                changed)))))
+     (reduce
       (fn [a m]
         (let [uniq-ident ((juxt :lemma :orth-base) m)]
           (if (get a uniq-ident)
@@ -75,20 +102,20 @@
                                     (update :romaji (fn [r] #{r}))
                                     (update :lemma-romaji (fn [r] #{r})))))))
       {})
-    ((fn [a]
-       (let [lemma-romaji-map
-             (reduce
+     ((fn [a]
+        (let [lemma-romaji-map
+              (reduce
                (fn [d [[lemma _] {:keys [lemma-romaji]}]]
                  (update d lemma (fn [l] (into (if l l #{}) lemma-romaji))))
                {}
                a)]
-         (map-vals
+          (map-vals
            (fn [m] (-> m
                        (update :romaji (fn [r] (clojure.string/join "/" r)))
                        (update :lemma-romaji (fn [r] (clojure.string/join "/" r)))
                        (assoc :display-lemma (str (:lemma m) " /" (clojure.string/join "/" (get lemma-romaji-map (:lemma m))) "/"))))
            a))))
-    vals))
+     vals)))
 
 (def conn (db/druid-pool {:subname "//localhost:5432/natsumedev"
                           :user "natsumedev"
@@ -103,16 +130,20 @@
   (->> tokens
        (r/map
          (fn [token]
-           (let [{:keys [good bad]}
-                 (:register-score (error/token-register-score conn token))
+           (let [{:keys [good bad verdict]}
+                 (:register-score (error/token-register-score conn (select-keys token [:orth-base :lemma :pos-1])))
 
                  score (if (and good bad)
                          (let [diff (Math/abs ^Double (- ^Double good ^Double bad))]
                            (cond (and (>= good 0.0) (neg? bad) (>= diff threshold)) true
                                  (and (<= good 0.0) (pos? bad) (>= diff threshold)) false
                                  :else nil)))]
+             (if (not= score verdict)
+               (println score verdict token))
              (assoc token
                     ;; The choice of how to handle nil values is made using the following logic: when measuring the precision/recall of our system, a nil score is akin to a false (i.e. this is not wrong) score. We cannot make the same assumption about the test-set classification, as the nil vales have no inherent meaning there.
+                    :score score
+                    :score-verdict verdict
                     :準正用判定 (case score true true  false false nil #_nil false)
                     :準誤用判定 (case score true false false true  nil #_nil false)))))
        #_(r/remove (fn [{:keys [academic-score colloquial-score]}]
@@ -129,9 +160,9 @@
   (->> tokens
        (r/map
          (fn [token]
-           (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn token))
+           (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn (select-keys token [:orth-base :lemma :pos-1])))
                  total-freq (reduce + 0 (vals raw-freqs))]
-             (merge (select-keys token [:orth-base :lemma :romaji :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
+             (merge (select-keys token [:orth-base :lemma :romaji :pos-1 :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
                     (map-keys (partial rename-corpus "-出現割合") freqs)
                     (map-keys (partial rename-corpus "-頻度") raw-freqs)
                     (map-keys (partial rename-corpus "-χ^2 検定の結果") chisq)
@@ -169,7 +200,7 @@
 (s/defschema ConfusionMatrix {:tp s/Num :fp s/Num :fn s/Num :tn s/Num
                               (opt :xt) s/Num (opt :xf) s/Num (opt :tx) s/Num (opt :fx) s/Num
                               (opt :NA) s/Num (opt :xx) s/Num})
-(s/defschema ConfusionMatrixWithNA {:tp s/Num :fp s/Num :fn s/Num :tn s/Num })
+(s/defschema ConfusionMatrixWithNA {:tp s/Num :fp s/Num :fn s/Num :tn s/Num})
 
 (s/defn confusion-matrix :- ConfusionMatrix
   [tokens :- [ScoredToken]
@@ -293,6 +324,7 @@
   []
   (let [tokens (get-tokens test-data)
         data (extend-tokens-information tokens)
+        data (score-tokens data 0.0)
         sorted-corpora ["科学技術論文"
                         "白書"
                         "法律"
@@ -305,7 +337,7 @@
                         "Yahoo_ブログ"
                         "韻文"
                         "国会会議録"]
-        default-header [:lemma :orth-base :romaji :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :All-PPM :Pos-PPM :Neg-PPM :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        default-header [:lemma :orth-base :romaji :display-lemma :pos-1 :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :score-verdict :score :準誤用判定 :準正用判定 :All-PPM :Pos-PPM :Neg-PPM :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
         norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
         freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
         chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
