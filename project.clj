@@ -12,13 +12,14 @@
 
                  [mount "0.1.10"]
                  [potemkin "0.4.3"]
-                 [environ "1.0.1"]
+                 [org.clojure/tools.nrepl "0.2.12"]
+                 [aero "1.0.0"]
                  ;;[meta-merge "0.1.1"]
                  [prismatic/schema "1.1.3"]
 
                  ;; Web
                  [cheshire "5.6.3"]
-                 [yada "1.1.31"]
+                 [yada "1.1.33"]
                  [aleph "0.4.1"]
 
                  ;; Database
@@ -36,7 +37,7 @@
                  [org.clojure/tools.reader "1.0.0-beta1"]
                  [com.taoensso/timbre "4.7.4"]
                  [robert/hooke "1.3.0"]
-                 [reloaded.repl "0.2.2"] ;; FIXME uberjar
+                 [reloaded.repl "0.2.3"] ;; FIXME uberjar
                  [org.clojure/tools.namespace "0.3.0-alpha1"] ;; FIXME uberjar
                  [org.clojure/tools.cli "0.3.5"]
                  [me.raynes/fs "1.4.6"]
@@ -75,14 +76,13 @@
                  [cc.mallet/mallet "2.0.8"]
                  [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
                  ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
+                 [org.apache.lucene/lucene-core "6.2.0"]
                  ;;
 
                  ;; Text processing
                  [org.chasen/cabocha "0.69"]
                  [com.ibm.icu/icu4j "57.1"]
                  [d3-compat-tree "0.0.9"]]
-
-  :plugins [[lein-environ "1.0.3"]]
   :main ^:skip-aot natsume-server.main
   :profiles
   {:dev  [:project/dev  :profiles/dev]
@@ -94,5 +94,5 @@
                    :repl-options {:init-ns user
                                   :timeout 120000}
                    :dependencies [[org.clojure/tools.namespace "0.3.0-alpha3"]
-                                  [reloaded.repl "0.2.2"]]}
+                                  [reloaded.repl "0.2.3"]]}
    :project/test  {}})
