@@ -35,7 +35,7 @@
                (.setMaxActive 80))]
     {:datasource cpds}))
 
-(defstate connection :start (druid-pool (:db config)))
+(defstate ^{:on-reload :noop} connection :start (druid-pool (:db config)))
 
 ;; ## Database wrapper functions
 (defn q
@@ -695,6 +695,8 @@ return the DDL string for creating that unlogged table."
 ;;
 ;;     CREATE EXTENSION ltree;
 
-(defstate database-init
-  :start (do (drop-all-cascade! connection)
-             (create-tables-and-indexes! connection)))
+(defstate ^{:on-reload :noop}
+  database-init :start
+  (when (:clean config)
+    (drop-all-cascade! connection)
+    (create-tables-and-indexes! connection)))
