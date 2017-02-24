@@ -491,16 +491,51 @@
 
 (defn api []
   ["/api"
-   {"/status"       (yada/handler "Online")
+   {"/chsk"         (yada (yada/resource ;; `wrap-params` + `wrap-keyword-params`
+                           {#_:interceptor-chain
+                            #_[i/available?
+                               i/known-method?
+                               i/uri-too-long?
+                               i/TRACE
+                               i/method-allowed?
+                               i/parse-parameters
+                               i/capture-proxy-headers
+                               i/get-properties
+                               i/process-request-body
+                               i/check-modification-time
+                               i/select-representation
+                               i/if-match
+                               i/if-none-match
+                               i/invoke-method
+                               i/get-new-properties
+                               i/compute-etag
+                               i/create-response
+                               i/logging
+                               i/return]
+                            :parameters {:query {:client-id s/Str}}
+                            :methods
+                            {:get
+                             {:response
+                              (fn [req]
+                                (println req)
+                                ((:ring-ajax-get-or-ws-handshake sente/channel) req))}
+                             :post
+                             {:response
+                              (fn [req]
+                                (println req)
+                                ((:ring-ajax-post-fn sente/channel) req))}}}))
+    "/status"       (yada/handler "Online")
     "/sources"      {"/genre" {""            (yada (sources-genre-resource))
                                ;;"/similarity" (yada (sources-genre-similarity-resource))
                                }}
-    "/sentences"    {"/collocations"         (yada (sentences-collocations-resource))
+    "/sentences"    {"fulltext"              (yada (sentences-fulltext-resource))
+                     "/collocations"         (yada (sentences-collocations-resource))
                      "/tokens"               (yada (sentences-tokens-resource))}
     "/tokens"       {""                      (yada (tokens-resource))
                      "/similarity"           (yada (tokens-similarity-resource))
                      "/nearest-words"        (yada (tokens-nearest-tokens-resource))
-                     "/similarity-with-accuracy" (yada (tokens-similar-tokens-with-accuracy-resource))}
+                     "/similarity-with-accuracy" (yada (tokens-similar-tokens-with-accuracy-resource))
+                     "/tsne"                 (yada (tsne-resource))}
     "/collocations" {""                      (yada (collocations-resource))
                      "/tree"                 (yada (collocations-tree-resource))}
     "/errors"       {"/register"             (yada (errors-register-resource))}
