@@ -214,6 +214,26 @@
      {:response
       (q/query-sentences-tokens connection (extract-query-params ctx))})))
 
+
+(defn sentences-fulltext-resource []
+  (get-resource
+   {:summary "Sentence fulltext search"
+    :description "Returns sentences matching queried regular expression and genre"
+    :parameters
+    {:query (ordered-map
+             (req :query) s/Str
+             (req :genre) s/Str)}
+    :example-query {:query {:query "しかしながら" :genre "書籍"}}}
+   (s/fn :- {:response
+             [{(req :text)   s/Str
+               (req :genre)  [s/Str]
+               (req :title)  s/Str
+               (req :author) s/Str
+               (req :year)   s/Int}]}
+     [ctx]
+     {:response
+      (q/query-fulltext connection (extract-query-params ctx))})))
+
 ;; Tokens
 
 (defn tokens-resource []
