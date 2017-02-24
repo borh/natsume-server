@@ -1,12 +1,13 @@
 (ns natsume-server.models.pg-types
-  (:require [clojure.string :as string])
+  (:require [clojure.string :as string]
+            [clojure.java.jdbc :as jdbc])
   (:import [org.postgresql.util PGobject]
            [java.sql PreparedStatement Array]
            [clojure.lang PersistentHashSet Keyword]))
 
 ;; We extend jdbc to serialize/unserialize arrays as sets (for our tags use-case).
 ;; TODO do same thing for ltree!
-(extend-protocol clojure.java.jdbc/ISQLParameter
+(extend-protocol jdbc/ISQLParameter
   PersistentHashSet
   (set-parameter [v ^PreparedStatement stmt ^long i]
     (let [conn (.getConnection stmt)
@@ -19,7 +20,7 @@
   (set-parameter [v ^PreparedStatement stmt ^long i]
     (.setObject stmt i (name v))))
 
-(extend-protocol clojure.java.jdbc/IResultSetReadColumn
+(extend-protocol jdbc/IResultSetReadColumn
   Array
   (result-set-read-column [val _ _]
     (into #{} (.getArray val))))
