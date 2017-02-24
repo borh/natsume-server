@@ -26,7 +26,8 @@
 
             [mount.core :refer [defstate]]
             [natsume-server.config :refer [config]]
-            [natsume-server.component.database :as db :refer [connection !norm-map !genre-names !genre-tokens-map !gram-totals !gram-types !tokens-by-gram]]))
+            [natsume-server.component.database :as db :refer [connection !norm-map !genre-names !genre-tokens-map !gram-totals !gram-types !tokens-by-gram]]
+            [clojure.string :as str]))
 
 ;; ## Database wrapper functions
 
