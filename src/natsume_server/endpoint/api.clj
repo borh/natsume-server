@@ -306,6 +306,23 @@
      (let [{:keys [unit-type features token accuracy]} (extract-query-params ctx)]
        (word2vec/similar-tokens-with-accuracy unit-type features token accuracy)))))
 
+(defn tsne-resource []
+  (get-resource
+   {:summary "TSNE of nearest tokens"
+    :description "Returns the TSNE coordinates of tokens nearest given token"
+    :parameters
+    {:query
+     (ordered-map
+      (req :unit-type) (s/enum :suw :unigrams)
+      (req :features) [s/Keyword]
+      (req :token) s/Str
+      (opt :n-neighbours) Long
+      (opt :n-dims) Long)}
+    :example-query {:query {:unit-type :suw :features [:lemma]}}}
+   (s/fn :- [s/Str] [ctx]
+     (let [{:keys [unit-type features token]} (extract-query-params ctx)]
+       (word2vec/tsne unit-type features token)))))
+
 ;; Collocations
 
 (defn collocations-resource []
