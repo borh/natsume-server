@@ -3,37 +3,50 @@
  :resource-paths #{"data"}
  :asset-paths #{"assets"}
  :dependencies
- '[[org.clojure/clojure "1.9.0-alpha12"]
+ '[[org.clojure/clojure "1.9.0-alpha14"]
 
+   ;;
+   [tolitius/boot-check "0.1.4" :scope "test"]
    ;; REPL and config utils
-   [adzerk/boot-reload "0.4.12" :scope "test"]
+   [adzerk/boot-reload "0.5.1" :scope "test"]
    ;;[reloaded.repl "0.2.3" :scope "test"]
    [org.clojure/tools.nrepl "0.2.12"]
-   [mount "0.1.10"]
+   [mount "0.1.11"]
    [potemkin "0.4.3"]
-   [aero "1.0.1"]
+   [aero "1.1.2"]
    [prismatic/schema "1.1.3"]
 
    ;; Web
-   [cheshire "5.6.3"]
-   [yada "1.1.35" :exclusions [manifold metosin/ring-swagger]]
-   [metosin/ring-swagger "0.22.10"]
-   [manifold "0.1.6-alpha1"]
-   [aleph "0.4.2-alpha8"]
+   [cheshire "5.7.0"]
+   [yada "1.2.1" :exclusions [manifold metosin/ring-swagger]]
+   [metosin/ring-swagger "0.23.0"]
+   [manifold "0.1.6-alpha4"]
+   [aleph "0.4.2-alpha12"]
+   [com.taoensso/sente "1.11.0"]
+   [com.cognitect/transit-clj "0.8.297"]
+   ;; Temporarily until yada-sente integration fixed:
+   [ring "1.6.0-beta7"]
+   [ring/ring-defaults "0.3.0-beta3"]
+   [compojure "1.6.0-beta3"]
+
+   [org.clojure/core.async "0.3.426"]
 
    ;; Database
-   [org.postgresql/postgresql "9.4.1211.jre7"] ; https://github.com/kdubb/pgjdbc-ng
-   [org.clojure/java.jdbc "0.6.2-alpha3"]
+   [org.postgresql/postgresql "42.0.0"] ; https://github.com/kdubb/pgjdbc-ng
+   [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7"] ;; TODO
+   ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
+   [org.clojure/java.jdbc "0.7.0-alpha1"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.0.26"]
-   [honeysql "0.8.1"]
+   [com.alibaba/druid "1.0.28"]
+   [honeysql "0.8.2"]
    [com.layerware/hugsql "0.4.7"]
 
    ;; Utils
-   [org.tukaani/xz "1.5"]
-   [org.apache.commons/commons-compress "1.12"]
-   [org.clojure/tools.reader "1.0.0-beta3"]
-   [com.taoensso/timbre "4.8.0-alpha1"]
+   [org.tukaani/xz "1.6"]
+   [org.apache.commons/commons-compress "1.13"]
+   [org.clojure/tools.reader "1.0.0-beta4"]
+   [com.taoensso/timbre "4.9.0-alpha1"]
+   [com.taoensso/encore "2.90.0-alpha2"]
    [robert/hooke "1.3.0"]
    [reloaded.repl "0.2.3"] ;; FIXME uberjar
    [org.clojure/tools.namespace "0.3.0-alpha3"] ;; FIXME uberjar
@@ -45,7 +58,6 @@
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
    [automat "0.2.0"]
    [org.apache.commons/commons-math3 "3.6.1"]
-   [fipp "0.6.6"]
    [org.flatland/ordered "1.5.4"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
    [org.clojure/core.cache "0.6.5"]
@@ -66,26 +78,27 @@
    ;;[org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
    ;;[org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
    [byte-streams "0.2.2"]
-   [org.nd4j/nd4j-native "0.6.0" :exclusions [org.javassist/javassist]]
-   [org.nd4j/nd4j-native-platform "0.6.0" :exclusions [org.javassist/javassist]]
-   [org.deeplearning4j/deeplearning4j-core "0.6.0" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
+   [org.nd4j/nd4j-native "0.7.2" :exclusions [org.javassist/javassist]]
+   [org.nd4j/nd4j-native-platform "0.7.2" :exclusions [org.javassist/javassist]]
+   [org.deeplearning4j/deeplearning4j-core "0.7.2" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
    ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.4-rc3.9" :exclusions [org.slf4j/slf4j-api commons-io]]
-   [org.deeplearning4j/deeplearning4j-nlp "0.6.0" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
-   [cc.mallet/mallet "2.0.8"]
+   [org.deeplearning4j/deeplearning4j-nlp "0.7.2" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
+   [cc.mallet/mallet "2.0.9"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   [org.apache.lucene/lucene-core "6.2.1"]
+   [org.apache.lucene/lucene-core "6.4.1"]
    ;;
 
    ;; Text processing
    [org.chasen/cabocha "0.69"]
-   [com.ibm.icu/icu4j "57.1"]
+   [com.ibm.icu/icu4j "58.2"]
    [d3-compat-tree "0.0.9"]])
 
 (set-env! :repositories #(conj % ["sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]))
 
 (require '[adzerk.boot-reload :refer [reload]]
          'clojure.tools.namespace.repl
+         '[tolitius.boot-check :as check]
          '[mount.core :as mount]
          '[aero.core :as aero]
          '[natsume-server.main :as natsume])
@@ -105,6 +118,14 @@
  aot {:namespace #{'natsume-server.main}}
  jar {:main 'natsume-server.main
       :file (str "natsume-server-" version "-standalone.jar")})
+
+(deftask check-sources []
+  (set-env! :source-paths #{"src"})
+  (comp
+   (check/with-yagni)
+   (check/with-eastwood)
+   (check/with-kibit)
+   (check/with-bikeshed)))
 
 (deftask dev-system
   "Develop the server backend. The system is automatically started in
