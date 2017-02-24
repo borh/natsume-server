@@ -13,21 +13,21 @@
                  [mount "0.1.10"]
                  [potemkin "0.4.3"]
                  [org.clojure/tools.nrepl "0.2.12"]
-                 [aero "1.0.0"]
+                 [aero "1.0.1"]
                  ;;[meta-merge "0.1.1"]
                  [prismatic/schema "1.1.3"]
 
                  ;; Web
                  [cheshire "5.6.3"]
-                 [yada "1.1.33"]
+                 [yada "1.1.41"]
                  [aleph "0.4.1"]
 
                  ;; Database
-                 [org.postgresql/postgresql "9.4.1209"] ; https://github.com/kdubb/pgjdbc-ng
+                 [org.postgresql/postgresql "9.4.1211"] ; https://github.com/kdubb/pgjdbc-ng
                  [org.clojure/java.jdbc "0.6.1"]
                  [java-jdbc/dsl "0.1.3"]
-                 [com.alibaba/druid "1.0.25"]
-                 [honeysql "0.8.0"]
+                 [com.alibaba/druid "1.0.26"]
+                 [honeysql "0.8.1"]
                  [com.layerware/hugsql "0.4.7"]
                  ;;
 
@@ -43,7 +43,7 @@
                  [me.raynes/fs "1.4.6"]
                  [iota "1.1.3"]
                  [org.clojure/data.csv "0.1.3"]
-                 [dk.ative/docjure "1.10.0" :exclusions [commons-codec]]
+                 [dk.ative/docjure "1.11.0" :exclusions [commons-codec]]
                  [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
                  [automat "0.2.0"]
                  [org.apache.commons/commons-math3 "3.6.1"]
@@ -57,7 +57,7 @@
                  ;; [net.mikera/core.matrix "0.48.0"] ;; >0.44.0 breaks incanter
                  ;; [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
                  ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
-                 [bigml/sampling "3.0"]
+                 [bigml/sampling "3.1"]
                  [prismatic/plumbing "0.5.3" :exclusions [fs potemkin prismatic/schema]]
                  [lonocloud/synthread "1.4.0" :exclusions [org.clojure/clojurescript]]
                  ;; [prismatic/hiphip "0.1.0"] ;; TODO
@@ -68,20 +68,20 @@
                  ;;[org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
                  ;;[org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
                  [byte-streams "0.2.2"]
-                 [org.nd4j/nd4j-native "0.5.0" :exclusions [org.javassist/javassist]]
-                 [org.nd4j/nd4j-native-platform "0.5.0" :exclusions [org.javassist/javassist]]
-                 [org.deeplearning4j/deeplearning4j-core "0.5.0" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
+                 [org.nd4j/nd4j-native "0.6.0" :exclusions [org.javassist/javassist]]
+                 [org.nd4j/nd4j-native-platform "0.6.0" :exclusions [org.javassist/javassist]]
+                 [org.deeplearning4j/deeplearning4j-core "0.6.0" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
                  ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.4-rc3.9" :exclusions [org.slf4j/slf4j-api commons-io]]
-                 [org.deeplearning4j/deeplearning4j-nlp "0.5.0" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
+                 [org.deeplearning4j/deeplearning4j-nlp "0.6.0" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
                  [cc.mallet/mallet "2.0.8"]
                  [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
                  ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-                 [org.apache.lucene/lucene-core "6.2.0"]
+                 [org.apache.lucene/lucene-core "6.2.1"]
                  ;;
 
                  ;; Text processing
                  [org.chasen/cabocha "0.69"]
-                 [com.ibm.icu/icu4j "57.1"]
+                 [com.ibm.icu/icu4j "58.1"]
                  [d3-compat-tree "0.0.9"]]
   :main ^:skip-aot natsume-server.main
   :profiles
