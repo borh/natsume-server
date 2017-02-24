@@ -178,7 +178,7 @@
      (let [q (extract-query-params ctx)]
        {:response
         (q/query-sentences connection
-                            (assoc q :type (extract-query-type q)))}))))
+                           (assoc q :type (extract-query-type q)))}))))
 
 (defn sentences-tokens-resource []
   (get-resource
