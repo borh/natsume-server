@@ -98,23 +98,24 @@
 (def corpus-graph
   ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
   {:files      (fnk [corpus-dir sampling-options]
-                 (->> corpus-dir
-                      file-seq
-                      (r/filter #(= ".txt" (fs/extension %)))
-                      (into #{})
-                      (?>> (not= (:ratio sampling-options) 0.0) ((fn [xs] (sample sampling-options xs))))))
+                    (->> corpus-dir
+                         file-seq
+                         (r/filter #(= ".txt" (fs/extension %)))
+                         (into #{})
+                         (?>> (not= (:ratio sampling-options) 0.0) ((fn [xs] (sample sampling-options xs))))))
    :file-bases (fnk [files] (set (map #(fs/base-name % true) files)))
    :sources    (fnk [corpus-dir]
-                 (map
-                   (fn [[title author year basename genres-name subgenres-name
-                         subsubgenres-name subsubsubgenres-name permission]]
-                     {:title    title
-                      :author   author
-                      :year     (Integer/parseInt year)
-                      :basename basename
-                      :genre    [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]})
-                   (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
-                     (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
+                    (map
+                     (fn [[title author year basename genres-name subgenres-name
+                           subsubgenres-name subsubsubgenres-name permission]]
+                       {:title      title
+                        :author     author
+                        :year       (Integer/parseInt year)
+                        :basename   basename
+                        :genre      [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]
+                        :permission (Boolean/valueOf permission)})
+                     (with-open [sources-reader (io/reader (str corpus-dir "/sources.tsv"))]
+                       (doall (csv/read-csv sources-reader :separator \tab :quote 0)))))
    :persist    (fnk [conn sources files file-bases]
                     ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
                     (let [sources-basenames (set (map :basename sources))
