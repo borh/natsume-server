@@ -288,7 +288,7 @@
     :example-query {:query {:unit-type :suw :features [:lemma]}}}
    (s/fn :- [s/Str] [ctx]
      (let [{:keys [unit-type features token]} (extract-query-params ctx)]
-       (word2vec/nearest-tokens unit-type features token)))))
+       (word2vec/token-nearest-tokens unit-type features token)))))
 
 (defn tokens-similar-tokens-with-accuracy-resource []
   (get-resource
