@@ -4,6 +4,8 @@
             [clojure.core.reducers :as r]
             [clojure.java.jdbc :as j]
 
+            [hugsql.core :as hugsql]
+
             [honeysql.core :as h]
             [honeysql.format :as fmt]
             [honeysql.helpers :refer :all :exclude [update]]
@@ -101,6 +103,12 @@
 
 
 ;; Query
+
+(hugsql/def-db-fns "natsume_server/component/sql/fulltext.sql")
+
+(defn query-fulltext [conn {:keys [query genre]}]
+  (map (fn [m] (update m :genre (comp (partial str/join ".") ltree->seq)))
+       (fulltext-stream conn {:query query :genre genre})))
 
 ;; ## Insertion functions
 
