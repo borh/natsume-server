@@ -83,7 +83,7 @@
    [org.deeplearning4j/deeplearning4j-core "0.7.2" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
    ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.4-rc3.9" :exclusions [org.slf4j/slf4j-api commons-io]]
    [org.deeplearning4j/deeplearning4j-nlp "0.7.2" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
-   [cc.mallet/mallet "2.0.9"]
+   [cc.mallet/mallet "2.0.8"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
    [org.apache.lucene/lucene-core "6.4.1"]
