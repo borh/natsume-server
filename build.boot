@@ -29,11 +29,11 @@
    [ring/ring-defaults "0.3.0-beta3"]
    [compojure "1.6.0-beta3"]
 
-   [org.clojure/core.async "0.3.426"]
+   [org.clojure/core.async "0.3.441"]
 
    ;; Database
    [org.postgresql/postgresql "42.0.0"] ; https://github.com/kdubb/pgjdbc-ng
-   [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7"] ;; TODO
+   [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.0-alpha1"]
    [java-jdbc/dsl "0.1.3"]
