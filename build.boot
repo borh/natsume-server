@@ -1,7 +1,6 @@
 (set-env!
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
- :asset-paths #{"assets"}
  :dependencies
  '[[org.clojure/clojure "1.9.0-alpha14"]
 
