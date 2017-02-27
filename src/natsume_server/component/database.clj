@@ -142,10 +142,10 @@ return the DDL string for creating that unlogged table."
         table-spec-str (or (and table-spec (str " " table-spec)) "")
         specs-to-string (fn [specs]
                           (clojure.string/join
-                                 (map (j/as-sql-name entities)
-                                      (apply concat
-                                             (interpose [", "]
-                                                        (map (partial interpose " ") specs))))))]
+                           (map (partial j/as-sql-name entities)
+                                (apply concat
+                                       (interpose [", "]
+                                                  (map (partial interpose " ") specs))))))]
     (format "CREATE UNLOGGED TABLE %s (%s)%s"
             (j/as-sql-name entities name)
             (specs-to-string col-specs)
