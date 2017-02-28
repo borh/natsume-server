@@ -4,4 +4,4 @@ SELECT so.title, so.author, so.year, so.genre, se.text FROM sentences AS se, sou
 
 -- :name fulltext-stream :? :*
 -- :doc Get stream of sentences matching regular expression and genre.
-SELECT so.title, so.author, so.year, so.genre, se.text FROM sentences AS se, sources AS so WHERE se.sources_id=so.id AND se.text ~ :query::text AND so.genre ~ :genre::lquery ORDER BY so.genre, so.year, so.title, se.id
+SELECT se.sentence_order_id AS sentence_order_id, so.id AS sources_id, so.title, so.author, so.year, so.genre, se.text FROM sentences AS se, sources AS so WHERE se.sources_id=so.id AND se.text ~ :query::text AND so.genre ~ :genre::lquery ORDER BY so.genre, so.year, so.title, se.sentence_order_id ASC
