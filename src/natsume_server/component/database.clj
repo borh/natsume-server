@@ -171,7 +171,8 @@
    [:author   :text]
    [:year     :smallint "NOT NULL"]
    [:basename :text     "NOT NULL"]
-   [:genre    :ltree    "NOT NULL"]])
+   [:genre    :ltree    "NOT NULL"]
+   [:permission :boolean]])
 
 (def sentences-schema
   [:sentences
