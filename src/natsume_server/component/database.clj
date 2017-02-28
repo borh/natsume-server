@@ -132,7 +132,7 @@
 
 (defn create-unlogged-table-ddl
   "Given a table name and column specs with an optional table-spec
-return the DDL string for creating that unlogged table."
+  return the DDL string for creating that unlogged table."
   [name & specs]
   (let [col-specs (take-while (fn [s]
                                 (not (or (= :table-spec s)
