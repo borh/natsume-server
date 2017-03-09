@@ -20,7 +20,7 @@
    [yada "1.2.1" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.23.0"]
    [io.netty/netty-all "4.1.8.Final"]
-   [manifold "0.1.6-alpha4"]
+   [manifold "0.1.6-alpha6"]
    [aleph "0.4.2-alpha12"]
    [com.taoensso/sente "1.11.0"]
    [com.cognitect/transit-clj "0.8.297"]
@@ -32,10 +32,10 @@
    [org.clojure/core.async "0.3.441"]
 
    ;; Database
-   [org.postgresql/postgresql "42.0.0"] ; https://github.com/kdubb/pgjdbc-ng
+   [org.postgresql/postgresql "42.0.0"]
    [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
-   [org.clojure/java.jdbc "0.7.0-alpha1"]
+   [org.clojure/java.jdbc "0.7.0-alpha2"]
    [java-jdbc/dsl "0.1.3"]
    [com.alibaba/druid "1.0.28"]
    [honeysql "0.8.2"]
@@ -86,7 +86,7 @@
    [cc.mallet/mallet "2.0.8"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   [org.apache.lucene/lucene-core "6.4.1"]
+   [org.apache.lucene/lucene-core "6.4.2"]
    ;;
 
    ;; Text processing
