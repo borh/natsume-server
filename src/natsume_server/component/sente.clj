@@ -1,6 +1,7 @@
 (ns natsume-server.component.sente
   (:require [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.aleph :refer (get-sch-adapter)]
+            [taoensso.sente.packers.transit :as sente-transit]
             [taoensso.timbre :as timbre :refer [info]]
             [mount.core :refer [defstate]]
             [clojure.string :as str]
@@ -40,7 +41,8 @@
   (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn
                 connected-uids]}
         (sente/make-channel-socket-server!
-         (get-sch-adapter))]
+         (get-sch-adapter)
+         {:packer (sente-transit/get-transit-packer)})]
     {:ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
      :ring-ajax-post-fn ajax-post-fn
      :connected-uids connected-uids
