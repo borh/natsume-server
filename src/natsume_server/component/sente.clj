@@ -60,6 +60,14 @@
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (?reply-fn (?data db/!norm-map)))
 
+(defn with-time-duration
+  "Returns a map wrapping the result in :result and time elapsed in :duration (in seconds)."
+  [expr]
+  (let [start (. System (nanoTime))
+        result (expr)]
+    {:duration (/ (double (- (. System (nanoTime)) start)) 1000000000.0)
+     :result result}))
+
 (defmethod event-msg-handler :sentences/fulltext
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (println "fulltext -------> " ?data)
