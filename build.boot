@@ -28,6 +28,8 @@
    [ring "1.6.0-beta7"]
    [ring/ring-defaults "0.3.0-beta3"]
    [compojure "1.6.0-beta3"]
+   [buddy/buddy-sign "1.4.0"]
+   [buddy/buddy-auth "1.4.1"]
 
    [org.clojure/core.async "0.3.441"]
 

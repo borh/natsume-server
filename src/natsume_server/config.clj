@@ -4,3 +4,6 @@
 
 (defstate config
   :start (aero/read-config "config.edn" {:profile :server}))
+
+(defstate secrets
+  :start (aero/read-config "secrets.edn"))
