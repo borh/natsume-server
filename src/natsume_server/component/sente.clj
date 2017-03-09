@@ -22,7 +22,7 @@
     (when ?reply-fn
       (?reply-fn {:unknown-event event}))))
 
-(defmethod event-msg-handler :chsk/ws-ping [_] (println "ping."))
+(defmethod event-msg-handler :chsk/ws-ping [_] (print "."))
 
 (defmethod event-msg-handler :chsk/uidport-open
   [{:keys [client-id request]}]
