@@ -282,7 +282,6 @@
 ;; They must be created after processing.
 ;; TODO convert to migrations (https://github.com/macourtney/drift / https://github.com/pjstadig/migratus) or clojure.java.jdbc DSL
 ;; FIXME !Profile if having indexes to make new table is faster than not creating them!
-;; TODO concurrent index creation
 (def expensive-indexes
   [[:par (create-index :gram-1 :pos-1)]
 
