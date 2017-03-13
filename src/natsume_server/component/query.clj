@@ -111,6 +111,9 @@
   (map (fn [m] (update m :genre (comp (partial str/join ".") ltree->seq)))
        (fulltext-stream conn {:query query :genre genre})))
 
+(defn query-expanded-document [conn id]
+  (:text (expand-document conn {:id id})))
+
 ;; ## Insertion functions
 
 ;; ### Sources

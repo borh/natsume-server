@@ -70,8 +70,11 @@
 
 (defmethod event-msg-handler :sentences/fulltext
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (println "fulltext -------> " ?data)
   (?reply-fn (q/query-fulltext db/connection ?data)))
+
+(defmethod event-msg-handler :sources/sentence-id
+  [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
+  (?reply-fn (q/query-expanded-document db/connection ?data)))
 
 (defmethod event-msg-handler :sentences/collocations
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]

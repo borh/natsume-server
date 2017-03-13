@@ -1,17 +1,17 @@
 (ns natsume-server.component.server
   (:require [mount.core :refer [defstate]]
-            [bidi.ring :refer [make-handler]]
             [aleph.http :as http]
             [natsume-server.endpoint.api :refer [api-routes]]
             [natsume-server.component.sente :as comm]
-            [ring.middleware.defaults]
+            [ring.middleware.defaults :refer [wrap-defaults site-defaults]]
+            [ring.middleware.cors :refer [wrap-cors]]
+            [ring.logger.timbre :as logger]
             [buddy.auth :refer [authenticated? throw-unauthorized]]
             [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
-            [buddy.sign.jwt :as jwt]
-            [clj-time.core :as time]
             [natsume-server.component.auth :as auth]
             [cheshire.core :as json]
-            [compojure.core :refer [defroutes GET POST]]
+            [compojure.core :refer [defroutes routes GET POST OPTIONS]]
+            [compojure.handler :as handler]
             [compojure.route :as route]
             [natsume-server.config :refer [config]]))
 
