@@ -16,6 +16,7 @@
 (defn -main [& args]
   (clojure.pprint/pprint {:new-config natsume-server.config/config})
   (with-logging-status)
+  (mount/start #'natsume-server.config/secrets)
   (mount/start #'natsume-server.component.database/connection)
 
   (when (:clean config)
