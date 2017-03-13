@@ -15,51 +15,49 @@
             [compojure.route :as route]
             [natsume-server.config :refer [config]]))
 
-(defn login-handler
+(defn create-authentication-token
   [request]
-  (let [data (:form-params request)
-        user (auth/find-user (:username data)
-                             (:password data))]
-    (if user
-      (let [claims {:user user
-                    :exp (time/plus (time/now) (time/minutes 10))}
-            token (jwt/sign claims auth/secret {:alg :hs512})]
-        {:status 200
-         :body (json/encode {:token token})
-         :headers {:content-type "application/json"}})
+  (let [{:keys [username password]} (:params request)]
+    (if-let [token (auth/get-jwt-token username password)]
+      {:status 200
+       :body (json/encode {:token token})
+       :headers {"Content-Type" "application/json"}}
       {:status 400 :body "invalid credentials"})))
 
 (defroutes ring-routes
-  (GET  "/api/chsk"  ring-req
-    (if-not (authenticated? ring-req)
+  (GET "/api/chsk" ring-req
+    (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
       (throw-unauthorized)
       ((:ring-ajax-get-or-ws-handshake comm/channel) ring-req)))
-  (POST "/api/chsk"  ring-req
-    (if-not (authenticated? ring-req)
+  (POST "/api/chsk" ring-req
+    (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
       (throw-unauthorized)
       ((:ring-ajax-post-fn comm/channel) ring-req)))
   (POST "/api/authenticate" ring-req
-    (login-handler ring-req))
+    (create-authentication-token ring-req))
+  (GET "/api/authenticate" ring-req
+    (create-authentication-token ring-req))
+  (OPTIONS "/api/authenticate" ring-req
+           (create-authentication-token ring-req))
   (route/resources "/") ; Static files, notably public/main.js (our cljs target)
   (route/not-found "<h1>Page not found</h1>"))
 
 (defstate server
   :start (when (:server config)
-           (let [s (http/start-server
-                    (-> ring-routes
-                        (wrap-authorization auth/backend)
-                        (wrap-authentication auth/backend)
-                        (ring.middleware.defaults/wrap-defaults
-                         ring.middleware.defaults/site-defaults))
-                    {:port (-> config :http :port)
-                     :raw-stream? true})
-                 p (promise)]
-             (future @p)
-             (fn []
-               (.close ^java.io.Closeable s)
-               (deliver p nil))))
+           (-> ring-routes
+               (routes)
+               (logger/wrap-with-logger)
+               (wrap-cors
+                :access-control-allow-origin (->> config :http :access-control-allow-origin (mapv re-pattern))
+                :access-control-allow-methods [:get :post :options]
+                :access-control-allow-headers ["Content-Type"])
+               (wrap-authentication auth/backend)
+               (wrap-authorization auth/backend)
+               (wrap-defaults site-defaults)
+               (handler/site)
+               (http/start-server {:port (-> config :http :port)})))
   :stop (when (:server config)
-          (server)))
+          (.close server)))
 
 (comment
   (defstate server
