@@ -5,7 +5,9 @@
                 :pretty-print? #profile {:dev true
                                          :prod false}
                 :server-address #or [#env SERVER_ADDRESS
-                                     #join["//localhost:" #or [#env PORT 3000]]]}
+                                     #join["//localhost:" #or [#env PORT 3000]]]
+                :access-control-allow-origin ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                                              "https://(wombat.)?hinoki-project.org"]}
  :log          {:directory "./log"}
  :dirs         #include "corpora.edn"
  :verbose      false
