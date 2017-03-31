@@ -2,7 +2,7 @@
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
  :dependencies
- '[[org.clojure/clojure "1.9.0-alpha14"]
+ '[[org.clojure/clojure "1.9.0-alpha15"]
 
    ;;
    [tolitius/boot-check "0.1.4" :scope "test"]
@@ -12,7 +12,7 @@
    [mount "0.1.11"]
    [potemkin "0.4.3"]
    [aero "1.1.2"]
-   [prismatic/schema "1.1.3"]
+   [prismatic/schema "1.1.4"]
 
    ;; Web
    [cheshire "5.7.0"]
@@ -22,25 +22,25 @@
    [manifold "0.1.6"]
    [aleph "0.4.3"]
    [com.taoensso/sente "1.11.0"]
-   [com.cognitect/transit-clj "0.8.297"]
+   [com.cognitect/transit-clj "0.8.300"]
    ;; Temporarily until yada-sente integration fixed:
    [ring "1.6.0-RC1"]
    [ring/ring-defaults "0.3.0-beta3"]
    [ring-cors "0.1.9"]
    [ring-logger-timbre "0.7.5"]
    [compojure "1.6.0-beta3"]
-   [buddy/buddy-sign "1.4.0"]
+   [buddy/buddy-sign "1.5.0"]
    [buddy/buddy-auth "1.4.1"]
 
-   [org.clojure/core.async "0.3.441"]
+   [org.clojure/core.async "0.3.442"]
 
    ;; Database
    [org.postgresql/postgresql "9.4.1212"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
-   [org.clojure/java.jdbc "0.7.0-alpha2"]
+   [org.clojure/java.jdbc "0.7.0-alpha3"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.0.28"]
+   [com.alibaba/druid "1.0.29"]
    [honeysql "0.8.2"]
    [com.layerware/hugsql "0.4.7"]
 
@@ -89,7 +89,7 @@
    [cc.mallet/mallet "2.0.8"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   [org.apache.lucene/lucene-core "6.4.2"]
+   [org.apache.lucene/lucene-core "6.5.0"]
    ;;
 
    ;; Text processing
