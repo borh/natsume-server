@@ -106,14 +106,12 @@
          '[aero.core :as aero]
          '[natsume-server.main :as natsume])
 
-(def repl-port 5600)
 (def version "1.0.0-SNAPSHOT")
 
 (load-data-readers!)
 
 (task-options!
- repl {:client true
-       :port repl-port}
+ repl {:client true}
  pom {:project 'natsume-server
       :version version
       :description "Natsume writing assistance system data processor and API server"
@@ -178,7 +176,6 @@
               d dev         bool "Development"]
   (comp
    (repl :server true
-         :port repl-port
          :init-ns 'natsume-server.main)
    (run-system (or profile :prod-server) (or dev false))
    (wait)))
