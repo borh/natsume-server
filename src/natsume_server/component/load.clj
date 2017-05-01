@@ -78,10 +78,12 @@
 
 (def bccwj-file-graph
   (assoc file-graph
-    :paragraphs (fnk [filename]
-                     (case (fs/extension filename)
-                       ".txt" (-> filename str iota/vec text/lines->paragraph-sentences text/add-tags)
-                       ".xml" (bccwj/xml->paragraph-sentences filename)))))
+         :corpus (fnk [filename]
+                      (subs (fs/base-name filename) 0 2))
+         :paragraphs (fnk [filename corpus]
+                          (case (fs/extension filename)
+                            ".txt" (-> filename str iota/vec text/lines->paragraph-sentences text/add-tags)
+                            ".xml" (bccwj/xml->paragraph-sentences filename corpus)))))
 (def bccwj-file-graph-fn (graph/eager-compile bccwj-file-graph))
 
 (def wikipedia-file-graph-fn (graph/eager-compile (dissoc file-graph :paragraphs)))

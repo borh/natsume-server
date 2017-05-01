@@ -78,7 +78,7 @@
 
 (defn walk-and-emit
   "Traverses xml-data (parsed with clojure.xml/parse or clojure.data.xml/parse) using a zipper and incrementally builds up and returns the document as a vector of maps (representing paragraphs), each element of which contains tags and a vector of sentences."
-  [xml-data]
+  [paragraph-level-tags xml-data]
   (loop [xml-loc (z/xml-zip xml-data)
          tag-stack []
          par-loc (z/down (z/vector-zip [{:tags [] :sentences []}]))]
@@ -114,11 +114,13 @@
                :else par-loc)))))) ; Do nothing.
 
 (defn xml->paragraph-sentences
-  [filename]
+  [filename corpus]
   (->> filename
        io/input-stream
        xml/parse
-       walk-and-emit
+       (walk-and-emit (case corpus "OY"
+                            (disj paragraph-level-tags :br)
+                            paragraph-level-tags))
        (map #(hash-map ; Remove nils/empty strings from :tags and :sentences.
               :tags (set (filter identity (:tags %)))
               :sentences (vec (remove empty? (:sentences %)))))
