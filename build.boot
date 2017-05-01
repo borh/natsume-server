@@ -2,21 +2,21 @@
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
  :dependencies
- '[[org.clojure/clojure "1.9.0-alpha15"]
+ '[[org.clojure/clojure "1.9.0-alpha16"]
 
    ;;
    [tolitius/boot-check "0.1.4" :scope "test"]
    ;; REPL and config utils
    [adzerk/boot-reload "0.5.1" :scope "test"]
-   [org.clojure/tools.nrepl "0.2.12"]
+   [org.clojure/tools.nrepl "0.2.13"]
    [mount "0.1.11"]
    [potemkin "0.4.3"]
    [aero "1.1.2"]
-   [prismatic/schema "1.1.4"]
+   [prismatic/schema "1.1.5"]
 
    ;; Web
-   [cheshire "5.7.0"]
-   [yada "1.2.1" :exclusions [manifold metosin/ring-swagger]]
+   [cheshire "5.7.1"]
+   [yada "1.2.2" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.23.0"]
    [io.netty/netty-all "4.1.8.Final"]
    [manifold "0.1.6"]
@@ -24,9 +24,9 @@
    [com.taoensso/sente "1.11.0"]
    [com.cognitect/transit-clj "0.8.300"]
    ;; Temporarily until yada-sente integration fixed:
-   [ring "1.6.0-RC1"]
+   [ring "1.6.0-RC3"]
    [ring/ring-defaults "0.3.0-beta3"]
-   [ring-cors "0.1.9"]
+   [ring-cors "0.1.10"]
    [ring-logger-timbre "0.7.5"]
    [compojure "1.6.0-beta3"]
    [buddy/buddy-sign "1.5.0"]
@@ -48,11 +48,11 @@
    [org.tukaani/xz "1.6"]
    [org.apache.commons/commons-compress "1.13"]
    [org.clojure/tools.reader "1.0.0-beta4"]
-   [com.taoensso/timbre "4.9.0-alpha1"]
-   [com.taoensso/encore "2.90.1"]
+   [com.taoensso/timbre "4.10.0"]
+   [com.taoensso/encore "2.91.0"]
    [robert/hooke "1.3.0"]
    [reloaded.repl "0.2.3"] ;; FIXME uberjar
-   [org.clojure/tools.namespace "0.3.0-alpha3"] ;; FIXME uberjar
+   [org.clojure/tools.namespace "0.3.0-alpha4"] ;; FIXME uberjar
    [org.clojure/tools.cli "0.3.5"]
    [me.raynes/fs "1.4.6"]
    [iota "1.1.3"]
@@ -71,7 +71,7 @@
    ;; [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
    ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
    [bigml/sampling "3.1"]
-   [prismatic/plumbing "0.5.3" :exclusions [fs potemkin prismatic/schema]]
+   [prismatic/plumbing "0.5.4" :exclusions [fs potemkin prismatic/schema]]
    [lonocloud/synthread "1.4.0" :exclusions [org.clojure/clojurescript]]
    ;; [prismatic/hiphip "0.1.0"] ;; TODO
    [cc.qbits/knit "0.3.1"]
@@ -89,7 +89,7 @@
    [cc.mallet/mallet "2.0.8"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   [org.apache.lucene/lucene-core "6.5.0"]
+   [org.apache.lucene/lucene-core "6.5.1"]
    ;;
 
    ;; Text processing
