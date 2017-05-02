@@ -1,5 +1,5 @@
-{:db           {:subname  "//localhost:5432/natsumedev"
-                :user     "natsumedev"
+{:db           {:subname #join["//localhost:5432/" #or [#env DB_NAME "natsumedev"]]
+                :user #or [#env DB_USER "natsumedev"]
                 :password #or [#env DB_PASSWORD "riDJMq98LpyWgB7F"]}
  :http         {:port #long #or [#env PORT 3000]
                 :pretty-print? #profile {:dev true
@@ -9,7 +9,7 @@
                 :access-control-allow-origin ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
                                               "https://(wombat.)?hinoki-project.org"]}
  :log          {:directory "./log"}
- :dirs         #include "corpora.edn"
+ :dirs         #include #or [#env CORPORA_EDN_FILE "corpora.edn"]
  :verbose      false
  :clean        #profile {:load true  :server false}
  :process      #profile {:load true  :server false}
