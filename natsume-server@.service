@@ -1,0 +1,27 @@
+# Example systemd service file for natsume-server
+# uses a parameter
+# 'systemctl start natsume-server@prod' will start natsume-server with the profile set to 'prod'
+
+# Dependencies:
+# Install boot into /usr/local/bin/boot or under $HOME/local/bin/boot
+# Place this file under /etc/systemd/system on Arch Linux (and other systems that use systemd)
+# Ensure service survives reboot with 'systemctl enable natsume-server@server'
+
+[Unit]
+Description=natsume-server
+
+[Service]
+Type=simple
+Environment="BOOT_JVM_OPTIONS='-Djava.awt.headless=true -Xms4g -Xmx4g'"
+Environment="DISPLAY=:0"
+Environment="PORT=%i"
+Environment="DB_NAME='natsumedev_new'"
+ExecStart=/home/bor/local/bin/boot run --profile server
+Restart=always
+User=bor
+WorkingDirectory=/home/bor/Projects/natsume-server
+PrivateTmp=true
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
