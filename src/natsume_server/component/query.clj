@@ -107,9 +107,52 @@
 
 (hugsql/def-db-fns "natsume_server/component/sql/fulltext.sql")
 
-(defn query-fulltext [conn {:keys [query genre]}]
-  (map (fn [m] (update m :genre (comp (partial str/join ".") ltree->seq)))
-       (fulltext-stream conn {:query query :genre genre})))
+(defn re-pos [re s]
+  (loop [m (re-matcher re s)
+         res []]
+    (if (.find m)
+      (recur m (conj res [(.start m) (.end m)]))
+      res)))
+
+(defn kwic-regex-formatter
+  "Returns a map of the matched search key and text before and, one for each match."
+  [rx text]
+  (let [matches (re-pos rx text)]
+    (map
+     (fn [[begin end]]
+       (let [before-string (subs text 0 begin)
+             after-string (subs text end (inc (count text)))
+             hl-string (subs text begin end)]
+         {:before before-string
+          :key hl-string
+          :after after-string}))
+     matches)))
+
+(def !fulltext-query-cache
+  (atom (cache/lru-cache-factory {} :threshold 5)))
+
+(defn query-fulltext [conn {:keys [query genre limit offset]}]
+  (let [cache-key [query genre]]
+    (if (cache/has? @!fulltext-query-cache cache-key)
+      (get (swap! !fulltext-query-cache #(cache/hit % cache-key)) cache-key)
+      (let [results (mapcat (fn [{:keys [id title author year genre
+                                         before_text key_text after_text]}]
+                              (let [matches (kwic-regex-formatter (re-pattern query) key_text)]
+                                (for [match matches]
+                                  {:id id
+                                   :title title
+                                   :author author
+                                   :year year
+                                   :genre ((comp (partial str/join ".") ltree->seq) genre)
+                                   :before (str before_text (:before match))
+                                   :key (:key match)
+                                   :after (str (:after match) after_text)})))
+                            (fulltext-stream conn {:query query :genre genre}))
+            results-map {:matches results
+                         :total-count (count results)
+                         :patterns (frequencies (map :key results))}]
+        (swap! !fulltext-query-cache #(cache/miss % cache-key results-map))
+        results-map))))
 
 (defn query-expanded-document [conn id]
   (:text (expand-document conn {:id id})))
