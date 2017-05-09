@@ -155,7 +155,8 @@
         results-map))))
 
 (defn query-expanded-document [conn id]
-  (:text (expand-document conn {:id id})))
+  (update (expand-document conn {:id id})
+          :genre (comp (partial str/join ".") ltree->seq)))
 
 ;; ## Insertion functions
 

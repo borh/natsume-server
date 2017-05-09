@@ -44,11 +44,15 @@ SELECT se.sentence_order_id AS sentence_order_id, so.id AS sources_id, so.title,
 -- :name expand-document :? :1
 -- :doc Get document text given sentence id.
 WITH d AS (
-  SELECT sources.id
+  SELECT sources.id, sources.genre, sources.title, sources.author, sources.year
   FROM sources, sentences
   WHERE sentences.id=:id AND sentences.sources_id=sources.id
 )
 SELECT
+  d.genre,
+  d.title,
+  d.author,
+  d.year,
   string_agg(paragraphs.text, E'\n' ORDER BY paragraphs.paragraph_order_id ASC) AS text
 FROM
   (SELECT
@@ -60,4 +64,10 @@ FROM
       p_se.paragraph_order_id
     ORDER BY
       p_se.paragraph_order_id ASC
-  ) AS paragraphs
+  ) AS paragraphs,
+  d
+GROUP BY
+  d.genre,
+  d.title,
+  d.author,
+  d.year
