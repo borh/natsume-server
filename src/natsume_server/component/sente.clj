@@ -68,7 +68,7 @@
     {:duration (/ (double (- (. System (nanoTime)) start)) 1000000000.0)
      :result result}))
 
-(defmethod event-msg-handler :sentences/fulltext
+(defmethod event-msg-handler :fulltext/matches
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (?reply-fn (q/query-fulltext db/connection ?data)))
 
