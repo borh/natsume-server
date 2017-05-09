@@ -24,11 +24,11 @@
    [com.taoensso/sente "1.11.0"]
    [com.cognitect/transit-clj "0.8.300"]
    ;; Temporarily until yada-sente integration fixed:
-   [ring "1.6.0-RC3"]
-   [ring/ring-defaults "0.3.0-beta3"]
+   [ring "1.6.0"]
+   [ring/ring-defaults "0.3.0"]
    [ring-cors "0.1.10"]
    [ring-logger-timbre "0.7.5"]
-   [compojure "1.6.0-beta3"]
+   [compojure "1.6.0"]
    [buddy/buddy-sign "1.5.0"]
    [buddy/buddy-auth "1.4.1"]
 
@@ -56,7 +56,7 @@
    [org.clojure/tools.cli "0.3.5"]
    [me.raynes/fs "1.4.6"]
    [iota "1.1.3"]
-   [org.clojure/data.csv "0.1.3"]
+   [org.clojure/data.csv "0.1.4"]
    [dk.ative/docjure "1.11.0" :exclusions [commons-codec]]
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
    [automat "0.2.0"]
@@ -94,7 +94,7 @@
 
    ;; Text processing
    [org.chasen/cabocha "0.69"]
-   [com.ibm.icu/icu4j "58.2"]
+   [com.ibm.icu/icu4j "59.1"]
    [d3-compat-tree "0.0.9"]])
 
 (set-env! :repositories #(conj % ["sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]))
