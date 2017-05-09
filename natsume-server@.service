@@ -15,7 +15,7 @@ Type=simple
 Environment="BOOT_JVM_OPTIONS='-Djava.awt.headless=true -Xms4g -Xmx4g'"
 Environment="DISPLAY=:0"
 Environment="PORT=%i"
-Environment="DB_NAME='natsumedev_new'"
+Environment="DB_NAME=natsumedev"
 ExecStart=/home/bor/local/bin/boot run --profile server
 Restart=always
 User=bor
