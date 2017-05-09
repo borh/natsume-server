@@ -121,7 +121,7 @@
     (map
      (fn [[begin end]]
        (let [before-string (subs text 0 begin)
-             after-string (subs text end (inc (count text)))
+             after-string (subs text end (count text))
              hl-string (subs text begin end)]
          {:before before-string
           :key hl-string
