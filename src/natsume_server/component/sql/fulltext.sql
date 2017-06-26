@@ -12,7 +12,9 @@ SELECT
   so.genre,
   se_before.text AS before_text,
   se.text AS key_text,
-  se_after.text AS after_text
+  se_after.text AS after_text,
+  se.tags AS tags
+  -- count(*) over() AS total_count -- Will not work as long as regexp matches are not expanded here.
 FROM
   sources AS so
   JOIN sentences AS se ON (
