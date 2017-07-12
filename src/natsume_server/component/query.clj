@@ -107,12 +107,65 @@
 
 (hugsql/def-db-fns "natsume_server/component/sql/fulltext.sql")
 
-(defn query-fulltext [conn {:keys [query genre]}]
-  (map (fn [m] (update m :genre (comp (partial str/join ".") ltree->seq)))
-       (fulltext-stream conn {:query query :genre genre})))
+(defn re-pos [re s]
+  (loop [m (re-matcher re s)
+         res []]
+    (if (.find m)
+      (recur m (conj res [(.start m) (.end m)]))
+      res)))
+
+(defn kwic-regex-formatter
+  "Returns a map of the matched search key and text before and, one for each match."
+  [rx text]
+  (let [matches (re-pos rx text)]
+    (map
+     (fn [[begin end]]
+       (let [before-string (subs text 0 begin)
+             after-string (subs text end (count text))
+             hl-string (subs text begin end)]
+         {:before before-string
+          :key hl-string
+          :after after-string}))
+     matches)))
+
+(def !fulltext-query-cache
+  (atom (cache/lru-cache-factory {} :threshold 5)))
+
+(defn query-fulltext [conn {:keys [query genre remove-tags limit offset]}]
+  (let [cache-key [query genre remove-tags]]
+    (if (cache/has? @!fulltext-query-cache cache-key)
+      (get (swap! !fulltext-query-cache #(cache/hit % cache-key)) cache-key)
+      (let [results (sequence
+                     (comp (mapcat (fn [{:keys [id tags title author year genre
+                                                before_text key_text after_text]}]
+                                     (let [matches (kwic-regex-formatter (re-pattern query) key_text)]
+                                       (for [match matches]
+                                         {:id id
+                                          :tags (into #{} (map keyword tags))
+                                          :title title
+                                          :author author
+                                          :year year
+                                          :genre ((comp (partial str/join ".") ltree->seq) genre)
+                                          :before (str before_text (:before match))
+                                          :key (:key match)
+                                          :after (str (:after match) after_text)}))))
+                           (remove (fn [m]
+                                     (println remove-tags (:tags m) (some remove-tags (:tags m)))
+                                     (if (or (empty? remove-tags) ;; Filter not set.
+                                             (empty? (:tags m))) ;; Sentence has no tags.
+                                       false
+                                       ;; If any of filter-tags appears in map, remove.
+                                       (some remove-tags (:tags m))))))
+                     (fulltext-stream conn {:query query :genre genre}))
+            results-map {:matches results
+                         :total-count (count results)
+                         :patterns (frequencies (map :key results))}]
+        (swap! !fulltext-query-cache #(cache/miss % cache-key results-map))
+        results-map))))
 
 (defn query-expanded-document [conn id]
-  (:text (expand-document conn {:id id})))
+  (update (expand-document conn {:id id})
+          :genre (comp (partial str/join ".") ltree->seq)))
 
 ;; ## Insertion functions
 
