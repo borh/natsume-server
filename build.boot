@@ -31,6 +31,7 @@
    [compojure "1.6.0-beta3"]
    [buddy/buddy-sign "1.5.0"]
    [buddy/buddy-auth "1.4.1"]
+   [restpect "0.2.1" :scope "test"]
 
    [org.clojure/core.async "0.3.442"]
 
