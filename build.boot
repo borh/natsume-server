@@ -57,7 +57,7 @@
    [reloaded.repl "0.2.3"] ;; FIXME uberjar
    [org.clojure/tools.namespace "0.3.0-alpha4"] ;; FIXME uberjar
    [org.clojure/tools.cli "0.3.5"]
-   [me.raynes/fs "1.4.6"]
+   [funcool/datoteka "1.0.0"]
    [iota "1.1.3"]
    [org.clojure/data.csv "0.1.4"]
    [dk.ative/docjure "1.11.0" :exclusions [commons-codec]]
