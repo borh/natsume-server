@@ -24,7 +24,7 @@
    [com.taoensso/sente "1.11.0"]
    [com.cognitect/transit-clj "0.8.300"]
    ;; Temporarily until yada-sente integration fixed:
-   [ring "1.6.1"]
+   [ring "1.6.2"]
    [ring/ring-defaults "0.3.0"]
    [ring-cors "0.1.11"]
    [ring-logger-timbre "0.7.5"]
@@ -38,19 +38,19 @@
    [org.clojure/core.async "0.3.443"]
 
    ;; Database
-   [org.postgresql/postgresql "42.1.1" #_"9.4.1212"]
+   [org.postgresql/postgresql "42.1.3" #_"9.4.1212"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
-   [org.clojure/java.jdbc "0.7.0-alpha3"]
+   [org.clojure/java.jdbc "0.7.0-beta5"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.1.0"]
-   [honeysql "0.9.0-beta2"]
+   [com.alibaba/druid "1.1.1"]
+   [honeysql "0.9.0"]
    [com.layerware/hugsql "0.4.7"]
 
    ;; Utils
    [org.tukaani/xz "1.6"]
    [org.apache.commons/commons-compress "1.14"]
-   [org.clojure/tools.reader "1.0.0"]
+   [org.clojure/tools.reader "1.0.2"]
    [com.taoensso/timbre "4.10.0"]
    [com.taoensso/encore "2.91.1"]
    [robert/hooke "1.3.0"]
@@ -64,7 +64,7 @@
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
    [automat "0.2.0"]
    [org.apache.commons/commons-math3 "3.6.1"]
-   [org.flatland/ordered "1.5.4"] ;; For ordered routes in Swagger
+   [org.flatland/ordered "1.5.5"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
    [org.clojure/core.cache "0.6.5"]
    ;;
