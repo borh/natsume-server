@@ -41,7 +41,7 @@
    [org.postgresql/postgresql "42.1.3" #_"9.4.1212"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
-   [org.clojure/java.jdbc "0.7.0-beta5"]
+   [org.clojure/java.jdbc "0.7.0"]
    [java-jdbc/dsl "0.1.3"]
    [com.alibaba/druid "1.1.1"]
    [honeysql "0.9.0"]
@@ -62,7 +62,7 @@
    [org.clojure/data.csv "0.1.4"]
    [dk.ative/docjure "1.11.0" :exclusions [commons-codec]]
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
-   [automat "0.2.0"]
+   [automat "0.2.2"]
    [org.apache.commons/commons-math3 "3.6.1"]
    [org.flatland/ordered "1.5.5"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
