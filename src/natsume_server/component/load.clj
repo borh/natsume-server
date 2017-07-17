@@ -39,20 +39,20 @@
    :sentences-id    (fnk get-sentences-id :- s/Num
                       [conn features tags paragraph-order-id sentence-order-id sources-id]
                       (-> (q/insert-sentence conn
-                                              (assoc features
-                                                     :tags (into #{} (map name tags))
-                                                     :paragraph-order-id paragraph-order-id
-                                                     :sentence-order-id sentence-order-id
-                                                     :sources-id sources-id))
+                                             (assoc features
+                                                    :tags (into #{} (map name tags))
+                                                    :paragraph-order-id paragraph-order-id
+                                                    :sentence-order-id sentence-order-id
+                                                    :sources-id sources-id))
                           first
                           :id))
    :collocations-id (fnk get-collocations-id :- (s/maybe [s/Num]) [conn features sentences-id]
                       (when-let [collocations (seq (:collocations features))]
                         (map :id (q/insert-collocations! conn collocations sentences-id))))
    :commit-tokens   (fnk commit-tokens :- nil [conn tree sentences-id]
-                         (q/insert-tokens! conn (flatten (map :tokens tree)) sentences-id))
+                      (q/insert-tokens! conn (flatten (map :tokens tree)) sentences-id))
    :commit-unigrams (fnk commit-unigrams :- nil [conn features sentences-id]
-                         (q/insert-unigrams! conn (:unigrams features) sentences-id))})
+                      (q/insert-unigrams! conn (:unigrams features) sentences-id))})
 (def sentence-graph-fn (graph/eager-compile sentence-graph))
 
 (defnk insert-paragraphs! [conn paragraphs sources-id]
