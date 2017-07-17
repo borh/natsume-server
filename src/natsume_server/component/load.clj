@@ -164,7 +164,8 @@
          {:files   (fnk [corpus-dir sampling-options]
                      (let [all-files (->> corpus-dir
                                           (fs/list-dir)
-                                          (filter #(= "xml" (fs/ext %))))
+                                          (filter #(= "xml" (fs/ext %)))
+                                          (into #{}))
                            sampled-files (if (= (:ratio sampling-options) 0.0)
                                            all-files
                                            (sample sampling-options all-files))]
