@@ -32,6 +32,19 @@
       (fs/split-ext)
       (first)))
 
+(defn walk-path
+  ([path]
+   (walk-path path nil))
+  ([path filter-ext]
+   (let [files (tree-seq
+                (fn [p] (and (class p) (fs/directory? p)))
+                fs/list-dir
+                (fs/path path))
+         filter-fn (if filter-ext
+                     #(and (class %) (not (fs/directory? %)) (= filter-ext (fs/ext %)))
+                     #(and (class %) (not (fs/directory? %))))]
+     (filter filter-fn files))))
+
 (def sentence-graph
   {:tree            (fnk get-tree :- [Chunk] [text :- s/Str] (am/sentence->tree text))
    :features        rd/sentence-readability
@@ -108,9 +121,7 @@
 (def corpus-graph
   ;; :files and :persist should be overridden for Wikipedia and BCCWJ.
   {:files      (fnk [corpus-dir sampling-options]
-                 (let [all-files (->> corpus-dir
-                                      (fs/list-dir)
-                                      (filter #(= "txt" (fs/ext %)))
+                 (let [all-files (->> (walk-path corpus-dir "txt")
                                       (into #{}))
                        sampled-files (if (= (:ratio sampling-options) 0.0)
                                        all-files
@@ -145,9 +156,7 @@
 (def wikipedia-graph
   (merge (dissoc corpus-graph :file-bases :sources)
          {:files   (fnk [corpus-dir sampling-options]
-                     (->> corpus-dir
-                          (fs/list-dir)
-                          (filter #(= "xml" (fs/ext %)))
+                     (->> (walk-path corpus-dir "xml")
                           (mapcat wikipedia/doc-seq) ; Should work for split and unsplit Wikipedia dumps.
                           (?>> (not= (:ratio sampling-options) 0.0) (take (int (* (:ratio sampling-options) 890089)))))) ; number is for Wikipedia as of 2013/12/03.
           :persist (fnk [conn files]
@@ -162,9 +171,7 @@
 (def bccwj-graph
   (merge corpus-graph
          {:files   (fnk [corpus-dir sampling-options]
-                     (let [all-files (->> corpus-dir
-                                          (fs/list-dir)
-                                          (filter #(= "xml" (fs/ext %)))
+                     (let [all-files (->> (walk-path corpus-dir "xml")
                                           (into #{}))
                            sampled-files (if (= (:ratio sampling-options) 0.0)
                                            all-files
