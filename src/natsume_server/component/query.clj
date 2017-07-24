@@ -131,9 +131,11 @@
 (def !fulltext-query-cache
   (atom (cache/lru-cache-factory {} :threshold 5)))
 
+;; TODO add download feature -> where to put file and how to authenticate/timeout?
 (defn query-fulltext [conn {:keys [query genre remove-tags limit offset]}]
   (let [cache-key [query genre remove-tags]]
     (if (cache/has? @!fulltext-query-cache cache-key)
+      ;; limit/offset logic here:
       (get (swap! !fulltext-query-cache #(cache/hit % cache-key)) cache-key)
       (let [results (sequence
                      (comp (mapcat (fn [{:keys [id tags title author year genre
