@@ -4,7 +4,7 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [byte-streams :refer [convert]]
-            [me.raynes.fs :as fs]
+            [datoteka.core :as fs]
             [clojure.data.csv :as csv]
             [mount.core :refer [defstate]]
             [natsume-server.config :refer [config]]

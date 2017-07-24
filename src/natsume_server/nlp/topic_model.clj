@@ -8,7 +8,7 @@
             [natsume-server.config :refer [config]]
             [natsume-server.nlp.importers.local :as local]
             [marcliberatore.mallet-lda :refer [make-instance-list lda]]
-            [me.raynes.fs :as fs])
+            [datoteka.core :as fs])
   (:import (cc.mallet.topics ParallelTopicModel)))
 
 (s/defn load-or-create-model! :- ParallelTopicModel
