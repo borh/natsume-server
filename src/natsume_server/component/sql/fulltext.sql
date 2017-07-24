@@ -73,3 +73,19 @@ GROUP BY
   d.title,
   d.author,
   d.year
+
+-- :name pos-summary :? :*
+-- :doc Get summary of counts per genre for every POS. TODO figure out how much of this we can/want to make dynamic. Need subpath syntax for genre (and pos?).
+SELECT
+  tokens.pos,
+  sources.genre,
+  count(*) AS frequency
+FROM
+  tokens,
+  sentences,
+  sources
+WHERE
+  tokens.sentences_id=sentences.id AND
+  sentences.sources_id=sources.id
+GROUP BY
+  sources.genre
