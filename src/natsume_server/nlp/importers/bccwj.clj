@@ -15,22 +15,22 @@
 ;; Refer to BCCWJ 1.0 Manual V1 Table 5.2 (pp. 78) for all tags and their meanings.
 (def paragraph-level-tags
   #{:article
-     :blockEnd
-     :cluster
-     :titleBlock
-     :title
-     :orphanedTitle
-     :list
-     :paragraph
-     :verse
-     :br ; Inline tag. TODO: find example where this is right or wrong.
-     :speech
-     :speaker ; For OM.
-     :caption
-     :citation
-     :quotation
-     :OCAnswer
-     :OCQuestion})
+    :blockEnd
+    :cluster
+    :titleBlock
+    :title
+    :orphanedTitle
+    :list
+    :paragraph
+    :verse
+    :br ; Inline tag. TODO: find example where this is right or wrong.
+    :speech
+    :speaker ; For OM.
+    :caption
+    :citation
+    :quotation
+    :OCAnswer
+    :OCQuestion})
 
 (comment ; Not used at present. The text attr should not be used as a string in the sentence.
   (def in-sentence-tags
