@@ -144,10 +144,17 @@
    :persist    (fnk [conn sources files file-bases]
                  ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
                  (let [sources-basenames (set (map :basename sources))
-                       basenames-missing-source (set/difference file-bases sources-basenames)]
-                   (println "basenames missing from sources.tsv: (Warning: will be skipped!)")
-                   (println basenames-missing-source)
-                   (println "basenames in sources.tsv missing on filesystem: " (set/difference sources-basenames file-bases))
+                       basenames-missing-source (set/difference file-bases sources-basenames)
+                       basenames-missing-from-fs (set/difference sources-basenames file-bases)]
+                   (binding [*print-length* 10]
+                     (when (seq basenames-missing-source)
+                       (println (format "%d basenames missing from sources.tsv: (Warning: will be skipped!) %s"
+                                        (count basenames-missing-source)
+                                        basenames-missing-source)))
+                     (when (seq basenames-missing-from-fs)
+                       (println (format "%d basenames in sources.tsv missing on filesystem: %s"
+                                        (count basenames-missing-from-fs)
+                                        basenames-missing-from-fs))))
                    (q/insert-sources! conn sources (set/difference file-bases basenames-missing-source))
                    (->> files
                         (remove (fn [f] (contains? basenames-missing-source (base-name f))))
