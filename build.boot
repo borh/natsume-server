@@ -25,7 +25,7 @@
    [com.cognitect/transit-clj "0.8.300"]
    ;; Temporarily until yada-sente integration fixed:
    [ring "1.6.2"]
-   [ring/ring-defaults "0.3.0"]
+   [ring/ring-defaults "0.3.1"]
    [ring-cors "0.1.11"]
    [ring-logger-timbre "0.7.5"]
    [compojure "1.6.0"]
@@ -43,14 +43,14 @@
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.0"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.1.1"]
+   [com.alibaba/druid "1.1.2"]
    [honeysql "0.9.0"]
    [com.layerware/hugsql "0.4.7"]
 
    ;; Utils
    [org.tukaani/xz "1.6"]
    [org.apache.commons/commons-compress "1.14"]
-   [org.clojure/tools.reader "1.0.2"]
+   [org.clojure/tools.reader "1.0.3"]
    [com.taoensso/timbre "4.10.0"]
    [com.taoensso/encore "2.91.1"]
    [robert/hooke "1.3.0"]
