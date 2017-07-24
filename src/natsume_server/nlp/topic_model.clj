@@ -8,7 +8,8 @@
             [natsume-server.config :refer [config]]
             [natsume-server.nlp.importers.local :as local]
             [marcliberatore.mallet-lda :refer [make-instance-list lda]]
-            [datoteka.core :as fs])
+            [datoteka.core :as fs]
+            [hugsql.core :as hugsql])
   (:import (cc.mallet.topics ParallelTopicModel)))
 
 (s/defn load-or-create-model! :- ParallelTopicModel
@@ -19,18 +20,21 @@
                                (name unit-type)
                                (str/join "_" (map name features)))
         #_corpus-filename #_(format "%s/corpus-documents-%s-%s.csv"
-                                (System/getProperty "user.dir")
-                                (name unit-type)
-                                (str/join "_" (map name features)))]
+                                    (System/getProperty "user.dir")
+                                    (name unit-type)
+                                    (str/join "_" (map name features)))]
     (if (fs/exists? model-filename)
       (ParallelTopicModel/read (io/as-file model-filename))
       (let [model
             (lda ;; alpha = 0.5, beta = 0.01
              (->> #_(with-open [reader (io/reader corpus-filename)]
-                    (doall (csv/read-csv reader :separator \tab :quote 0)))
+                      (doall (csv/read-csv reader :separator \tab :quote 0)))
                   #_(map (fn [[basename genre tokens-string]]
                            [basename (str/split tokens-string #"\s")]))
-                  (local/stream-corpus unit-type features)
+                  (local/stream-corpus unit-type
+                                       features
+                                       #{"noun" "verb" "adverb" "adjective" "preposition"}
+                                       #{"非自立可能"}) ;; NOTE pos-2-filter excludes
                   (map (fn [{:keys [basename genre text]}]
                          [basename (str/split text #"\s")]))
                   make-instance-list)

@@ -8,7 +8,8 @@
             [clojure.data.csv :as csv]
             [mount.core :refer [defstate]]
             [natsume-server.config :refer [config]]
-            [natsume-server.nlp.importers.local :as local])
+            [natsume-server.nlp.importers.local :as local]
+            [clojure.string :as string])
   (:import [org.nd4j.linalg.factory Nd4j]
            [org.nd4j.linalg.api.ndarray INDArray]
            [org.nd4j.linalg.indexing NDArrayIndex]
@@ -21,18 +22,18 @@
            [org.deeplearning4j.models.word2vec Word2Vec]
            [org.deeplearning4j.models.embeddings.loader WordVectorSerializer]))
 
-;; '/tmp/natsume_temp_corpus.txt'
-
-(comment
-  (defn export-corpus!
-    [unit-type features]
-    (export-corpus connection
-                   {:table (name unit-type) ; :unigrams/:tokens
-                    :features (first (map name features)) ; FIXME made real vector (:orth)
-                    :export-path (format "%s/corpus-%s-%s.txt"
-                                         (System/getProperty "user.dir")
-                                         (name unit-type)
-                                         (str/join "_" (map name features)))})))
+(defn export-corpus!
+  [unit-type features]
+  (spit
+   (format "%s/corpus-%s-%s.txt"
+           (System/getProperty "user.dir")
+           (name unit-type)
+           (str/join "_" (map name features)))
+   (string/join "\n"
+                (local/extract-tokens
+                 (local/stream-corpus
+                  unit-type
+                  features)))))
 
 (s/defn train :- Word2Vec
   [corpus-path :- s/Str]
@@ -81,11 +82,13 @@
                                 (System/getProperty "user.dir")
                                 (name unit-type)
                                 (str/join "_" (map name features)))
+            _ (if-not (fs/exists? corpus-path)
+                (export-corpus! unit-type features))
             model (train corpus-path)]
         (save-model! model model-path)
         model))))
 
-(defstate ^{:on-reload :noop}
+(defstate ;; ^{:on-reload :noop}
   !word2vec-models :start
   (when (:server config)
     (for-map [{:keys [unit-type features] :as m} (:word2vec config)]
