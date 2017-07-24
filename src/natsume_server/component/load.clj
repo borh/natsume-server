@@ -99,7 +99,7 @@
 ;; ## Graph and database connective logic
 (defn sample [{:keys [ratio seed replace]} data]
   (let [total (count data)]
-    (take (int (* ratio total)) (sampling/sample data :seed seed :replace replace))))
+    (take (inc (int (* ratio total))) (sampling/sample data :seed seed :replace replace))))
 
 (defn dorunconc
   [f coll]
