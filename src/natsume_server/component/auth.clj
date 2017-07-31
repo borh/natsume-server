@@ -23,9 +23,11 @@
      {:alg :hs512})))
 
 (defn authfn [request token]
-  (let [decoded-token (jwt/unsign token secret {:alg :hs512})]
-    (if (get-in secrets [:users (-> decoded-token :user :id)])
-      request)))
+  (try
+    (let [decoded-token (jwt/unsign token secret {:alg :hs512})]
+      (if (get-in secrets [:users (-> decoded-token :user :id)])
+        request))
+    (catch Exception e false)))
 
 (def backend (jws-backend {:authfn authfn
                            :secret secret
