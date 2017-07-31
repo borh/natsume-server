@@ -39,10 +39,6 @@ ORDER BY
   so.title,
   se.sentence_order_id ASC
 
--- :name fulltext-stream-old :? :*
--- :doc Get stream of sentences matching regular expression and genre.
-SELECT se.sentence_order_id AS sentence_order_id, so.id AS sources_id, so.title, so.author, so.year, so.genre, se.text FROM sentences AS se, sources AS so WHERE se.sources_id=so.id AND se.text ~ :query::text AND so.genre ~ :genre::lquery ORDER BY so.genre, so.year, so.title, se.sentence_order_id ASC
-
 -- :name expand-document :? :1
 -- :doc Get document text given sentence id.
 WITH d AS (
