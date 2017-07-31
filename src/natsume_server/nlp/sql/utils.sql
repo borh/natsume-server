@@ -4,7 +4,7 @@
 SELECT
   sources.basename,
   sources.genre,
-  string_agg(:i:features, ' ' ORDER BY tokens.sentences_id, tokens.position) AS text
+  string_agg(:i:features, ' ' ORDER BY tokens.sentences_id, tokens.position) AS text -- TODO expand features with '/' delimiter
 FROM
   tokens, sentences, sources
 WHERE
@@ -12,6 +12,7 @@ WHERE
   AND sentences.sources_id=sources.id
 --~ (when (seq (:pos-filter params)) (format "  AND tokens.pos ~ '(%s)'" (string/join "|" (:pos-filter params))))
 --~ (when (seq (:pos-2-filter params)) (format "  AND tokens.pos_2 !~ '(%s)'" (string/join "|" (:pos-2-filter params))))
+--~ (when (seq (:genre params)) (format "  AND sources.genre ~ '%s'::lquery" (:genre params)))
 GROUP BY sources_id, basename, genre
 ORDER BY sources_id
 
@@ -27,6 +28,7 @@ FROM
 WHERE
   unigrams.sentences_id=sentences.id
   AND sentences.sources_id=sources.id
---~ (when (seq (:pos-filter params)) (do (println params) (format "  AND unigrams.pos ~ '(%s)'" (string/join "|" (:pos-filter params)))))
+--~ (when (seq (:pos-filter params)) (format "  AND unigrams.pos ~ '(%s)'" (string/join "|" (:pos-filter params))))
+--~ (when (seq (:genre params)) (format "  AND sources.genre ~ '%s'::lquery" (:genre params)))
 GROUP BY sources_id, basename, genre
 ORDER BY sources_id
