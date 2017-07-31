@@ -27,6 +27,7 @@
    [ring "1.6.2"]
    [ring/ring-defaults "0.3.1"]
    [ring-cors "0.1.11"]
+   [ring/ring-json "0.5.0-beta1"]
    [ring-logger-timbre "0.7.5"]
    [compojure "1.6.0"]
    [buddy/buddy-sign "1.5.0"]

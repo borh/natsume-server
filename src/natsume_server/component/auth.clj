@@ -2,6 +2,7 @@
   (:require [natsume-server.config :refer [secrets]]
             [buddy.auth.backends.token :refer [jws-backend]]
             [buddy.sign.jwt :as jwt]
+            [cheshire.core :as json]
             [clj-time.core :as time]))
 
 (def secret (:secret secrets))
@@ -22,13 +23,14 @@
      {:alg :hs512})))
 
 (defn authfn [request token]
-  (let [{:keys [username password]} (:keyword-params request)
-        decoded-token (jwt/unsign token secret {:alg :hs512})] ;; :exp?
-    (println "DECODING" username password decoded-token)
-    (if (get-in secrets [:users (-> decoded-token :user :id)])
-      request
-      #_(assoc request :identity true))
-    #_(= decoded-token {username password})))
+  (try
+    (let [decoded-token (jwt/unsign token secret {:alg :hs512})]
+      (if (get-in secrets [:users (-> decoded-token :user :id)])
+        request))
+    (catch Exception e
+      {:status 401
+       :body (json/encode (ex-data e))
+       :headers {"Content-Type" "application/json"}})))
 
 (def backend (jws-backend {:authfn authfn
                            :secret secret
