@@ -23,14 +23,9 @@
      {:alg :hs512})))
 
 (defn authfn [request token]
-  (try
-    (let [decoded-token (jwt/unsign token secret {:alg :hs512})]
-      (if (get-in secrets [:users (-> decoded-token :user :id)])
-        request))
-    (catch Exception e
-      {:status 401
-       :body (json/encode (ex-data e))
-       :headers {"Content-Type" "application/json"}})))
+  (let [decoded-token (jwt/unsign token secret {:alg :hs512})]
+    (if (get-in secrets [:users (-> decoded-token :user :id)])
+      request)))
 
 (def backend (jws-backend {:authfn authfn
                            :secret secret
