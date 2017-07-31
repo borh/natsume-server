@@ -6,8 +6,12 @@
                                          :prod false}
                 :server-address #or [#env SERVER_ADDRESS
                                      #join["//localhost:" #or [#env PORT 3000]]]
-                :access-control-allow-origin ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
-                                              "https://(wombat.)?hinoki-project.org"]}
+                :access-control-allow-origin
+                #profile {:prod ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                                 "https://(wombat.)?hinoki-project.org"]
+                          :dev ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                                "https://(wombat.)?hinoki-project.org"
+                                "http://localhost:3010"]}}
  :log          {:directory "./log"}
  :dirs         #include #or [#env CORPORA_EDN_FILE "corpora.edn"]
  :verbose      false
