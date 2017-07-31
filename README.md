@@ -10,10 +10,11 @@ For those that wish to use the Natsume system, please go to the official page:
 
 ### Environment
 
-To setup a development environment, start a REPL.
+To setup a development environment, start a REPL (with or without cider):
 
 ```sh
-lein repl
+boot dev
+boot cider dev
 ```
 
 Run `go` to initiate and start the system.
