@@ -16,8 +16,8 @@
 
    ;; Web
    [cheshire "5.7.1"]
-   [yada "1.2.4" :exclusions [manifold metosin/ring-swagger]]
-   [metosin/ring-swagger "0.24.0"]
+   [yada "1.2.6" :exclusions [manifold metosin/ring-swagger]]
+   [metosin/ring-swagger "0.24.1"]
    #_[io.netty/netty-all "5.0.0.Alpha2"]
    [manifold "0.1.7-alpha5"]
    [aleph "0.4.4-alpha4"]
@@ -80,7 +80,7 @@
    ;; [prismatic/hiphip "0.1.0"] ;; TODO
    [cc.qbits/knit "0.3.1"]
    [org.clojure/core.incubator "0.1.4"]
-   [org.clojure/core.match "0.3.0-alpha4" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
+   [org.clojure/core.match "0.3.0-alpha5" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
                  ;;;; word2vec/doc2vec TODO:
    ;;[org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
    ;;[org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
