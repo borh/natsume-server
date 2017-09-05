@@ -153,8 +153,6 @@
   (require 'reloaded.repl)
   (require 'aero.core)
   (try
-    #_(require 'user)
-    #_(user/go)
     (require 'natsume-server.main)
     (natsume-server.main/run-with-profile :server true)
     (catch Exception e
@@ -180,22 +178,22 @@
   []
   (target :dir #{"static"}))
 
-(defn- run-system [profile dev?]
-  (println (format "Running system with profile %s in %s mode" profile (if dev? "dev" "prod")))
+(defn- run-system [profile dev? extract?]
   (try
     (require 'natsume-server.main)
-    (natsume-server.main/run-with-profile profile dev?)
+    (natsume-server.main/run-with-profile profile dev? extract?)
     (catch Exception e
       (boot.util/fail "Exception while mounting the system\n")
       (boot.util/print-ex e)))
   identity)
 
 (deftask run [p profile VAL kw   "Profile"
-              d dev         bool "Development"]
+              d dev         bool "Development"
+              e extract     bool "Dataset extraction to local files"]
   (comp
    (repl :server true
          :init-ns 'natsume-server.main)
-   (run-system (or profile :prod-server) (or dev false))
+   (run-system (or profile :prod-server) (or dev false) (or extract false))
    (wait)))
 
 (deftask uberjar
