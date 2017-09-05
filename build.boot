@@ -31,8 +31,8 @@
    [ring/ring-json "0.5.0-beta1"]
    [ring-logger-timbre "0.7.5"]
    [compojure "1.6.0"]
-   [buddy/buddy-sign "1.5.0"]
-   [buddy/buddy-auth "1.4.1"]
+   [buddy/buddy-sign "2.2.0"]
+   [buddy/buddy-auth "2.1.0"]
    [restpect "0.2.1" :scope "test"]
 
    [riddley "0.1.14"]
@@ -40,21 +40,23 @@
    [org.clojure/core.async "0.3.443"]
 
    ;; Database
-   [org.postgresql/postgresql "42.1.3" #_"9.4.1212"]
+   [org.postgresql/postgresql "42.1.4" #_"9.4.1212"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
-   [org.clojure/java.jdbc "0.7.0"]
+   [org.clojure/java.jdbc "0.7.1"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.1.2"]
-   [honeysql "0.9.0"]
+   [com.alibaba/druid "1.1.3"]
+   [honeysql "0.9.1"]
    [com.layerware/hugsql "0.4.7"]
 
    ;; Utils
    [org.tukaani/xz "1.6"]
    [org.apache.commons/commons-compress "1.14"]
-   [org.clojure/tools.reader "1.0.3"]
+   [org.clojure/tools.reader "1.0.6"]
    [com.taoensso/timbre "4.10.0"]
-   [com.taoensso/encore "2.91.1"]
+   [com.fzakaria/slf4j-timbre "0.3.7"]
+   [org.slf4j/slf4j-api "1.7.25"]
+   [com.taoensso/encore "2.92.0"]
    [robert/hooke "1.3.0"]
    [reloaded.repl "0.2.3"] ;; FIXME uberjar
    [org.clojure/tools.namespace "0.3.0-alpha4"] ;; FIXME uberjar
@@ -64,9 +66,9 @@
    [org.clojure/data.csv "0.1.4"]
    [dk.ative/docjure "1.11.0" :exclusions [commons-codec]]
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
-   [automat "0.2.2"]
+   [automat "0.2.3"]
    [org.apache.commons/commons-math3 "3.6.1"]
-   [org.flatland/ordered "1.5.5"] ;; For ordered routes in Swagger
+   [org.flatland/ordered "1.5.6"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
    [org.clojure/core.cache "0.6.5"]
    ;;
@@ -82,16 +84,27 @@
    [cc.qbits/knit "0.3.1"]
    [org.clojure/core.incubator "0.1.4"]
    [org.clojure/core.match "0.3.0-alpha5" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
-                 ;;;; word2vec/doc2vec TODO:
-   ;;[org.nd4j/nd4j-api "0.0.3.5.5.2" :exclusions [org.slf4j/slf4j-api commons-io]]
-   ;;[org.nd4j/nd4j-jblas "0.0.3.5.5.2"]
-   [byte-streams "0.2.4-alpha3"]
-   [org.nd4j/nd4j-native "0.8.0" :exclusions [org.javassist/javassist]]
-   [org.nd4j/nd4j-native-platform "0.8.0" :exclusions [org.javassist/javassist]]
-   [org.deeplearning4j/deeplearning4j-core "0.8.0" :exclusions [org.nd4j/nd4j-api commons-io com.fasterxml.jackson.core/jackson-databind com.fasterxml.jackson.datatype/jackson-datatype-joda com.google.guava/guava org.apache.commons/commons-lang3]]
-   ;;[org.deeplearning4j/deeplearning4j-scaleout-akka "0.4-rc3.9" :exclusions [org.slf4j/slf4j-api commons-io]]
-   [org.deeplearning4j/deeplearning4j-nlp "0.8.0" :exclusions [org.slf4j/slf4j-api commons-io commons-codec]]
-   [cc.mallet/mallet "2.0.8"]
+
+   ;; dep overrides
+   [instaparse "1.4.7"]
+   [joda-time "2.9.9"]
+   [com.google.code.findbugs/jsr305 "3.0.2"]
+   [commons-io "2.5"]
+   [commons-logging "1.2"]
+   ;; dl4j
+   [com.google.guava/guava "22.0"]
+   [org.projectlombok/lombok "1.16.18"]
+   [org.nd4j/jackson "0.9.1"]
+
+   [org.nd4j/nd4j-common "0.9.1"]
+   [org.nd4j/nd4j-native "0.9.1"]
+   [org.nd4j/nd4j-native-platform "0.9.1"]
+   ;; [org.nd4j/nd4j-cuda-8.0-platform "0.9.0"]
+   [org.deeplearning4j/deeplearning4j-core "0.9.1"]
+   [org.deeplearning4j/deeplearning4j-nlp "0.9.1"]
+   ;;
+   #_[cc.mallet/mallet "2.0.8" :exclusions [commons-logging]]
+   [de.julielab/jcore-mallet-2.0.9 "2.1.0"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
    [org.apache.lucene/lucene-core "6.6.0"]
