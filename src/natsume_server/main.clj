@@ -11,6 +11,8 @@
    [natsume-server.nlp.topic-model]
    [natsume-server.component.logging :refer [with-logging-status]]
    [aero.core :as aero]
+   [taoensso.timbre :as timbre]
+   [taoensso.timbre.appenders.core :as appenders]
    [mount.core :as mount]))
 
 (defn -main [& args]
@@ -44,12 +46,22 @@
      #'natsume-server.endpoint.api/api-routes
      #'natsume-server.component.server/server)))
 
-(defn run-with-profile [profile dev?]
+(defn run-with-profile [profile dev? extract?]
   (let [config (-> (aero/read-config "config.edn" {:profile profile})
-                   (assoc :verbose dev?)
+                   (update :log-level (fn [level] (or level (and dev? :debug) :error)))
+                   (assoc :profile (if dev? :dev :prod))
+                   (update-in [:http :access-control-allow-origin] (fn [m] (if dev? (:dev m) (:prod m))))
                    (update-in [:sampling :ratio] (fn [m] (if dev? (:dev m) (:prod m)))))]
-    (clojure.pprint/pprint {:runtime-config config})
-    (-> (mount/only #{#'natsume-server.config/config})
-        (mount/swap {#'natsume-server.config/config config})
-        (mount/start))
-    (-main)))
+    (timbre/set-level! (:log-level config))
+    (timbre/merge-config!
+     {:appenders {:spit (assoc (appenders/spit-appender {:fname (:logfile config)})
+                               :min-level :debug)}})
+    (timbre/debugf "Running system with profile %s in %s mode (extraction %s)" profile (if dev? "dev" "prod") (if extract? "on" "off"))
+    (timbre/debug {:runtime-config config})
+    (if extract?
+      (natsume-server.component.load/extract (:dirs config) (:sampling config))
+      (do
+        (-> (mount/only #{#'natsume-server.config/config})
+            (mount/swap {#'natsume-server.config/config config})
+            (mount/start))
+        (-main)))))

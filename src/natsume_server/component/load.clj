@@ -21,6 +21,7 @@
             [iota :as iota]
             [schema.core :as s]
 
+            [taoensso.timbre :as timbre]
             [mount.core :refer [defstate]])
   (:import [natsume_server.nlp.cabocha_wrapper Chunk]
            [java.io File]))
@@ -126,7 +127,7 @@
                        sampled-files (if (= (:ratio sampling-options) 0.0)
                                        all-files
                                        (sample sampling-options all-files))]
-                   (println "Processing generic corpus" corpus-dir "using" (count sampled-files) "out of" (count all-files) "files.")
+                   (timbre/info "Processing generic corpus" corpus-dir "using" (count sampled-files) "out of" (count all-files) "files.")
                    sampled-files))
    :file-bases (fnk [files] (set (map base-name files)))
    :sources    (fnk [corpus-dir]
@@ -148,13 +149,13 @@
                        basenames-missing-from-fs (set/difference sources-basenames file-bases)]
                    (binding [*print-length* 10]
                      (when (seq basenames-missing-source)
-                       (println (format "%d basenames missing from sources.tsv: (Warning: will be skipped!) %s"
-                                        (count basenames-missing-source)
-                                        basenames-missing-source)))
+                       (timbre/debugf "%d basenames missing from sources.tsv: (Warning: will be skipped!) %s"
+                                      (count basenames-missing-source)
+                                      basenames-missing-source))
                      (when (seq basenames-missing-from-fs)
-                       (println (format "%d basenames in sources.tsv missing on filesystem: %s"
-                                        (count basenames-missing-from-fs)
-                                        basenames-missing-from-fs))))
+                       (timbre/debugf "%d basenames in sources.tsv missing on filesystem: %s"
+                                      (count basenames-missing-from-fs)
+                                      basenames-missing-from-fs)))
                    (q/insert-sources! conn sources (set/difference file-bases basenames-missing-source))
                    (->> files
                         (remove (fn [f] (contains? basenames-missing-source (base-name f))))
@@ -183,7 +184,7 @@
                            sampled-files (if (= (:ratio sampling-options) 0.0)
                                            all-files
                                            (sample sampling-options all-files))]
-                       (println "Processing BCCWJ corpus" corpus-dir "using" (count sampled-files) "out of" (count all-files) "files.")
+                       (timbre/info "Processing BCCWJ corpus" corpus-dir "using" (count sampled-files) "out of" (count all-files) "files.")
                        sampled-files))
           :persist (fnk [conn sources files file-bases]
                      (q/insert-sources! conn sources file-bases)
