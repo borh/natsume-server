@@ -2,23 +2,24 @@
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
  :dependencies
- '[[org.clojure/clojure "1.9.0-alpha17"]
+ '[[org.clojure/clojure "1.9.0-alpha19"]
 
    ;;
    [tolitius/boot-check "0.1.4" :scope "test"]
    ;; REPL and config utils
-   [adzerk/boot-reload "0.5.1" :scope "test"]
+   [adzerk/boot-reload "0.5.2" :scope "test"]
    [org.clojure/tools.nrepl "0.2.13"]
    [mount "0.1.11"]
-   [potemkin "0.4.3"]
+   [potemkin "0.4.4"]
    [aero "1.1.2"]
    [prismatic/schema "1.1.6"]
 
    ;; Web
-   [cheshire "5.7.1"]
-   [yada "1.2.6" :exclusions [manifold metosin/ring-swagger]]
-   [metosin/ring-swagger "0.24.1"]
-   #_[io.netty/netty-all "5.0.0.Alpha2"]
+   [com.fasterxml.jackson.core/jackson-core "2.9.0.pr4"]
+   [cheshire "5.8.0"]
+   [yada "1.2.8" :exclusions [manifold metosin/ring-swagger]]
+   [metosin/ring-swagger "0.24.2"]
+   [io.netty/netty-all "4.1.14.Final"]
    [manifold "0.1.7-alpha5"]
    [aleph "0.4.4-alpha4"]
    [com.taoensso/sente "1.11.0"]
