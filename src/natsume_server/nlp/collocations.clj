@@ -65,15 +65,15 @@
   [tree :- [s/Any #_ChunkSchema]]
   (->> tree
        (r/mapcat
-         (fn [chunk]
-           [{:string (:head-string chunk)
-             :pos    (:head-pos    chunk)
-             :tags   (:head-tags   chunk)}
-            {:string (:tail-string chunk)
-             :pos    (:tail-pos    chunk)
-             :tags   (:tail-tags   chunk)}]))
-       (r/remove (fn [unigram]
-                   #_(when (or (nil? (:string unigram)) (nil? (:pos unigram)))
-                       (println unigram))
-                   (or (nil? (:string unigram)) (nil? (:pos unigram)))))
+        (fn [chunk]
+          [{:string (:head-string chunk)
+            :orth   (:head-orth   chunk)
+            :pos    (:head-pos    chunk)
+            :tags   (:head-tags   chunk)}
+           {:string (:tail-string chunk)
+            :orth   (:tail-orth   chunk)
+            :pos    (:tail-pos    chunk)
+            :tags   (:tail-tags   chunk)}]))
+       (r/filter (fn [unigram]
+                   (not-any? nil? ((juxt :string :orth :pos) unigram))))
        (into [])))

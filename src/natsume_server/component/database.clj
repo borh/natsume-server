@@ -235,6 +235,7 @@
    [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
    [:position     :integer "NOT NULL"]
    [:string       :text    "NOT NULL"]
+   [:orth         :text    "NOT NULL"]
    [:pos          :text    "NOT NULL"]
    [:tags         "text[]"]])
 
@@ -303,6 +304,7 @@
 
    [:par (create-index :unigrams :sentences-id)]
    [:par (create-index :unigrams :string)]
+   [:par (create-index :unigrams :orth)]
    [:par (create-index :unigrams :pos)]
    [:seq (h/raw "ANALYZE")]])
 
