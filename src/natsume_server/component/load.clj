@@ -166,7 +166,7 @@
          {:files   (fnk [corpus-dir sampling-options]
                      (->> (walk-path corpus-dir "xml")
                           (mapcat wikipedia/doc-seq) ; Should work for split and unsplit Wikipedia dumps.
-                          (?>> (not= (:ratio sampling-options) 0.0) (take (int (* (:ratio sampling-options) 890089)))))) ; number is for Wikipedia as of 2013/12/03.
+                          (?>> (not= (:ratio sampling-options) 0.0) (take (int (* (:ratio sampling-options) 1070383)))))) ; number is for Wikipedia as of 2017/08/01.
           :persist (fnk [conn files]
                      (->> files
                           (dorunconc (fn [file]
