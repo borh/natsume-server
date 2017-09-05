@@ -166,7 +166,7 @@
             paginated-matches (->> results (drop offset) (take limit))
             total-count (count results)
             patterns (frequencies (map :key results))
-            results-file (str "auth-files/fulltext-matches-" (export/sha256 (str query genre remove-tags)) ".xlsx")
+            results-file (str "auth-files/fulltext-matches-" (export/sha256 (str query "#" genre "#" remove-tags)) ".xlsx")
             _ (export/save-spreadsheet! results-file "文検索結果" results [:id :tags :before :key :after :genre :title :author :year])
             results-map {:matches paginated-matches
                          :total-count total-count
