@@ -15,7 +15,7 @@
 (s/defn load-or-create-model! :- ParallelTopicModel
   [unit-type :- (s/enum :suw :unigrams)
    features :- [s/Keyword]]
-  (let [model-filename (format "%s/corpus-documents-%s-%s.topic.model.bin"
+  (let [model-filename (format "%s/models/corpus-documents-%s-%s.topic.model.bin"
                                (System/getProperty "user.dir")
                                (name unit-type)
                                (str/join "_" (map name features)))]
