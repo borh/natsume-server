@@ -23,3 +23,7 @@
 (defn extract-tokens
   [stream]
   (map :text stream))
+
+(defn extract-labeled-tokens
+  [stream]
+  (map (juxt :genre :text) stream))
