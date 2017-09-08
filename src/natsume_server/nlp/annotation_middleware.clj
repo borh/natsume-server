@@ -4,7 +4,8 @@
             [clojure.string :as string]
             [natsume-server.nlp.cabocha-wrapper :as cw]
             [natsume-server.nlp.unidic-conjugation :as unidic]
-            [schema.core :as s])
+            [schema.core :as s]
+            [clojure.string :as str])
   (:import [com.ibm.icu.text Transliterator Normalizer]
            [natsume_server.nlp.cabocha_wrapper Morpheme Chunk]))
 
@@ -277,7 +278,7 @@
 
    For example, given 続け + られ + た, it will return 続けられる."
   [pos tags tokens]
-  (letfn [(discard-symbols [token] (#{:symbol} (:pos token)))
+  (letfn [(discard-symbols [token] (= :symbol (:pos token)))
           ;; Replace uncommon orthography of lemmas with their more common counterpart (TODO data-driven + genre-driven)
           (normalize-lemma [s]
             (-> s
@@ -377,17 +378,27 @@
                  (int index) ; Type hint to make JVM happy.
                  (cond
 
-                  (functional-word-classes pos)
-                  (assoc m
-                    :tail-pos pos :tail-tags tags :tail-begin-index index :tail-end-index l
-                    :tail-string (str base-string (get m :head-string "")))
+                   (functional-word-classes pos)
+                   (assoc m
+                          :tail-pos pos :tail-tags tags :tail-begin-index index :tail-end-index l
+                          :tail-string (str base-string (get m :head-string ""))
+                          :tail-orth (str (->> (subvec c index l)
+                                               (remove (fn [token] (= :symbol (:pos token))))
+                                               (map :orth)
+                                               (str/join ""))
+                                          (get m :tail-orth "")))
 
-                  (= :symbol pos) m
+                   (= :symbol pos) m
 
-                  :else
-                  (assoc m
-                    :head-pos pos :head-tags tags :head-begin-index index :head-end-index l
-                    :head-string (str base-string (get m :head-string "")))))) ; TODO >>前<<人口人間が言った
+                   :else
+                   (assoc m
+                          :head-pos pos :head-tags tags :head-begin-index index :head-end-index l
+                          :head-string (str base-string (get m :head-string "")) ; TODO >>前<<人口人間が言った
+                          :head-orth (str (->> (subvec c index l)
+                                               (remove (fn [token] (= :symbol (:pos token))))
+                                               (map :orth)
+                                               (str/join ""))
+                                          (get m :head-orth ""))))))
         m))))
 
 (defn- annotate-chunk

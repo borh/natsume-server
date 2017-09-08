@@ -19,7 +19,7 @@
   ;; no session/uid with current config
   (let [session (:session request)
         uid     (:uid session)]
-    (println (str client-id " -> unknown event: " event "; " {:session session :uid uid}))
+    (timbre/info (str client-id " -> unknown event: " event "; " {:session session :uid uid}))
     (when ?reply-fn
       (?reply-fn {:unknown-event event}))))
 
@@ -29,13 +29,13 @@
   [{:keys [client-id request]}]
   (let [session (:session request)
         uid     (:uid session)]
-    (println (str client-id " -> uidport open; " {:session session :uid uid}))))
+    (timbre/debug (str client-id " -> uidport open; " {:session session :uid uid}))))
 
 (defmethod event-msg-handler :chsk/uidport-close
   [{:keys [client-id request]}]
   (let [session (:session request)
         uid     (:uid session)]
-    (println (str client-id " -> uidport closed; " {:session session :uid uid}))))
+    (timbre/debug (str client-id " -> uidport closed; " {:session session :uid uid}))))
 
 (defn init-channel! []
   (let [{:keys [ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn

@@ -15,6 +15,7 @@
 
             [natsume-server.models.pg-types :refer :all]
             [natsume-server.utils.naming :refer [dashes->underscores underscores->dashes]]
+            [natsume-server.utils.export :as export]
 
             [natsume-server.nlp.stats :as stats]
 
@@ -131,10 +132,16 @@
 (def !fulltext-query-cache
   (atom (cache/lru-cache-factory {} :threshold 5)))
 
-(defn query-fulltext [conn {:keys [query genre remove-tags limit offset]}]
+;; TODO add download feature -> where to put file and how to authenticate/timeout?
+(defn query-fulltext [conn {:keys [query genre remove-tags limit offset]
+                            :or {limit 1000 offset 0}}]
   (let [cache-key [query genre remove-tags]]
     (if (cache/has? @!fulltext-query-cache cache-key)
-      (get (swap! !fulltext-query-cache #(cache/hit % cache-key)) cache-key)
+      (update (get (swap! !fulltext-query-cache #(cache/hit % cache-key)) cache-key)
+              :matches (fn [matches]
+                         (->> matches
+                              (drop offset)
+                              (take limit))))
       (let [results (sequence
                      (comp (mapcat (fn [{:keys [id tags title author year genre
                                                 before_text key_text after_text]}]
@@ -150,17 +157,23 @@
                                           :key (:key match)
                                           :after (str (:after match) after_text)}))))
                            (remove (fn [m]
-                                     (println remove-tags (:tags m) (some remove-tags (:tags m)))
                                      (if (or (empty? remove-tags) ;; Filter not set.
                                              (empty? (:tags m))) ;; Sentence has no tags.
                                        false
                                        ;; If any of filter-tags appears in map, remove.
                                        (some remove-tags (:tags m))))))
                      (fulltext-stream conn {:query query :genre genre}))
-            results-map {:matches results
-                         :total-count (count results)
-                         :patterns (frequencies (map :key results))}]
-        (swap! !fulltext-query-cache #(cache/miss % cache-key results-map))
+            paginated-matches (->> results (drop offset) (take limit))
+            total-count (count results)
+            patterns (frequencies (map :key results))
+            results-file (str "auth-files/fulltext-matches-" (export/sha256 (str query "#" genre "#" remove-tags)) ".xlsx")
+            _ (export/save-spreadsheet! results-file "文検索結果" results [:id :tags :before :key :after :genre :title :author :year])
+            results-map {:matches paginated-matches
+                         :total-count total-count
+                         :patterns patterns
+                         :file (str "/" results-file)}]
+        (swap! !fulltext-query-cache
+               #(cache/miss % cache-key {:matches results :total-count total-count :patterns patterns :file (str "/" results-file)}))
         results-map))))
 
 (defn query-expanded-document [conn id]

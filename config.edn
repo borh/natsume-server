@@ -2,15 +2,18 @@
                 :user #or [#env DB_USER "natsumedev"]
                 :password #or [#env DB_PASSWORD "riDJMq98LpyWgB7F"]}
  :http         {:port #long #or [#env PORT 3000]
-                :pretty-print? #profile {:dev true
-                                         :prod false}
+                :pretty-print? true
                 :server-address #or [#env SERVER_ADDRESS
                                      #join["//localhost:" #or [#env PORT 3000]]]
-                :access-control-allow-origin ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
-                                              "https://(wombat.)?hinoki-project.org"]}
- :log          {:directory "./log"}
+                :access-control-allow-origin
+                {:prod ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                        "https://(wombat.)?hinoki-project.org"]
+                 :dev ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                       "https://(wombat.)?hinoki-project.org"
+                       "http://localhost:3010"]}}
+ :logfile      "natsume-server.log"
  :dirs         #include #or [#env CORPORA_EDN_FILE "corpora.edn"]
- :verbose      false
+ :log-level    nil ;; (automatic based on dev/prod)
  :clean        #profile {:load true  :server false}
  :process      #profile {:load true  :server false}
  :search       #profile {:load true  :server false}
@@ -24,10 +27,14 @@
                 {:unit-type :suw
                  :features [:lemma]}
                 {:unit-type :unigrams
-                 :features [:string]}]
+                 :features [:string]}
+                {:unit-type :unigrams
+                 :features [:orth]}]
  :topic-models [{:unit-type :suw
                  :features [:orth]}
                 {:unit-type :suw
                  :features [:lemma]}
                 {:unit-type :unigrams
-                 :features [:string]}]}
+                 :features [:string]}
+                {:unit-type :unigrams
+                 :features [:orth]}]}

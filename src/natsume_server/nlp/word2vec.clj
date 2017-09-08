@@ -3,12 +3,14 @@
             [plumbing.core :refer [for-map]]
             [clojure.string :as str]
             [clojure.java.io :as io]
-            [byte-streams :refer [convert]]
-            [me.raynes.fs :as fs]
+            #_[byte-streams :refer [convert]]
+            [datoteka.core :as fs]
             [clojure.data.csv :as csv]
             [mount.core :refer [defstate]]
             [natsume-server.config :refer [config]]
-            [natsume-server.nlp.importers.local :as local])
+            [natsume-server.nlp.importers.local :as local]
+            [clojure.string :as string]
+            [taoensso.timbre :as timbre])
   (:import [org.nd4j.linalg.factory Nd4j]
            [org.nd4j.linalg.api.ndarray INDArray]
            [org.nd4j.linalg.indexing NDArrayIndex]
@@ -21,71 +23,88 @@
            [org.deeplearning4j.models.word2vec Word2Vec]
            [org.deeplearning4j.models.embeddings.loader WordVectorSerializer]))
 
-;; '/tmp/natsume_temp_corpus.txt'
+(defn export-corpus!
+  [unit-type features]
+  (spit
+   (format "%s/models/corpus-%s-%s.txt"
+           (System/getProperty "user.dir")
+           (name unit-type)
+           (str/join "_" (map name features)))
+   (string/join "\n"
+                (local/extract-tokens
+                 (local/stream-corpus
+                  unit-type
+                  features)))))
 
-(comment
-  (defn export-corpus!
-    [unit-type features]
-    (export-corpus connection
-                   {:table (name unit-type) ; :unigrams/:tokens
-                    :features (first (map name features)) ; FIXME made real vector (:orth)
-                    :export-path (format "%s/corpus-%s-%s.txt"
-                                         (System/getProperty "user.dir")
-                                         (name unit-type)
-                                         (str/join "_" (map name features)))})))
+(defn export-labeled-corpus!
+  [unit-type features]
+  (spit
+   (format "%s/models/corpus-labeled-%s-%s.txt"
+           (System/getProperty "user.dir")
+           (name unit-type)
+           (str/join "_" (map name features)))
+   (string/join "\n"
+                (->> (local/stream-corpus
+                      unit-type
+                      features)
+                     (local/extract-labeled-tokens)
+                     (map #(update % 0 (fn [l] (str "__label__" l))))
+                     (map (partial string/join " "))))))
 
 (s/defn train :- Word2Vec
   [corpus-path :- s/Str]
-  (let [;;cache (doto
-        ;;        (InMemoryLookupCache.)
-        ;;        ;;(.lr 2e5)
-        ;;        ;;(.vectorLength 100)
-        ;;        ;;(.build)
-        ;;        )
-        ^Word2Vec v
+  (let [^Word2Vec v
         (->
          (org.deeplearning4j.models.word2vec.Word2Vec$Builder.)
          ;;(.sampling 1e-5)
          (.minWordFrequency 2)
          ;;(.batchSize 5000)
          ;;(.vocabCache cache)
-         (.windowSize 10)
+         (.windowSize 8)
          (.layerSize 100)
          (.iterations 1)
          (.iterate #_(BasicLineIterator. (iterate-lines)) (LineSentenceIterator. (io/file corpus-path))) ;; FIXME Seq iterator for local/tokens-stream
          (.tokenizerFactory (DefaultTokenizerFactory.))
          (.build))]
-    (println "Setup finished, fitting...")
+    (when (:verbose config)
+      (timbre/info "Fitting word2vec model..."))
     (doto v
-      ;;(.setCache cache)
       (.fit))))
 
 (s/defn save-model!
   [model :- Word2Vec save-path :- s/Str]
-  (WordVectorSerializer/writeFullModel model save-path))
+  (WordVectorSerializer/writeWord2VecModel model save-path))
 
 (s/defn load-model :- Word2Vec
   [load-path :- s/Str]
-  (WordVectorSerializer/loadFullModel load-path))
+  (WordVectorSerializer/readWord2VecModel load-path))
 
 (s/defn load-or-train! :- Word2Vec
   [unit-type features]
   (let [unit-type (or unit-type :suw)
         features (or features (case unit-type :suw [:orth] :unigrams [:string]))
-        model-path (format "word2vec-model-%s-%s.model.bin"
+        model-path (format "models/word2vec-model-%s-%s.model.bin"
                            (name unit-type)
                            (str/join "_" (map name features)))]
     (if (fs/exists? model-path)
       (load-model model-path)
-      (let [corpus-path (format "%s/corpus-%s-%s.txt"
+      (let [corpus-path (format "%s/models/corpus-%s-%s.txt"
                                 (System/getProperty "user.dir")
                                 (name unit-type)
                                 (str/join "_" (map name features)))
+            corpus-labeled-path (format "%s/models/corpus-labeled-%s-%s.txt"
+                                        (System/getProperty "user.dir")
+                                        (name unit-type)
+                                        (str/join "_" (map name features)))
+            _ (if-not (fs/exists? corpus-path)
+                (export-corpus! unit-type features))
+            _ (if-not (fs/exists? corpus-labeled-path)
+                (export-labeled-corpus! unit-type features))
             model (train corpus-path)]
         (save-model! model model-path)
         model))))
 
-(defstate ^{:on-reload :noop}
+(defstate ;; ^{:on-reload :noop}
   !word2vec-models :start
   (when (:server config)
     (for-map [{:keys [unit-type features] :as m} (:word2vec config)]
@@ -120,7 +139,7 @@
 
 (defn similar-tokens-with-accuracy ;; FIXME
   [unit-type features token accuracy]
-  (println [unit-type features token accuracy])
+  (timbre/debug [unit-type features token accuracy])
   (.similarWordsInVocabTo ^Word2Vec
                           (get !word2vec-models
                                {:unit-type unit-type :features features})
@@ -160,7 +179,6 @@
       (.theta 0.5)
       (.setMomentum 0.5)
       (.normalize true)
-      #_(.usePca true) ;; deprecated?
       (.build)))
 
 (defn tsne
@@ -221,7 +239,7 @@
 
   (let [unit-type :suw
         token-features [:orth]
-        path (format "word2vec-model-%s-%s.model.bin"
+        path (format "models/word2vec-model-%s-%s.model.bin"
                      (name unit-type)
                      (str/join "_" (map name token-features)))
         model (train)]
