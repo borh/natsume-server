@@ -95,7 +95,7 @@
 
   Formula: 14 + log2((2 · ||w1, R, w2||) / (||w1, R, *|| + ||*, *, w2||))
   FIXME: should frequencies be normalized? Should we take into account the search order (i.e. if we specify only w1 or only w2?)
-  Source: http://trac.sketchengine.co.uk/raw-attachment/wiki/SkE/DocsIndex/ske-stat.pdf"
+  Source: https://www.sketchengine.co.uk/documentation/statistics-used-in-sketch-engine/"
   [coll w1-or-w2]
   (let [w1-by-R (for-map [[k v] (group-by w1-or-w2 coll)]
                          k (for-map [[k1 v1] (group-by :string-2 v)]
