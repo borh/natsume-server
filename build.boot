@@ -2,7 +2,7 @@
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
  :dependencies
- '[[org.clojure/clojure "1.9.0-alpha19"]
+ '[[org.clojure/clojure "1.9.0-alpha20"]
 
    ;;
    [tolitius/boot-check "0.1.4" :scope "test"]
@@ -15,7 +15,7 @@
    [prismatic/schema "1.1.6"]
 
    ;; Web
-   [com.fasterxml.jackson.core/jackson-core "2.9.0.pr4"]
+   [com.fasterxml.jackson.core/jackson-core "2.9.1"]
    [cheshire "5.8.0"]
    [yada "1.2.8" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.24.2"]
@@ -52,7 +52,7 @@
    ;; Utils
    [org.tukaani/xz "1.6"]
    [org.apache.commons/commons-compress "1.14"]
-   [org.clojure/tools.reader "1.0.6"]
+   [org.clojure/tools.reader "1.1.0"]
    [com.taoensso/timbre "4.10.0"]
    [com.fzakaria/slf4j-timbre "0.3.7"]
    [org.slf4j/slf4j-api "1.7.25"]
@@ -107,7 +107,7 @@
    [de.julielab/jcore-mallet-2.0.9 "2.1.0"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   [org.apache.lucene/lucene-core "6.6.0"]
+   [org.apache.lucene/lucene-core "6.6.1"]
    ;;
 
    ;; Text processing
