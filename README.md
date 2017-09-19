@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/6169759.svg)](https://zenodo.org/badge/latestdoi/6169759)
+
 # natsume-server
 
 Natsume writing assistance system data processor and server source code.
