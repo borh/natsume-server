@@ -223,6 +223,14 @@
    sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}]
   ((comp dorun map) (partial process-corpus! conn sampling) (process-directories dirs)))
 
+(s/defn extract :- nil
+  "Initializes database and processes corpus directories from input.
+  If no corpus directory is given or the -h flag is present, prints
+  out available options and arguments."
+  [dirs :- [s/Str]
+   sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}]
+  ((comp dorun map) (partial extract-corpus! sampling) (process-directories dirs)))
+
 (defstate data
   :start (let [{:keys [dirs sampling search]} config]
            (when (:process config)
