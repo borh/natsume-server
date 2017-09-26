@@ -2,7 +2,7 @@
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
  :dependencies
- '[[org.clojure/clojure "1.9.0-alpha20"]
+ '[[org.clojure/clojure "1.9.0-beta1"]
 
    ;;
    [tolitius/boot-check "0.1.4" :scope "test"]
@@ -86,7 +86,7 @@
    [org.clojure/core.match "0.3.0-alpha5" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
 
    ;; dep overrides
-   [instaparse "1.4.7"]
+   [instaparse "1.4.8"]
    [joda-time "2.9.9"]
    [com.google.code.findbugs/jsr305 "3.0.2"]
    [commons-io "2.5"]
@@ -107,7 +107,7 @@
    [de.julielab/jcore-mallet-2.0.9 "2.1.0"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
    ;;[net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   [org.apache.lucene/lucene-core "6.6.1"]
+   [org.apache.lucene/lucene-core "7.0.0"]
    ;;
 
    ;; Text processing
