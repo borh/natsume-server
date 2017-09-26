@@ -234,7 +234,7 @@
   [:unigrams
    [:sentences-id :integer "NOT NULL" "REFERENCES sentences(id)"]
    [:position     :integer "NOT NULL"]
-   [:string       :text    "NOT NULL"]
+   [:string       :text    "NOT NULL"] ;; :string is a concatenation of the lemmas in the unigram
    [:orth         :text    "NOT NULL"]
    [:pos          :text    "NOT NULL"]
    [:tags         "text[]"]])
