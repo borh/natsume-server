@@ -202,7 +202,66 @@
                               corpus-graph))]
     (corpus-computation {:conn conn
                          :corpus-dir corpus-dir
-                         :sampling-options sampling #_(env :sampling)})))
+                         :sampling-options sampling})))
+
+(defn export-format [{:keys [corpus paragraphs]}]
+  )
+
+(defn extract-corpus! [sampling corpus-dir]
+  (let [corpus-type (condp re-seq (.toString (fs/name corpus-dir))
+                      #"(?i)wiki" :wikipedia
+                      #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" :bccwj
+                      :generic)
+        file-computation
+        (graph/eager-compile
+         (assoc (case corpus-type
+                  :wikipedia (dissoc file-graph :paragraphs)
+                  :bccwj bccwj-file-graph
+                  :generic file-graph)
+                :persist
+                (fnk [])))
+        corpus-computation
+        (graph/eager-compile
+         (assoc
+          (case corpus-type
+            :wikipedia wikipedia-graph
+            :bccwj bccwj-graph
+            :generic corpus-graph)
+          :persist
+          (case corpus-type
+            :wikipedia
+            (fnk [corpus files]
+              (map (fn [file]
+                     (let [{:keys [sources paragraphs]} file]
+                       (file-computation {:corpus corpus
+                                          :filename (:basename sources)
+                                          :paragraphs paragraphs})))
+                   files))
+
+            :bccwj
+            (fnk [corpus sources files file-bases]
+              (->> files
+                   (map #(file-computation {:filename % :corpus corpus}))))
+
+            :generic
+            (fnk [corpus sources files file-bases]
+              ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
+              (let [sources-basenames (set (map :basename sources))
+                    basenames-missing-source (set/difference file-bases sources-basenames)
+                    basenames-missing-from-fs (set/difference sources-basenames file-bases)]
+                (binding [*print-length* 10]
+                  (when (seq basenames-missing-source)
+                    (timbre/debugf "%d basenames missing from sources.tsv: (Warning: will be skipped!) %s"
+                                   (count basenames-missing-source)
+                                   basenames-missing-source))
+                  (when (seq basenames-missing-from-fs)
+                    (timbre/debugf "%d basenames in sources.tsv missing on filesystem: %s"
+                                   (count basenames-missing-from-fs)
+                                   basenames-missing-from-fs)))
+                (->> files
+                     (remove (fn [f] (contains? basenames-missing-source (base-name f))))
+                     (map #(file-computation {:corpus corpus :filename %}))))))))]
+    (corpus-computation {:corpus-dir corpus-dir :sampling-options (assoc sampling :ratio 0.0)})))
 
 (s/defn process-directories :- #{File}
   "Processes directories to check if they exist and returns a set of io/file directory objects with canonical and normalized paths."
