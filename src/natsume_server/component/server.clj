@@ -1,7 +1,7 @@
 (ns natsume-server.component.server
   (:require [mount.core :refer [defstate]]
             [aleph.http :as http]
-            [natsume-server.endpoint.api :refer [api-routes]]
+            #_[natsume-server.endpoint.api :refer [api-routes]]
             [natsume-server.component.sente :as comm]
             [ring.middleware.defaults :refer [wrap-defaults secure-site-defaults site-defaults]]
             [ring.middleware.json :refer [wrap-json-params]]
@@ -32,7 +32,7 @@
          :body (json/encode (ex-data e))
          :headers {"Content-Type" "application/json"}}))))
 
-(defroutes ring-routes
+(defroutes api-routes
   (GET "/api/chsk" ring-req
     (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
       (throw-unauthorized)
@@ -47,14 +47,17 @@
   (GET "/api/auth-files/:filename" [filename :as ring-req]
     (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
       (throw-unauthorized)
-      (response/file-response (str "auth-files/" filename))))
+      (response/file-response (str "auth-files/" filename)))))
+
+(defroutes site-routes
   (route/resources "/")
   (route/not-found "<h1>Page not found</h1>"))
 
 (defstate server
   :start (when (:server config)
-           (-> ring-routes
-               (routes)
+           (-> (routes
+                api-routes
+                (wrap-anti-forgery site-routes #_{:read-token (fn [request] (get-in request [:headers "x-csrf-token"]))}))
                (logger/wrap-with-logger)
                (wrap-cors
                 :access-control-allow-origin (->> config :http :access-control-allow-origin (mapv re-pattern))
@@ -67,7 +70,6 @@
                                     site-defaults)
                                   (assoc-in [:security :anti-forgery] false)
                                   (assoc :session false)))
-               #_(wrap-anti-forgery {:read-token (fn [request] (get-in request [:headers "x-forgery-token"]))})
                (wrap-json-params)
                (handler/site)
                (http/start-server {:port (-> config :http :port)})))
