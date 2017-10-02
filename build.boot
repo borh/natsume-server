@@ -17,7 +17,7 @@
    ;; Web
    [com.fasterxml.jackson.core/jackson-core "2.9.1"]
    [cheshire "5.8.0"]
-   [yada "1.2.8" :exclusions [manifold metosin/ring-swagger]]
+   [yada "1.2.9" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.24.2"]
    [io.netty/netty-all "4.1.14.Final"]
    [manifold "0.1.7-alpha5"]
@@ -66,7 +66,7 @@
    [org.clojure/data.csv "0.1.4"]
    [dk.ative/docjure "1.11.0" :exclusions [commons-codec]]
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
-   [automat "0.2.3"]
+   [automat "0.2.4"]
    [org.apache.commons/commons-math3 "3.6.1"]
    [org.flatland/ordered "1.5.6"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
