@@ -8,8 +8,10 @@
             [natsume-server.nlp.text :as text]
             [natsume-server.nlp.importers.bccwj :as bccwj]
             [natsume-server.nlp.importers.wikipedia :as wikipedia]
+            [natsume-server.nlp.importers.newspaper :as newspaper]
             [natsume-server.nlp.annotation-middleware :as am]
             [natsume-server.nlp.readability :as rd]
+            [natsume-server.nlp.collocations :as collocations]
             [natsume-server.component.database :as db :refer [connection database-init]]
             [natsume-server.component.query :as q]
             [natsume-server.config :refer [config]]
@@ -165,6 +167,7 @@
 (def wikipedia-graph
   (merge (dissoc corpus-graph :file-bases :sources)
          {:files   (fnk [corpus-dir sampling-options]
+                     (timbre/info "Processing Wikipedia corpus" corpus-dir " (as stream)")
                      (->> (walk-path corpus-dir "xml")
                           (mapcat wikipedia/doc-seq) ; Should work for split and unsplit Wikipedia dumps.
                           (?>> (not= (:ratio sampling-options) 0.0) (take (int (* (:ratio sampling-options) 1070383)))))) ; number is for Wikipedia as of 2017/08/01.
@@ -174,6 +177,22 @@
                                        (let [{:keys [sources paragraphs]} file]
                                          (q/insert-source! conn sources)
                                          (wikipedia-file-graph-fn {:conn conn
+                                                                   :filename (:basename sources)
+                                                                   :paragraphs paragraphs}))))))}))
+
+(def newspaper-graph
+  (merge (dissoc corpus-graph :file-bases :sources)
+         {:files   (fnk [corpus-dir sampling-options]
+                     (timbre/info "Processing newspaper corpus" corpus-dir " (as stream)")
+                     (->> (walk-path corpus-dir "txt")
+                          (mapcat newspaper/doc-seq)
+                          (?>> (not= (:ratio sampling-options) 0.0) (take (int (* (:ratio sampling-options) 10000))))))
+          :persist (fnk [conn files]
+                     (->> files
+                          (dorunconc (fn [file]
+                                       (let [{:keys [sources paragraphs]} file]
+                                         (q/insert-source! conn sources)
+                                         (wikipedia-file-graph-fn {:conn conn ;; Reusing Wikipedia file proc.
                                                                    :filename (:basename sources)
                                                                    :paragraphs paragraphs}))))))}))
 
@@ -199,6 +218,7 @@
   (let [corpus-computation (graph/eager-compile
                             (condp re-seq (.toString (fs/name corpus-dir))
                               #"(?i)wiki" wikipedia-graph
+                              #"(?i)(newspaper|mai|yomi)" newspaper-graph
                               #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" bccwj-graph
                               corpus-graph))]
     (corpus-computation {:conn conn
@@ -208,46 +228,105 @@
 (defn export-format [{:keys [corpus paragraphs]}]
   )
 
-(defn extract-corpus! [sampling corpus-dir]
-  (let [corpus-type (condp re-seq (.toString (fs/name corpus-dir))
+(defn extract-corpus! [sampling corpus-dir extraction-unit extraction-features extraction-file]
+  (let [extraction-features (if (= extraction-unit :suw) ;; TODO refactor :string into :lemma for unigrams (need to change schema!)
+                              extraction-features
+                              (if (= extraction-features :lemma)
+                                :string
+                                extraction-features))
+        corpus-type (condp re-seq (.toString (fs/name corpus-dir))
                       #"(?i)wiki" :wikipedia
+                      #"(?i)(newspaper|mai|yomi)" :newspaper
                       #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" :bccwj
                       :generic)
+
         file-computation
         (graph/eager-compile
-         (assoc (case corpus-type
-                  :wikipedia (dissoc file-graph :paragraphs)
-                  :bccwj bccwj-file-graph
-                  :generic file-graph)
-                :persist
-                (fnk [])))
+         (-> (case corpus-type
+               :wikipedia (dissoc file-graph :paragraphs)
+               :newspaper (dissoc file-graph :paragraphs)
+               :bccwj (dissoc bccwj-file-graph :corpus)
+               :generic file-graph)
+             (dissoc :sources-id)
+             (assoc :persist
+                    (fnk [corpus basename paragraphs]
+                      (with-open [writer (io/writer extraction-file :append true)]
+                        (csv/write-csv writer
+                                       (into []
+                                             (mapcat
+                                              (fn [{:keys [tags sentences]}]
+                                                (let [tags-string (string/join "," (map name tags))]
+                                                  (pmap
+                                                   (fn [sentence]
+                                                     (let [sentence (string/replace sentence #"[\n\t]" " ")
+                                                           extracted-text
+                                                           (case extraction-unit
+                                                             :text sentence
+                                                             :suw (string/join
+                                                                   " "
+                                                                   (sequence (comp (mapcat :tokens)
+                                                                                   (map extraction-features))
+                                                                             (am/sentence->tree sentence)))
+
+                                                             :unigrams (->> (am/sentence->tree sentence)
+                                                                            (collocations/extract-unigrams)
+                                                                            (map extraction-features)
+                                                                            (string/join " ")))]
+                                                       [corpus
+                                                        basename
+                                                        tags-string
+                                                        extracted-text]))
+                                                   sentences))))
+                                             paragraphs)
+                                       :separator \tab
+                                       :quote? false))))))
+
         corpus-computation
         (graph/eager-compile
          (assoc
           (case corpus-type
             :wikipedia wikipedia-graph
+            :newspaper newspaper-graph
             :bccwj bccwj-graph
             :generic corpus-graph)
           :persist
           (case corpus-type
             :wikipedia
-            (fnk [corpus files]
-              (map (fn [file]
-                     (let [{:keys [sources paragraphs]} file]
-                       (file-computation {:corpus corpus
-                                          :filename (:basename sources)
-                                          :paragraphs paragraphs})))
-                   files))
+            (fnk [files]
+              (doseq [file files]
+                (let [{:keys [sources paragraphs]} file]
+                  (file-computation {:corpus (string/join "." (:genre sources))
+                                     :basename (:basename sources)
+                                     :paragraphs paragraphs}))))
+
+            :newspaper ;; copy of :wikipedia
+            (fnk [files]
+              (doseq [file files]
+                (let [{:keys [sources paragraphs]} file]
+                  (file-computation {:corpus (string/join "." (:genre sources))
+                                     :basename (:basename sources)
+                                     :paragraphs paragraphs}))))
 
             :bccwj
-            (fnk [corpus sources files file-bases]
-              (->> files
-                   (map #(file-computation {:filename % :corpus corpus}))))
+            (fnk [sources files]
+              (let [file-to-genre (reduce
+                                   (fn [m {:keys [basename genre]}]
+                                     (assoc m basename (string/join "." genre)))
+                                   {}
+                                   sources)]
+                (doseq [file files]
+                  (file-computation {:filename file :basename (base-name file) :corpus (file-to-genre (base-name file))}))))
 
             :generic
-            (fnk [corpus sources files file-bases]
+            (fnk [sources files file-bases]
               ;; For non-BCCWJ and Wikipedia sources, we might want to run some sanity checks first.
-              (let [sources-basenames (set (map :basename sources))
+              (let [file-to-genre (reduce
+                                   (fn [m {:keys [basename genre]}]
+                                     (assoc m basename (string/join "." genre)))
+                                   {}
+                                   sources)
+
+                    sources-basenames (set (map :basename sources))
                     basenames-missing-source (set/difference file-bases sources-basenames)
                     basenames-missing-from-fs (set/difference sources-basenames file-bases)]
                 (binding [*print-length* 10]
@@ -259,9 +338,8 @@
                     (timbre/debugf "%d basenames in sources.tsv missing on filesystem: %s"
                                    (count basenames-missing-from-fs)
                                    basenames-missing-from-fs)))
-                (->> files
-                     (remove (fn [f] (contains? basenames-missing-source (base-name f))))
-                     (map #(file-computation {:corpus corpus :filename %}))))))))]
+                (doseq [file (remove (fn [f] (contains? basenames-missing-source (base-name f))) files)]
+                  (file-computation {:filename file :basename (base-name file) :corpus (file-to-genre (base-name file))})))))))]
     (corpus-computation {:corpus-dir corpus-dir :sampling-options (assoc sampling :ratio 0.0)})))
 
 (schema/defn process-directories :- #{File}
