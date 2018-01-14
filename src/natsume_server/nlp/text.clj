@@ -5,9 +5,9 @@
             [natsume-server.utils.reducers :as u]))
 
 ;; # Sentence and paragraph splitting
-(def delimiter   #"[\.!\?．。！？]")
+(def delimiter   #"[\.!\?．。！？…]")
 ;; Take care not to use this with JStage data -- temporary hack for BCCWJ
-(def delimiter-2 #"[!\?。！？]")
+(def delimiter-2 #"[!\?。！？…]")
 (def closing-quotation #"[\)）」』】］〕〉》\]]") ; TODO
 (def opening-quotation #"[\(（「『［【〔〈《\[]") ; TODO
 (def numbers #"[０-９\d]")
@@ -45,17 +45,17 @@
        (r/reduce (fn
                    ([] [])
                    ([a x]
-                      (let [y (peek a)
-                            z (and y (peek (pop a)))]
-                        (if (and y z
-                                 (delimiter-set y)                   ; ...|x |y |z |...
-                                 (not (or (and (alphanumerics-set x) ;|   |５|．|０|
-                                               (not= \。 y)          ;|mpl|e |. |c |om/
-                                               (alphanumerics-set z));|   |  |  |  |
-                                          (closing-quotation-set z)  ; ...|る|。|）|と言った
-                                          (delimiter-set z))))       ; ...|。|。|。|
-                          (conj (pop (pop a)) z \newline y x)
-                          (conj a x))))))
+                    (let [y (peek a)
+                          z (and y (peek (pop a)))]
+                      (if (and y z
+                               (delimiter-set y)                   ; ...|z |y |x |...
+                               (not (or (and (alphanumerics-set z) ;|   |５|．|０|
+                                             (not= \。 y)          ;|mpl|e |. |c |om/
+                                             (alphanumerics-set x));|   |  |  |  |
+                                        (closing-quotation-set x)  ; ...|る|。|）|と言った
+                                        (delimiter-set x))))       ; ...|。|。|。|
+                        (conj (pop (pop a)) z \newline y x)
+                        (conj a x))))))
        reverse
        string/join
        string/split-lines))
