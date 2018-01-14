@@ -65,6 +65,12 @@ The simplest way to run natsume-server is to use [lein](https://github.com/techn
 lein run /path/to/corpus/dir/
 ```
 
+### Corpus processing: Extraction (for word embedding training etc.)
+
+```bash
+boot run --extract --unit suw --out corpus-file.tsv
+```
+
 ## Planned Features
 
 ### Integration with automatic error correction/feedback system Nutmeg
