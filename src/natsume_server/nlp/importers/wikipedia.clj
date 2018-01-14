@@ -5,7 +5,6 @@
 ;; FIXME this is an import, needs fixing:
 ;;       - better names
 ;;       - stream documents, stream metadata (sources) --> lazy seq of documents-sentences
-;;       - allow working on one file
 ;;       - need to refactor the file reading part of core.clj/text.clj into simple-text-importer (specific part) + general part (used by all importers)
 ;;       - Ideally, we should be using one of the Java wikimedia dump libraries (that might also let us tag sentences (:title, :quotation, ...))
 ;;           - http://code.google.com/p/wikixmlj/
@@ -44,7 +43,7 @@
   "Given a suitable (quasi)XML file generated from a Wikipedia dump, returns a lazy sequence of maps containing sources meta-information and parsed paragraphs."
   [filename]
   (let [lines (line-seq (io/reader filename))]
-    (->> lines
-         (partition-by is-open?)
-         (partition-all 2)
-         (map process-doc))))
+    (sequence (comp (partition-by is-open?)
+                    (partition-all 2)
+                    (map process-doc))
+              lines)))
