@@ -1,5 +1,6 @@
 (ns natsume-server.component.load
-  (:require [clojure.java.io :as io]
+  (:require [clojure.spec.alpha :as s]
+            [clojure.java.io :as io]
             [clojure.set :as set]
             [clojure.core.reducers :as r]
             [clojure.string :as string]
@@ -19,7 +20,7 @@
             [clojure.data.csv :as csv]
             [datoteka.core :as fs]
             [iota :as iota]
-            [schema.core :as s]
+            [schema.core :as schema]
 
             [taoensso.timbre :as timbre]
             [mount.core :refer [defstate]])
@@ -47,10 +48,10 @@
      (filter filter-fn files))))
 
 (def sentence-graph
-  {:tree            (fnk get-tree :- [Chunk] [text :- s/Str] (am/sentence->tree text))
+  {:tree            (fnk get-tree :- [Chunk] [text :- schema/Str] (am/sentence->tree text))
    :features        rd/sentence-readability
    ;; The following are side-effecting persistence graphs:
-   :sentences-id    (fnk get-sentences-id :- s/Num
+   :sentences-id    (fnk get-sentences-id :- schema/Num
                       [conn features tags paragraph-order-id sentence-order-id sources-id]
                       (-> (q/insert-sentence conn
                                              (assoc features
@@ -60,7 +61,7 @@
                                                     :sources-id sources-id))
                           first
                           :id))
-   :collocations-id (fnk get-collocations-id :- (s/maybe [s/Num]) [conn features sentences-id]
+   :collocations-id (fnk get-collocations-id :- (schema/maybe [schema/Num]) [conn features sentences-id]
                       (when-let [collocations (seq (:collocations features))]
                         (map :id (q/insert-collocations! conn collocations sentences-id))))
    :commit-tokens   (fnk commit-tokens :- nil [conn tree sentences-id]
@@ -78,7 +79,7 @@
             sentence-count (count sentences)
             sentence-end-id (+ sentence-start-id sentence-count)]
         ((comp dorun map)
-         (s/fn [text :- s/Str sentence-order-id :- s/Num]
+         (schema/fn [text :- schema/Str sentence-order-id :- schema/Num]
            (sentence-graph-fn
             {:conn               conn
              :tags               tags
@@ -191,9 +192,9 @@
                      (->> files
                           (dorunconc #(bccwj-file-graph-fn {:conn conn :filename %}))))}))
 
-(s/defn process-corpus! :- nil
-  [conn :- s/Any
-   sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}
+(schema/defn process-corpus! :- nil
+  [conn :- schema/Any
+   sampling :- {:ratio schema/Num :seed schema/Num :hold-out schema/Bool :replace schema/Bool}
    corpus-dir :- File]
   (let [corpus-computation (graph/eager-compile
                             (condp re-seq (.toString (fs/name corpus-dir))
@@ -263,9 +264,9 @@
                      (map #(file-computation {:corpus corpus :filename %}))))))))]
     (corpus-computation {:corpus-dir corpus-dir :sampling-options (assoc sampling :ratio 0.0)})))
 
-(s/defn process-directories :- #{File}
+(schema/defn process-directories :- #{File}
   "Processes directories to check if they exist and returns a set of io/file directory objects with canonical and normalized paths."
-  [dirs :- [s/Str]]
+  [dirs :- [schema/Str]]
   (if (seq dirs)
     (into #{}
           (comp (map fs/path)
@@ -273,22 +274,30 @@
                 (filter fs/directory?))
           dirs)))
 
-(s/defn process :- nil
+(schema/defn process :- nil
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
-  [conn :- s/Any
-   dirs :- [s/Str]
-   sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}]
+  [conn :- schema/Any
+   dirs :- [schema/Str]
+   sampling :- {:ratio schema/Num :seed schema/Num :hold-out schema/Bool :replace schema/Bool}]
   ((comp dorun map) (partial process-corpus! conn sampling) (process-directories dirs)))
 
-(s/defn extract :- nil
+(schema/defn extract :- nil
   "Initializes database and processes corpus directories from input.
   If no corpus directory is given or the -h flag is present, prints
   out available options and arguments."
-  [dirs :- [s/Str]
-   sampling :- {:ratio s/Num :seed s/Num :hold-out s/Bool :replace s/Bool}]
-  ((comp dorun map) (partial extract-corpus! sampling) (process-directories dirs)))
+  [dirs :- [schema/Str]
+   sampling :- {:ratio schema/Num :seed schema/Num :hold-out schema/Bool :replace schema/Bool}
+   extraction-unit :- schema/Keyword
+   extraction-features :- schema/Keyword
+   extraction-file :- schema/Str]
+  (doseq [dir (process-directories dirs)]
+    (extract-corpus! sampling dir extraction-unit extraction-features extraction-file)))
+
+(comment
+  ;; boot cider run -p load --dev --extract
+  (extract (:dirs config) (:sampling config)))
 
 (defstate data
   :start (let [{:keys [dirs sampling search]} config]
