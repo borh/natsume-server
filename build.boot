@@ -144,9 +144,12 @@
       :version version
       :description "Natsume writing assistance system data processor and API server"
       :license {"Eclipse Public License" "http://www.eclipse.org/legal/epl-v10.html"}}
- aot {:namespace #{'natsume-server.main}}
+ aot {:all true
+      #_:namespace #_#{'natsume-server.main}}
  jar {:main 'natsume-server.main
-      :file (str "natsume-server-" version "-standalone.jar")})
+      :file (str "natsume-server-" version "-standalone.jar")}
+ sift {:include #{#"natsume-server"}}
+ target {:dir #{"static"}})
 
 (deftask check-sources []
   (set-env! :source-paths #{"src"})
@@ -156,54 +159,52 @@
    (check/with-kibit)
    (check/with-bikeshed)))
 
-(deftask dev-system
-  "Develop the server backend. The system is automatically started in
+(comment
+  (deftask dev-system
+    "Develop the server backend. The system is automatically started in
   the dev profile."
-  []
-  (require 'reloaded.repl)
-  (require 'aero.core)
+    []
+    (require 'reloaded.repl)
+    (require 'aero.core)
+    (try
+      (require 'natsume-server.main)
+      (natsume-server.main/run-with-profile :server true)
+      (catch Exception e
+        (boot.util/fail "Exception while mounting the system\n")
+        (boot.util/print-ex e)))
+    identity))
+
+(comment
+  (deftask dev
+    "This is the main development entry point."
+    []
+    ;; Needed by tools.namespace to know where the source files are
+    ;; (apply clojure.tools.namespace.repl/set-refresh-dirs (get-env :directories))
+    (comp
+     (watch)
+     (speak)
+     (dev-system)
+     (target))))
+
+(defn- run-system [profile dev? extract? extraction-unit extraction-features extraction-file]
   (try
     (require 'natsume-server.main)
-    (natsume-server.main/run-with-profile :server true)
+    (natsume-server.main/run-with-profile profile dev? extract? extraction-unit extraction-features extraction-file)
     (catch Exception e
       (boot.util/fail "Exception while mounting the system\n")
       (boot.util/print-ex e)))
   identity)
 
-(deftask dev
-  "This is the main development entry point."
-  []
-  (set-env! :dependencies #(vec (concat % '[[reloaded.repl "0.2.3"]])))
-
-  ;; Needed by tools.namespace to know where the source files are
-  (apply clojure.tools.namespace.repl/set-refresh-dirs (get-env :directories))
-
-  (comp
-   (watch)
-   (speak)
-   (dev-system)
-   (target)))
-
-(deftask build
-  []
-  (target :dir #{"static"}))
-
-(defn- run-system [profile dev? extract?]
-  (try
-    (require 'natsume-server.main)
-    (natsume-server.main/run-with-profile profile dev? extract?)
-    (catch Exception e
-      (boot.util/fail "Exception while mounting the system\n")
-      (boot.util/print-ex e)))
-  identity)
-
-(deftask run [p profile VAL kw   "Profile"
-              d dev         bool "Development"
-              e extract     bool "Dataset extraction to local files"]
+(deftask run [p profile  VAL kw   "Profile"
+              d dev          bool "Development"
+              e extract      bool "Dataset extraction to local files"
+              u unit     VAL kw   "(Extraction only) unit to extract (text|suw|unigrams)"
+              f features VAL kw   "(Extraction only) features to extract from tokens (orth|lemma)"
+              o out      VAL str  "(Extraction only) output filename (default: corpus-extracted.tsv)"]
   (comp
    (repl :server true
          :init-ns 'natsume-server.main)
-   (run-system (or profile :prod-server) (or dev false) (or extract false))
+   (run-system (or profile :server) (or dev false) (or extract false) (or unit :unigrams) (or features :orth) (or out "corpus-extracted.tsv"))
    (wait)))
 
 (deftask uberjar
@@ -214,4 +215,5 @@
    (pom)
    (uber)
    (jar)
+   (sift)
    (target)))
