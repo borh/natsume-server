@@ -654,32 +654,36 @@
 ;; END Schema
 
 (defstate !norm-map
-  :start {:sources   (seq-to-tree (q connection (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
-          :sentences (seq-to-tree (q connection (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
-          :chunks    (seq-to-tree (q connection (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
-          :tokens    (seq-to-tree (q connection (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))})
+  :start (when (:server config)
+           {:sources   (seq-to-tree (q connection (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :sentences (seq-to-tree (q connection (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :chunks    (seq-to-tree (q connection (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :tokens    (seq-to-tree (q connection (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))}))
 (defstate !genre-names
-  :start (->> !norm-map :sources :children (map :name) set))
+  :start (when (:server config) (->> !norm-map :sources :children (map :name) set)))
 (defstate !genre-tokens-map
-  :start (->> !norm-map :tokens :children (map (juxt :name :count)) (into {})))
+  :start (when (:server config) (->> !norm-map :tokens :children (map (juxt :name :count)) (into {}))))
 
 ;; Should contain all totals in a map by collocation type (n-gram size is determined by type) and genre.
 (defstate !gram-totals
-  :start (let [records (q connection (-> (select :*) (from :gram-norm)) #(update-in % [:type] underscores->dashes))]
-           (->> records
-                (map #(update-in % [:genre] ltree->seq))
-                (group-by :type)
-                (map-vals #(seq-to-tree % {:merge-fns {:count +
-                                                       :sentences-count +
-                                                       :sources-count +}})))))
+  :start (when (:server config)
+           (let [records (q connection (-> (select :*) (from :gram-norm)) #(update-in % [:type] underscores->dashes))]
+             (->> records
+                  (map #(update-in % [:genre] ltree->seq))
+                  (group-by :type)
+                  (map-vals #(seq-to-tree % {:merge-fns {:count +
+                                                         :sentences-count +
+                                                         :sources-count +}}))))))
 (defstate !gram-types
-  :start (set (q connection (-> (select :type) (from :gram-norm)) underscores->dashes :type)))
+  :start (when (:server config)
+           (set (q connection (-> (select :type) (from :gram-norm)) underscores->dashes :type))))
 (defstate !tokens-by-gram
-  :start (map-vals (fn [x] (reduce #(+ %1 (-> %2 val :count)) 0 x))
-                   (group-by #(let [wcs (clojure.string/split (name (key %)) #"-")
-                                    aux-count (count (filter (fn [wc] (= "auxiliary" wc)) wcs))]
-                                (- (count wcs) aux-count))
-                             !gram-totals)))
+  :start (when (:server config)
+           (map-vals (fn [x] (reduce #(+ %1 (-> %2 val :count)) 0 x))
+                     (group-by #(let [wcs (clojure.string/split (name (key %)) #"-")
+                                      aux-count (count (filter (fn [wc] (= "auxiliary" wc)) wcs))]
+                                  (- (count wcs) aux-count))
+                               !gram-totals))))
 
 ;; Component
 
