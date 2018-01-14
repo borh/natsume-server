@@ -111,6 +111,6 @@ boot run --extract --unit suw --out corpus-file.tsv
 
 ## License
 
-Copyright © 2012-2017 Bor Hodošček
+Copyright © 2012-2018 Bor Hodošček
 
 Distributed under the Eclipse Public License, the same as Clojure.
