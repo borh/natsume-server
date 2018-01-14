@@ -15,7 +15,7 @@
    [taoensso.timbre.appenders.core :as appenders]
    [mount.core :as mount]))
 
-(defn -main [& args]
+(defn start! []
   (clojure.pprint/pprint {:new-config natsume-server.config/config})
   (with-logging-status)
   (mount/start #'natsume-server.config/secrets)
@@ -46,10 +46,10 @@
      #'natsume-server.endpoint.api/api-routes
      #'natsume-server.component.server/server)))
 
-(defn run-with-profile [profile dev? extract?]
+(defn run-with-profile [profile dev? extract? extraction-unit extraction-features extraction-file]
   (let [config (-> (aero/read-config "config.edn" {:profile profile})
                    (update :log-level (fn [level] (or level (and dev? :debug) :error)))
-                   (assoc :profile (if dev? :dev :prod))
+                   #_(assoc :profile (if dev? :dev :prod))
                    (update-in [:http :access-control-allow-origin] (fn [m] (if dev? (:dev m) (:prod m))))
                    (update-in [:sampling :ratio] (fn [m] (if dev? (:dev m) (:prod m)))))]
     (timbre/set-level! (:log-level config))
@@ -58,10 +58,14 @@
                                :min-level :debug)}})
     (timbre/debugf "Running system with profile %s in %s mode (extraction %s)" profile (if dev? "dev" "prod") (if extract? "on" "off"))
     (timbre/debug {:runtime-config config})
+    (-> (mount/only #{#'natsume-server.config/config})
+        (mount/swap {#'natsume-server.config/config config})
+        (mount/start))
     (if extract?
-      (natsume-server.component.load/extract (:dirs config) (:sampling config))
-      (do
-        (-> (mount/only #{#'natsume-server.config/config})
-            (mount/swap {#'natsume-server.config/config config})
-            (mount/start))
-        (-main)))))
+      (do (natsume-server.component.load/extract (:dirs config) (:sampling config) extraction-unit extraction-features extraction-file)
+          (System/exit 0))
+      (start!))))
+
+(defn -main [& args]
+  (mount/in-cljc-mode)
+  (run-with-profile :server false false :suw [:orth] ""))
