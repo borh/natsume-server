@@ -6,8 +6,6 @@
 
    ;;
    [tolitius/boot-check "0.1.6" :scope "test"]
-   ;; [org.clojure/core.typed "0.4.3" :scope "test"]
-   ;; [org.typedclojure/boot-typedclojure "0.1.0" :scope "test"]
    ;; REPL and config utils
    [adzerk/boot-reload "0.5.2" :scope "test"]
    [org.clojure/tools.nrepl "0.2.13"]
@@ -42,7 +40,7 @@
    [org.clojure/core.async "0.4.474"]
 
    ;; Database
-   [org.postgresql/postgresql "42.1.4" #_"9.4.1212"]
+   [org.postgresql/postgresql "42.1.4"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.5"]
@@ -61,14 +59,13 @@
    [com.taoensso/encore "2.93.0"]
    [robert/hooke "1.3.0"]
    [reloaded.repl "0.2.4" :scope "test"]
-   [org.clojure/tools.namespace "0.3.0-alpha4"] ;; FIXME uberjar
+   [org.clojure/tools.namespace "0.3.0-alpha4"]
    [org.clojure/tools.cli "0.3.5"]
    [funcool/datoteka "1.0.0"]
    [iota "1.1.3"]
    [org.clojure/data.csv "0.1.4"]
    [dk.ative/docjure "1.12.0" :exclusions [commons-codec]]
    [fast-zip "0.6.1" :exclusions [com.cemerick/austin]]
-   [automat "0.2.4"]
    [org.apache.commons/commons-math3 "3.6.1"]
    [org.flatland/ordered "1.5.6"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
@@ -76,14 +73,9 @@
    ;;
 
    ;; Stats/models/ML
-   ;; [net.mikera/core.matrix "0.48.0"] ;; >0.44.0 breaks incanter
-   ;; [incanter/incanter-core "1.9.0" :exclusions [net.mikera/core.matrix]]
-   ;; [com.aliasi/lingpipe "4.1.0"] ;; TODO
    [bigml/sampling "3.1"]
    [prismatic/plumbing "0.5.5" :exclusions [fs potemkin prismatic/schema]]
    [lonocloud/synthread "1.4.0" :exclusions [org.clojure/clojurescript]]
-   ;; [prismatic/hiphip "0.1.0"] ;; TODO
-   ;; [org.onyxplatform/onyx "0.12.0"]
    [cc.qbits/knit "0.3.1"]
    [org.clojure/core.incubator "0.1.4"]
    [org.clojure/core.match "0.3.0-alpha5" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
@@ -102,21 +94,13 @@
    [org.nd4j/nd4j-common "0.9.1"]
    [org.nd4j/nd4j-native "0.9.1"]
    [org.nd4j/nd4j-native-platform "0.9.1"]
-   ;; [org.nd4j/nd4j-cuda-8.0-platform "0.9.0"]
-   [org.deeplearning4j/deeplearning4j-core "0.9.1"]
+   ;; [org.nd4j/nd4j-cuda-9.0-platform "0.9.0"]
+   [org.deeplearning4j/deeplearning4j-core "0.9.1"
+    :exclusions [org.datavec/datavec-data-image]]
    [org.deeplearning4j/deeplearning4j-nlp "0.9.1"]
    ;;
-   #_[cc.mallet/mallet "2.0.8" :exclusions [commons-logging]]
    [de.julielab/jcore-mallet-2.0.9 "2.1.0"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
-   ;; [net.sf.trove4j/trove4j "2.0.2"] ;; needed by mallet master
-   ;; [org.apache.lucene/lucene-core "7.0.1"]
-   [clucie "0.3.0-SNAPSHOT" :exclusions
-    [org.apache.lucene/lucene-analyzers-smartcn
-     org.apache.lucene/lucene-analyzers-phonetic
-     org.apache.lucene/lucene-analyzers-kuromoji
-     org.apache.lucene/lucene-analyzers-stempel
-     org.apache.lucene/lucene-analyzers-icu]]
    ;;
 
    ;; Text processing
