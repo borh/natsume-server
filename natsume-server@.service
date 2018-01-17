@@ -9,6 +9,7 @@
 
 [Unit]
 Description=natsume-server
+After=network-online.target postgresql.service
 
 [Service]
 Type=simple
@@ -16,7 +17,7 @@ Environment="BOOT_JVM_OPTIONS='-Djava.awt.headless=true -Xms4g -Xmx4g'"
 Environment="DISPLAY=:0"
 Environment="PORT=%i"
 Environment="DB_NAME=natsumedev"
-ExecStart=/home/bor/local/bin/boot run --profile server
+ExecStart=/usr/bin/env boot run --profile server
 Restart=always
 User=bor
 WorkingDirectory=/home/bor/Projects/natsume-server
@@ -24,4 +25,4 @@ PrivateTmp=true
 NoNewPrivileges=true
 
 [Install]
-WantedBy=default.target
+WantedBy=multi-user.target
