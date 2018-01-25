@@ -5,17 +5,17 @@
  '[[org.clojure/clojure "1.9.0"]
 
    ;;
-   [tolitius/boot-check "0.1.6" :scope "test"]
+   [tolitius/boot-check "0.1.7" :scope "test"]
    ;; REPL and config utils
    [adzerk/boot-reload "0.5.2" :scope "test"]
    [org.clojure/tools.nrepl "0.2.13"]
-   [mount "0.1.11"]
+   [mount "0.1.12-SNAPSHOT"]
    [potemkin "0.4.5-alpha1"]
    [aero "1.1.2"]
    [prismatic/schema "1.1.7"]
 
    ;; Web
-   [com.fasterxml.jackson.core/jackson-core "2.9.3"]
+   [com.fasterxml.jackson.core/jackson-core "2.9.4"]
    [cheshire "5.8.0"]
    [yada "1.2.10" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.25.0"]
@@ -40,7 +40,7 @@
    [org.clojure/core.async "0.4.474"]
 
    ;; Database
-   [org.postgresql/postgresql "42.1.4"]
+   [org.postgresql/postgresql "42.2.0"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.5"]
@@ -52,7 +52,7 @@
    ;; Utils
    [org.tukaani/xz "1.8"]
    [org.apache.commons/commons-compress "1.15"]
-   [org.clojure/tools.reader "1.1.1"]
+   [org.clojure/tools.reader "1.1.3.1"]
    [com.taoensso/timbre "4.10.0"]
    [com.fzakaria/slf4j-timbre "0.3.8"]
    [org.slf4j/slf4j-api "1.7.25"]
@@ -73,7 +73,7 @@
    ;;
 
    ;; Stats/models/ML
-   [bigml/sampling "3.1"]
+   [bigml/sampling "3.2"]
    [prismatic/plumbing "0.5.5" :exclusions [fs potemkin prismatic/schema]]
    [lonocloud/synthread "1.4.0" :exclusions [org.clojure/clojurescript]]
    [cc.qbits/knit "0.3.1"]
