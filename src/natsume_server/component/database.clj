@@ -394,6 +394,7 @@
   [[:seq (h/raw
           "CREATE TABLE genre_norm AS
    SELECT so.genre,
+          sum(char_length(se.text))       AS character_count,
           sum(se.tokens)::integer         AS token_count,
           sum(se.chunks)::integer         AS chunk_count,
           count(DISTINCT se.id)::integer  AS sentences_count,
@@ -655,10 +656,11 @@
 
 (defstate !norm-map
   :start (when (:server config)
-           {:sources   (seq-to-tree (q connection (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
-            :sentences (seq-to-tree (q connection (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
-            :chunks    (seq-to-tree (q connection (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
-            :tokens    (seq-to-tree (q connection (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))}))
+           {:sources    (seq-to-tree (q connection (-> (select :genre [:sources-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :sentences  (seq-to-tree (q connection (-> (select :genre [:sentences-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :chunks     (seq-to-tree (q connection (-> (select :genre [:chunk-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :tokens     (seq-to-tree (q connection (-> (select :genre [:token-count :count]) (from :genre-norm)) genre-ltree-transform))
+            :characters (seq-to-tree (q connection (-> (select :genre [:character-count :count]) (from :genre-norm)) genre-ltree-transform))}))
 (defstate !genre-names
   :start (when (:server config) (->> !norm-map :sources :children (map :name) set)))
 (defstate !genre-tokens-map
