@@ -28,11 +28,12 @@
        vec))
 
 (defn make-sources-record [title year id]
-  {:title    title
-   :author   ""
-   :year     year
-   :basename id
-   :genre    ["Wikipedia"]})
+  {:title      title
+   :author     ""
+   :year       year
+   :basename   id
+   :genre      ["Wikipedia"]
+   :permission true})
 
 (defn process-doc [[[header] lines]]
   {:sources (let [[id title] (extract-header header)]

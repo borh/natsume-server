@@ -143,7 +143,7 @@
 
          m)))
    {:paragraphs []
-    :sources {:author ""}}
+    :sources {:author "" :permission false}}
    tagged-lines))
 
 (defn doc-start? [s]
