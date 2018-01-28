@@ -35,12 +35,12 @@
    [buddy/buddy-auth "2.1.0"]
    [restpect "0.2.1" :scope "test"]
 
-   [riddley "0.1.14"]
+   [riddley "0.1.15"]
 
    [org.clojure/core.async "0.4.474"]
 
    ;; Database
-   [org.postgresql/postgresql "42.2.0"]
+   [org.postgresql/postgresql "42.2.1"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.5"]
@@ -52,7 +52,7 @@
    ;; Utils
    [org.tukaani/xz "1.8"]
    [org.apache.commons/commons-compress "1.15"]
-   [org.clojure/tools.reader "1.1.3.1"]
+   [org.clojure/tools.reader "1.2.1"]
    [com.taoensso/timbre "4.10.0"]
    [com.fzakaria/slf4j-timbre "0.3.8"]
    [org.slf4j/slf4j-api "1.7.25"]
