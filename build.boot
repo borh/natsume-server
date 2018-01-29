@@ -17,7 +17,7 @@
    ;; Web
    [com.fasterxml.jackson.core/jackson-core "2.9.4"]
    [cheshire "5.8.0"]
-   [yada "1.2.10" :exclusions [manifold metosin/ring-swagger]]
+   [yada "1.2.11" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.25.0"]
    [io.netty/netty-all "4.1.14.Final"]
    [manifold "0.1.7-alpha6"]
@@ -106,7 +106,7 @@
    ;; Text processing
    [org.chasen/cabocha "0.69"]
    [com.ibm.icu/icu4j "60.2"]
-   [d3-compat-tree "0.0.9"]])
+   [d3-compat-tree "0.0.11"]])
 
 (set-env! :repositories #(conj % ["sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]))
 
