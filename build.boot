@@ -5,20 +5,20 @@
  '[[org.clojure/clojure "1.9.0"]
 
    ;;
-   [tolitius/boot-check "0.1.7" :scope "test"]
+   [tolitius/boot-check "0.1.9" :scope "test"]
    ;; REPL and config utils
    [adzerk/boot-reload "0.5.2" :scope "test"]
    [org.clojure/tools.nrepl "0.2.13"]
    [mount "0.1.12-SNAPSHOT"]
    [potemkin "0.4.5-alpha1"]
-   [aero "1.1.2"]
+   [aero "1.1.3"]
    [prismatic/schema "1.1.7"]
 
    ;; Web
    [com.fasterxml.jackson.core/jackson-core "2.9.4"]
    [cheshire "5.8.0"]
    [yada "1.2.11" :exclusions [manifold metosin/ring-swagger]]
-   [metosin/ring-swagger "0.25.0"]
+   [metosin/ring-swagger "0.26.0"]
    [io.netty/netty-all "4.1.14.Final"]
    [manifold "0.1.7-alpha6"]
    [aleph "0.4.4"]
@@ -45,18 +45,18 @@
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.5"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.1.6"]
+   [com.alibaba/druid "1.1.8"]
    [honeysql "0.9.1"]
    [com.layerware/hugsql "0.4.8"]
 
    ;; Utils
    [org.tukaani/xz "1.8"]
-   [org.apache.commons/commons-compress "1.15"]
+   [org.apache.commons/commons-compress "1.16.1"]
    [org.clojure/tools.reader "1.2.1"]
    [com.taoensso/timbre "4.10.0"]
    [com.fzakaria/slf4j-timbre "0.3.8"]
    [org.slf4j/slf4j-api "1.7.25"]
-   [com.taoensso/encore "2.93.0"]
+   [com.taoensso/encore "2.94.0"]
    [robert/hooke "1.3.0"]
    [reloaded.repl "0.2.4" :scope "test"]
    [org.clojure/tools.namespace "0.3.0-alpha4"]
@@ -87,7 +87,7 @@
    [commons-io "2.6"]
    [commons-logging "1.2"]
    ;; dl4j
-   [com.google.guava/guava "23.6-jre"]
+   [com.google.guava/guava "24.0-jre"]
    [org.projectlombok/lombok "1.16.20"]
    [org.nd4j/jackson "0.9.1"]
 
