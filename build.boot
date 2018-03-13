@@ -45,7 +45,7 @@
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.5"]
    [java-jdbc/dsl "0.1.3"]
-   [com.alibaba/druid "1.1.8"]
+   [com.alibaba/druid "1.1.9"]
    [honeysql "0.9.1"]
    [com.layerware/hugsql "0.4.8"]
 
@@ -69,7 +69,7 @@
    [org.apache.commons/commons-math3 "3.6.1"]
    [org.flatland/ordered "1.5.6"] ;; For ordered routes in Swagger
    [camel-snake-kebab "0.4.0" :exclusions [org.clojure/clojure]]
-   [org.clojure/core.cache "0.6.5"]
+   [org.clojure/core.cache "0.7.1"]
    ;;
 
    ;; Stats/models/ML
