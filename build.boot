@@ -2,7 +2,7 @@
  :source-paths #{"src" "dev"}
  :resource-paths #{"data"}
  :dependencies
- '[[org.clojure/clojure "1.9.0"]
+ '[[org.clojure/clojure "1.10.0-alpha4"]
 
    ;;
    [tolitius/boot-check "0.1.9" :scope "test"]
@@ -10,12 +10,12 @@
    [adzerk/boot-reload "0.5.2" :scope "test"]
    [org.clojure/tools.nrepl "0.2.13"]
    [mount "0.1.12-SNAPSHOT"]
-   [potemkin "0.4.5-alpha1"]
+   [potemkin "0.4.5"]
    [aero "1.1.3"]
-   [prismatic/schema "1.1.7"]
+   [prismatic/schema "1.1.9"]
 
    ;; Web
-   [com.fasterxml.jackson.core/jackson-core "2.9.4"]
+   [com.fasterxml.jackson.core/jackson-core "2.9.5"]
    [cheshire "5.8.0"]
    [yada "1.2.11" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.26.0"]
@@ -23,11 +23,11 @@
    [manifold "0.1.7-alpha6"]
    [aleph "0.4.4"]
    [com.taoensso/sente "1.12.0"]
-   [com.cognitect/transit-clj "0.8.300"]
+   [com.cognitect/transit-clj "0.8.303"]
    ;; Temporarily until yada-sente integration fixed:
    [ring "1.6.3"]
    [ring/ring-defaults "0.3.1"]
-   [ring-cors "0.1.11"]
+   [ring-cors "0.1.12"]
    [ring/ring-json "0.5.0-beta1"]
    [ring-logger-timbre "0.7.6"]
    [compojure "1.6.0"]
@@ -40,13 +40,13 @@
    [org.clojure/core.async "0.4.474"]
 
    ;; Database
-   [org.postgresql/postgresql "42.2.1"]
+   [org.postgresql/postgresql "42.2.2"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
    [org.clojure/java.jdbc "0.7.5"]
    [java-jdbc/dsl "0.1.3"]
    [com.alibaba/druid "1.1.9"]
-   [honeysql "0.9.1"]
+   [honeysql "0.9.2"]
    [com.layerware/hugsql "0.4.8"]
 
    ;; Utils
@@ -81,23 +81,23 @@
    [org.clojure/core.match "0.3.0-alpha5" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]]
 
    ;; dep overrides
-   [instaparse "1.4.8"]
+   [instaparse "1.4.9"]
    [joda-time "2.9.9"]
    [com.google.code.findbugs/jsr305 "3.0.2"]
    [commons-io "2.6"]
    [commons-logging "1.2"]
    ;; dl4j
-   [com.google.guava/guava "24.0-jre"]
+   [com.google.guava/guava "24.1-jre"]
    [org.projectlombok/lombok "1.16.20"]
-   [org.nd4j/jackson "0.9.1"]
+   [org.nd4j/jackson "1.0.0-alpha"]
 
-   [org.nd4j/nd4j-common "0.9.1"]
-   [org.nd4j/nd4j-native "0.9.1"]
-   [org.nd4j/nd4j-native-platform "0.9.1"]
+   [org.nd4j/nd4j-common "1.0.0-alpha"]
+   [org.nd4j/nd4j-native "1.0.0-alpha"]
+   [org.nd4j/nd4j-native-platform "1.0.0-alpha"]
    ;; [org.nd4j/nd4j-cuda-9.0-platform "0.9.0"]
-   [org.deeplearning4j/deeplearning4j-core "0.9.1"
+   [org.deeplearning4j/deeplearning4j-core "1.0.0-alpha"
     :exclusions [org.datavec/datavec-data-image]]
-   [org.deeplearning4j/deeplearning4j-nlp "0.9.1"]
+   [org.deeplearning4j/deeplearning4j-nlp "1.0.0-alpha"]
    ;;
    [de.julielab/jcore-mallet-2.0.9 "2.1.0"]
    [marcliberatore.mallet-lda "0.1.1" :exclusions [cc.mallet/mallet]]
@@ -105,7 +105,7 @@
 
    ;; Text processing
    [org.chasen/cabocha "0.69"]
-   [com.ibm.icu/icu4j "60.2"]
+   [com.ibm.icu/icu4j "61.1"]
    [d3-compat-tree "0.0.11"]])
 
 (set-env! :repositories #(conj % ["sonatype-oss-snapshots" "https://oss.sonatype.org/content/repositories/snapshots"]))
