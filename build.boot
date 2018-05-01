@@ -23,14 +23,14 @@
    [manifold "0.1.7-alpha6"]
    [aleph "0.4.4"]
    [com.taoensso/sente "1.12.0"]
-   [com.cognitect/transit-clj "0.8.303"]
+   [com.cognitect/transit-clj "0.8.309"]
    ;; Temporarily until yada-sente integration fixed:
    [ring "1.6.3"]
    [ring/ring-defaults "0.3.1"]
    [ring-cors "0.1.12"]
    [ring/ring-json "0.5.0-beta1"]
    [ring-logger-timbre "0.7.6"]
-   [compojure "1.6.0"]
+   [compojure "1.6.1"]
    [buddy/buddy-sign "2.2.0"]
    [buddy/buddy-auth "2.1.0"]
    [restpect "0.2.1" :scope "test"]
@@ -43,7 +43,7 @@
    [org.postgresql/postgresql "42.2.2"]
    ;; [com.impossibl.pgjdbc-ng/pgjdbc-ng "0.7.1"] ;; TODO
    ;; https://github.com/alaisi/postgres.async another option but would require bigger refactor
-   [org.clojure/java.jdbc "0.7.5"]
+   [org.clojure/java.jdbc "0.7.6"]
    [java-jdbc/dsl "0.1.3"]
    [com.alibaba/druid "1.1.9"]
    [honeysql "0.9.2"]
@@ -52,15 +52,15 @@
    ;; Utils
    [org.tukaani/xz "1.8"]
    [org.apache.commons/commons-compress "1.16.1"]
-   [org.clojure/tools.reader "1.2.1"]
+   [org.clojure/tools.reader "1.3.0-alpha3"]
    [com.taoensso/timbre "4.10.0"]
    [com.fzakaria/slf4j-timbre "0.3.8"]
    [org.slf4j/slf4j-api "1.7.25"]
-   [com.taoensso/encore "2.94.0"]
+   [com.taoensso/encore "2.96.0"]
    [robert/hooke "1.3.0"]
    [reloaded.repl "0.2.4" :scope "test"]
    [org.clojure/tools.namespace "0.3.0-alpha4"]
-   [org.clojure/tools.cli "0.3.5"]
+   [org.clojure/tools.cli "0.3.7"]
    [funcool/datoteka "1.0.0"]
    [iota "1.1.3"]
    [org.clojure/data.csv "0.1.4"]
@@ -87,7 +87,7 @@
    [commons-io "2.6"]
    [commons-logging "1.2"]
    ;; dl4j
-   [com.google.guava/guava "24.1-jre"]
+   [com.google.guava/guava "25.0-jre"]
    [org.projectlombok/lombok "1.16.20"]
    [org.nd4j/jackson "1.0.0-alpha"]
 
