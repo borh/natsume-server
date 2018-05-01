@@ -19,7 +19,7 @@
    [cheshire "5.8.0"]
    [yada "1.2.11" :exclusions [manifold metosin/ring-swagger]]
    [metosin/ring-swagger "0.26.0"]
-   [io.netty/netty-all "4.1.14.Final"]
+   [io.netty/netty-all "4.1.24.Final"]
    [manifold "0.1.7-alpha6"]
    [aleph "0.4.4"]
    [com.taoensso/sente "1.12.0"]

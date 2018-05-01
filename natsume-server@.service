@@ -13,7 +13,7 @@ After=network-online.target postgresql.service
 
 [Service]
 Type=simple
-Environment="BOOT_JVM_OPTIONS='-Djava.awt.headless=true -Xms4g -Xmx4g --add-modules \"java.xml.bind\"'"
+Environment="BOOT_JVM_OPTIONS='-Djava.awt.headless=true -Dio.netty.tryReflectionSetAccessible=true --add-exports java.base/jdk.internal.misc=ALL-UNNAMED -Xms4g -Xmx4g --add-modules \"java.xml.bind\"'"
 Environment="DISPLAY=:0"
 Environment="PORT=%i"
 Environment="DB_NAME=natsumedev"
