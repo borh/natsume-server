@@ -35,6 +35,11 @@
    [buddy/buddy-auth "2.1.0"]
    [restpect "0.2.1" :scope "test"]
 
+   ;; Java >= 11 workaround
+   [com.sun.xml.bind/jaxb-impl "2.3.0"]
+   [com.sun.xml.bind/jaxb-core "2.3.0"]
+   [org.glassfish.jaxb/jaxb-runtime "2.3.0"]
+
    [riddley "0.1.15"]
 
    [org.clojure/core.async "0.4.474"]
