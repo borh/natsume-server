@@ -13,11 +13,10 @@ After=network-online.target postgresql.service
 
 [Service]
 Type=simple
-Environment="BOOT_JVM_OPTIONS='-Djava.awt.headless=true -Dio.netty.tryReflectionSetAccessible=true --add-exports java.base/jdk.internal.misc=ALL-UNNAMED -Xms4g -Xmx4g'"
 Environment="DISPLAY=:0"
 Environment="PORT=%i"
 Environment="DB_NAME=natsumedev"
-ExecStart=/usr/bin/env boot run --profile server
+ExecStart=/usr/bin/env clojure -Aserver
 Restart=always
 User=bor
 WorkingDirectory=/home/bor/Projects/natsume-server
