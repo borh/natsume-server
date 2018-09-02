@@ -22,8 +22,9 @@
 (defonce mecab-version "0.996")
 
 (def ^:private unidic-features
-  "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `2.1.1`."
-  [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :l-form :lemma :orth :pron :orth-base :pron-base :goshu :i-type :i-form :f-type :f-form])
+  "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `2.3.0`."
+  #_[:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :l-form :lemma :orth :pron :orth-base :pron-base :goshu :i-type :i-form :f-type :f-form]
+  [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :l-form :lemma :orth :pron :orth-base :pron-base :goshu :i-type :i-form :f-type :f-form :i-con-type :f-con-type :type :kana :kana-base :form :form-base :a-type :a-con-type :a-mod-type :lid :lemma-id])
 
 (s/defrecord Morpheme
   [pos :- (s/maybe s/Keyword)
