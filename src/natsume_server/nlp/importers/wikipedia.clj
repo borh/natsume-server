@@ -37,7 +37,7 @@
 
 (defn process-doc [[[header] lines]]
   {:sources (let [[id title] (extract-header header)]
-              (make-sources-record title 2017 id)) ; Year is not specified in file -> last modified date of article?
+              (make-sources-record title 2018 id)) ; Year is not specified in file -> last modified date of article?
    :paragraphs (-> lines drop-last text/lines->paragraph-sentences text/add-tags)}) ; Drop closing </doc>, split and add (dummy) tags.
 
 (defn doc-seq
