@@ -7,14 +7,19 @@
                        "-Dclojure.compiler.direct-linking=true"]}
   :extract {:main-opts ["-m" "natsume-server.main" "-e"]}
   :load    {:main-opts ["-m" "natsume-server.main" "-p" "load"]}
-  :server  {:main-opts ["-m" "natsume-server.main" "-p" "server"]}
+  :server  {:main-opts ["-m" "natsume-server.main" "-p" "server"]
+            :jvm-opts ["-Dmain=natsume-server.main"
+                       "--add-exports" "java.base/jdk.internal.misc=ALL-UNNAMED"
+                       "-Dio.netty.tryReflectionSetAccessible=true"
+                       "-Dclojure.compiler.direct-linking=true"
+                       "-Xms4g" "-Xmx4g"]}
   :test    {:extra-paths ["test"]
             :extra-deps  {org.clojure/tools.nrepl {:mvn/version "0.2.13"}
                           org.clojure/test.check  {:mvn/version "RELEASE"}
                           restpect                {:mvn/version "0.2.1"}}}
   :runner  {:extra-deps {com.cognitect/test-runner
                          {:git/url "https://github.com/cognitect-labs/test-runner"
-                          :sha     "76568540e7f40268ad2b646110f237a60295fa3c"}}
+                          :sha     "028a6d41ac9ac5d5c405dfc38e4da6b4cc1255d5"}}
             :main-opts  ["-m" "cognitect.test-runner"
                          "-d" "test"]}}
  :deps
