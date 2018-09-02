@@ -17,6 +17,10 @@
 
 (defonce parser (thread-local* (fn [] (Parser.))))
 
+(defonce version (org.chasen.cabocha.Parser/version))
+
+(defonce mecab-version "0.996")
+
 (def ^:private unidic-features
   "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `2.1.1`."
   [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :l-form :lemma :orth :pron :orth-base :pron-base :goshu :i-type :i-form :f-type :f-form])
