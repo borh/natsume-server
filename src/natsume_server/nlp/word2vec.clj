@@ -19,7 +19,7 @@
            [org.deeplearning4j.models.word2vec.wordstore.inmemory InMemoryLookupCache]
            [org.deeplearning4j.text.sentenceiterator LineSentenceIterator BasicLineIterator]
            [org.deeplearning4j.text.tokenization.tokenizerfactory TokenizerFactory DefaultTokenizerFactory]
-           [org.deeplearning4j.models.word2vec.Word2Vec$Builder]
+           [org.deeplearning4j.models.word2vec Word2Vec$Builder]
            [org.deeplearning4j.models.word2vec Word2Vec]
            [org.deeplearning4j.models.embeddings.loader WordVectorSerializer]))
 
