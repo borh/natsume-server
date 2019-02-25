@@ -17,6 +17,8 @@
             :extra-deps  {org.clojure/tools.nrepl {:mvn/version "0.2.13"}
                           org.clojure/test.check  {:mvn/version "0.9.0"}
                           restpect                {:mvn/version "0.2.1"}}}
+  :depstar {:extra-deps
+            {seancorfield/depstar {:mvn/version "0.1.5"}}}
   :runner  {:extra-deps {com.cognitect/test-runner
                          {:git/url "https://github.com/cognitect-labs/test-runner"
                           :sha     "cb96e80f6f3d3b307c59cbeb49bb0dcb3a2a780b"}}
