@@ -2,6 +2,7 @@
 (ns natsume-server.nlp.text
   (:require [clojure.core.reducers :as r]
             [clojure.string :as string]
+            [iota :as iota]
             [natsume-server.utils.reducers :as u]))
 
 ;; # Sentence and paragraph splitting
@@ -85,9 +86,15 @@
 
 (defn add-tags [paragraphs]
   (->> paragraphs
-       (r/map #(hash-map :tags #{}
-                         :sentences %))
+       (r/map #(hash-map :paragraph/tags #{}
+                         :paragraph/sentences %))
        (into [])))
+
+
+(defn file->doc
+  "Returns a sentence and paragraph splitted document from given filename."
+  [filename]
+  (-> filename str iota/vec lines->paragraph-sentences add-tags))
 
 (comment
   (bench (lines->paragraph-sentences ["フェイスブック（ＦＢ）やツイッターなどソーシャルメディアを使った採用活動が、多くの企業に広がっている。ＦＢでの会社説明会やＯＢ・ＯＧ訪問受け付け、ソーシャルスキルをはかって面接代わりにする動きも出てきた。" "企業側のソーシャル活用法も多様になっている。" nil "「実際、どれくらいの休みが取れるのでしょうか」「女性にとって働きやすい職場ですか」。"])))

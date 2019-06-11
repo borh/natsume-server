@@ -27,7 +27,7 @@
                                        features
                                        #{"noun" "verb" "adverb" "adjective" "preposition"}
                                        #{"非自立可能"}) ;; NOTE pos-2-filter excludes
-                  (map (fn [{:keys [basename genre text]}]
+                  (map (fn [{:keys [basename metadata/genre text]}]
                          [basename (str/split text #"\s")]))
                   make-instance-list)
              :num-topics 100
@@ -67,9 +67,9 @@
           (reverse)
           (take n-topics)
           (mapv (fn [[topic-id prob tokens]]
-                  {:id topic-id
-                   :prob prob
-                   :tokens tokens}))))))
+                  {:id           topic-id
+                   :prob         prob
+                   :chunk/tokens tokens}))))))
 
 ;; TODO topic-document NNS functionality
 ;; https://www.postgresql.org/message-id/52687CEA.9060903@xavvy.com

@@ -82,7 +82,7 @@
 (s/defn load-or-train! :- Word2Vec
   [unit-type features]
   (let [unit-type (or unit-type :suw)
-        features (or features (case unit-type :suw [:orth] :unigrams [:string]))
+        features (or features (case unit-type :suw [:morpheme/orth] :unigrams [:string]))
         model-path (format "models/word2vec-model-%s-%s.model.bin"
                            (name unit-type)
                            (str/join "_" (map name features)))]
@@ -238,7 +238,7 @@
   (.wordsNearest t "日本" 10)
 
   (let [unit-type :suw
-        token-features [:orth]
+        token-features [:morpheme/orth]
         path (format "models/word2vec-model-%s-%s.model.bin"
                      (name unit-type)
                      (str/join "_" (map name token-features)))

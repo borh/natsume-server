@@ -2,7 +2,6 @@
   (:require [clojure.string :as string]
             [clojure.set :as set]
             [clojure.core.reducers :as r]
-            [clojure.java.jdbc :as j]
 
             [hugsql.core :as hugsql]
 
@@ -28,7 +27,10 @@
             [mount.core :refer [defstate]]
             [natsume-server.config :refer [config]]
             [natsume-server.component.database :as db :refer [connection !norm-map !genre-names !genre-tokens-map !gram-totals !gram-types !tokens-by-gram]]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [taoensso.timbre :as timbre]
+            [next.jdbc :as nj]
+            [next.jdbc.sql :as sql]))
 
 ;; ## Database wrapper functions
 
@@ -37,72 +39,33 @@
 (def !query-cache
   (atom (cache/lru-cache-factory {} :threshold 50000)))
 (defn qm
-  [conn query & trans]
-  (let [query-trans [query trans]]
-    (if (cache/has? @!query-cache query-trans)
-      (first (get (swap! !query-cache #(cache/hit % query-trans)) query-trans))
-      (let [new-value (apply db/q conn query trans)]
-        (swap! !query-cache #(cache/miss % query-trans [new-value trans]))
-        new-value))))
+  ([query]
+   (if (cache/has? @!query-cache query)
+     (get (swap! !query-cache #(cache/hit % query)) query)
+     (let [new-value (db/q query)]
+       (swap! !query-cache #(cache/miss % query new-value))
+       new-value)))
+  ([query row-fn]
+   (let [query-trans [query row-fn]]
+     (if (cache/has? @!query-cache query-trans)
+       (first (get (swap! !query-cache #(cache/hit % query-trans)) query-trans))
+       (let [new-value (db/q query row-fn)]
+         (swap! !query-cache #(cache/miss % query-trans [new-value row-fn]))
+         new-value)))))
 
-(defn i!*
-  [conn tbl-name row-fn & rows]
-  (let [rowseq (->> rows flatten (map #(->> %
-                                            row-fn
-                                            (map-keys dashes->underscores))))]
-    (try (j/insert-multi! conn (dashes->underscores tbl-name) rowseq)
-         (catch Exception e (do (j/print-sql-exception-chain e) (println rowseq))))))
+(defn i1!
+  [tbl-name row]
+  (sql/insert! (:datasource connection) tbl-name row {:table-fn dashes->underscores :column-fn dashes->underscores}))
 
 (defn i!
-  [conn tbl-name & rows]
-  (let [rowseq (->> rows flatten (map #(map-keys dashes->underscores %)))]
-    (try (j/insert-multi! conn (dashes->underscores tbl-name) rowseq)
-         (catch Exception e (do (try (j/print-sql-exception-chain e) (catch Exception e' (println e))) (println rowseq))))))
-
-(defn u!
-  [conn tbl-name new-val where-clause]
-  (j/update! conn
-             tbl-name
-             new-val
-             where-clause))
-
-(defn e!
-  [conn sql-params & trans]
-  (j/execute! conn
-              (map (if trans trans identity) sql-params)))
-
-(defn db-do-commands! [conn stmt]
-  (j/db-do-commands conn stmt))
-
-(defn seq-execute!
-  [conn & sql-stmts]
-  (doseq [stmt (mapcat #(mapcat h/format %)
-                       sql-stmts)]
-    (e! conn [stmt])))
-
-(defn seq-par-execute!
-  [conn & sql-stmts]
-  (doseq [f (doall
-             (map
-              (fn [stmt]
-                (future (e! conn [stmt])))
-              (mapcat #(mapcat h/format %)
-                      sql-stmts)))]
-    @f))
-
-(defn seq-print-sql
-  [& sql-stmts]
-  (string/join ";\n" (mapcat #(mapcat h/format %)
-                             sql-stmts)))
-
-(defn genre-ltree-transform [m]
-  (if-let [genre (:genre m)]
-    (assoc m :genre (ltree->seq genre))
-    m))
+  [tbl-name rows]
+  (let [ks (keys (first rows))]
+    (sql/insert-multi! (:datasource connection) tbl-name ks
+                       (map (apply juxt ks) rows)
+                       {:table-fn dashes->underscores :column-fn dashes->underscores})))
 
 (defn map->and-query [qs]
   (reduce-kv #(conj %1 [:= %2 %3]) [:and] qs))
-
 
 ;; Query
 
@@ -120,21 +83,21 @@
   [rx text]
   (let [matches (re-pos rx text)]
     (map
-     (fn [[begin end]]
-       (let [before-string (subs text 0 begin)
-             after-string (subs text end (count text))
-             hl-string (subs text begin end)]
-         {:before before-string
-          :key hl-string
-          :after after-string}))
-     matches)))
+      (fn [[begin end]]
+        (let [before-string (subs text 0 begin)
+              after-string (subs text end (count text))
+              hl-string (subs text begin end)]
+          {:before before-string
+           :key    hl-string
+           :after  after-string}))
+      matches)))
 
 (def !fulltext-query-cache
   (atom (cache/lru-cache-factory {} :threshold 5)))
 
 ;; TODO add download feature -> where to put file and how to authenticate/timeout?
 (defn query-fulltext [conn {:keys [query genre remove-tags limit offset]
-                            :or {limit 1000 offset 0}}]
+                            :or   {limit 1000 offset 0}}]
   (let [cache-key [query genre remove-tags]]
     (if (cache/has? @!fulltext-query-cache cache-key)
       (update (get (swap! !fulltext-query-cache #(cache/hit % cache-key)) cache-key)
@@ -143,166 +106,145 @@
                               (drop offset)
                               (take limit))))
       (let [results (sequence
-                     (comp (mapcat (fn [{:keys [id tags title author year genre
-                                                before_text key_text after_text]}]
-                                     (let [matches (kwic-regex-formatter (re-pattern query) key_text)]
-                                       (for [match matches]
-                                         {:id id
-                                          :tags (into #{} (map keyword tags))
-                                          :title title
-                                          :author author
-                                          :year year
-                                          :genre ((comp (partial str/join ".") ltree->seq) genre)
-                                          :before (str before_text (:before match))
-                                          :key (:key match)
-                                          :after (str (:after match) after_text)}))))
-                           (remove (fn [m]
-                                     (if (or (empty? remove-tags) ;; Filter not set.
-                                             (empty? (:tags m))) ;; Sentence has no tags.
-                                       false
-                                       ;; If any of filter-tags appears in map, remove.
-                                       (some remove-tags (:tags m))))))
-                     (fulltext-stream conn {:query query :genre genre}))
+                      (comp (mapcat (fn [{:keys [id tags title author year genre
+                                                 before_text key_text after_text]}]
+                                      (let [matches (kwic-regex-formatter (re-pattern query) key_text)]
+                                        (for [match matches]
+                                          {:id     id
+                                           :tags   (into #{} (map keyword tags))
+                                           :title  title
+                                           :author author
+                                           :year   year
+                                           :genre  (str/join "." genre)
+                                           :before (str before_text (:before match))
+                                           :key    (:key match)
+                                           :after  (str (:after match) after_text)}))))
+                            (remove (fn [m]
+                                      (if (or (empty? remove-tags) ;; Filter not set.
+                                              (empty? (:tags m))) ;; Sentence has no tags.
+                                        false
+                                        ;; If any of filter-tags appears in map, remove.
+                                        (some remove-tags (:tags m))))))
+                      (fulltext-stream conn {:query query :genre genre})) ;; Chsk router `event-msg-handler` error: [:fulltext/matches {:query "^あと [,、] ", :genre ".*", :limit 100, :offset 0, :remove-tags #{}}]
             paginated-matches (->> results (drop offset) (take limit))
             total-count (count results)
             patterns (frequencies (map :key results))
             results-file (str "auth-files/fulltext-matches-" (export/sha256 (str query "#" genre "#" remove-tags)) ".xlsx")
             _ (export/save-spreadsheet! results-file "文検索結果" results [:id :tags :before :key :after :genre :title :author :year])
-            results-map {:matches paginated-matches
+            results-map {:matches     paginated-matches
                          :total-count total-count
-                         :patterns patterns
-                         :file (str "/" results-file)}]
+                         :patterns    patterns
+                         :file        (str "/" results-file)}]
         (swap! !fulltext-query-cache
                #(cache/miss % cache-key {:matches results :total-count total-count :patterns patterns :file (str "/" results-file)}))
         results-map))))
 
 (defn query-expanded-document [conn id]
   (update (expand-document conn {:id id})
-          :genre (comp (partial str/join ".") ltree->seq)))
+          :genre (partial str/join ".")))
 
 ;; ## Insertion functions
 
 ;; ### Sources
 
-(defn insert-source! [conn sources-metadata]
-  (i! conn :sources (update-in sources-metadata [:genre] seq->ltree)))
+(defn insert-source! [sources-metadata]
+  (i1! :sources sources-metadata))
 
 (defn insert-sources!
-  "Inserts sources meta-information from the corpus into the database.
-
-  If a file is not present in `sources.tsv`, bail with a fatal error (FIXME)
-  message; if a file is not in `sources.tsv` or not on the filesystem,
-  then ignore that file (do not insert.)"
-  [conn sources-metadata file-set]
-  (->> sources-metadata
-       (filter (fn [{:keys [basename]}] (contains? file-set basename)))
-       ;; Optionally filter out sources already in database.
-       ;;(?>> (not-empty existing-basenames) (map #(filter (fn [record] (not (contains? existing-basenames (nth record 3)))) %)))
-       ((comp dorun map) (partial insert-source! conn))
-       #_((comp dorun map) #(if (seq %) ((comp dorun map) insert-source! %)))))
+  "Inserts sources meta-information from the corpus into the database."
+  [sources-metadata]
+  (i! :sources sources-metadata))
 
 ;; ### Sentence
 
 (s/defn insert-sentence :- [{:id s/Num s/Keyword s/Any}]
-  [conn sentence-values]
-  (i! conn
-      :sentences
-      (select-keys sentence-values (db/schema-keys db/sentences-schema))))
+  [sentence-values]
+  (i1! :sentences
+       (select-keys sentence-values (db/schema-keys db/sentences-schema))))
 
 ;; ### Collocations
-(defn insert-collocations! [conn collocations sentences-id]
+(defn insert-collocations! [collocations sentences-id]
   (doseq [collocation collocations]
     (let [grams (count (:type collocation))
           record-map (apply merge
                             (for [i (range 1 (inc grams))]
                               (let [record (nth (:data collocation) (dec i))]
                                 (map-keys #(let [[f s] (string/split (name %) #"-")]
-                                            (keyword (str s "-" i)))
+                                             (keyword (str s "-" i)))
                                           (-> record
-                                              (?> (:head-pos record)  (update-in [:head-pos] name))
-                                              (?> (:tail-pos record)  (update-in [:tail-pos] name))
-                                              (?> (:head-tags record) (update-in [:head-tags] (fn->> (map name) (into #{}))))
-                                              (?> (:tail-tags record) (update-in [:tail-tags] (fn->> (map name) (into #{})))))))))]
-      (i! conn
-          (keyword (str "gram-" grams))
-          (assoc record-map :sentences-id sentences-id)))))
+                                              (?> (:chunk/head-pos record) (update-in [:chunk/head-pos] name))
+                                              (?> (:chunk/tail-pos record) (update-in [:chunk/tail-pos] name))
+                                              (?> (:chunk/head-tags record) (update-in [:chunk/head-tags] (fn->> (map name) (into #{}))))
+                                              (?> (:chunk/tail-tags record) (update-in [:chunk/tail-tags] (fn->> (map name) (into #{})))))))))]
+      (i1! (keyword (str "gram-" grams))
+           (assoc record-map :sentences-id sentences-id)))))
 
 ;; ### Unigrams
-(defn insert-unigrams! [conn unigrams sentences-id]
+(defn insert-unigrams! [unigrams sentences-id]
   (when (seq unigrams)
-    (i! conn
-        :unigrams
+    (i! :unigrams
         (map-indexed
-         (fn [i token]
-           (assoc token :position i :sentences-id sentences-id))
-         unigrams))))
+          (fn [i token]
+            (assoc token :position i :sentences-id sentences-id))
+          unigrams))))
 
 ;; ### Tokens
-(defn insert-tokens! [conn token-seq sentences-id]
-  (i! conn
-      :tokens
+(defn insert-tokens! [token-seq sentences-id]
+  (i! :tokens
       (map-indexed
-       (fn [i token]
-         (-> token
-             (select-keys [:pos :pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :lemma :orth :pron :orth-base :pron-base :goshu :tags])
-             (assoc :position i
-                    :sentences-id sentences-id)
-             ;; For the tokens table, we prefer getting rid of extraneous whitespace for better matching capabilities.
-             (update :orth (fn [s] (string/replace s #"[\n\t　\s]" "")))))
-       token-seq)))
+        (fn [i token]
+          (-> token
+              (select-keys [:morpheme/pos :morpheme/pos-1 :morpheme/pos-2 :morpheme/pos-3 :morpheme/pos-4 :morpheme/c-type :morpheme/c-form :morpheme/lemma :morpheme/orth :morpheme/pron :morpheme/orth-base :morpheme/pron-base :morpheme/goshu :morpheme/tags])
+              (assoc :position i
+                     :sentences-id sentences-id)
+              ;; For the tokens table, we prefer getting rid of extraneous whitespace for better matching capabilities.
+              (update :morpheme/orth (fn [s] (string/replace s #"[\n\t　\s]" "")))))
+        token-seq)))
 
 ;; ## Query functions
 
 (defn basename->source-id
-  [conn basename]
-  (-> (db/q conn
-            (-> (select :id)
+  [basename]
+  (-> (db/q (-> (select :id)
                 (from :sources)
                 (where [:= :basename basename])))
       first
       :id))
 
-(defn get-genres [conn]
+(defn get-genres []
   (distinct (map :genre
-                 (db/q conn
-                       (-> (select :genre)
+                 (db/q (-> (select :genre)
                            (from :sources)
                            (order-by :genre))))))
 
-(defn get-genre-counts [conn]
-  (db/q conn
-        {:select [:genre [(h/call :count :*) :count]]
-         :from [:sources]
+(defn get-genre-counts []
+  (db/q {:select   [:genre [(h/call :count :*) :count]]
+         :from     [:sources]
          :group-by [:genre]}))
 
-(defn genres->tree [conn]
-  (seq-to-tree (get-genre-counts conn)))
+(defn genres->tree []
+  (seq-to-tree (get-genre-counts)))
 
-(defn sources-id->genres-map [conn sources-id]
-  (->> (db/q conn
-             {:select [:genre]
-              :from [:sources]
-              :where [:= :id sources-id]})
+(defn sources-id->genres-map [sources-id]
+  (->> (db/q {:select [:genre]
+              :from   [:sources]
+              :where  [:= :id sources-id]})
        (map :genre)
        distinct))
 
-(defn sentences-by-genre [conn genre]
+(defn sentences-by-genre [genre]
   (let [query (if (< (count genre) 4) (conj genre "*") genre)]
-    (println query)
     (map :text
-         (db/q conn
-               (-> (select :text)
+         (db/q (-> (select :text)
                    (from :sentences :sources)
                    (where [:and
                            [:= :sentences.sources_id :sources.id]
                            [:tilda :sources.genre query]]))))))
 
-(defn tokens-by-genre [conn genre & {:keys [field] :or {field :lemma}}]
+(defn tokens-by-genre [genre & {:keys [field] :or {field :lemma}}]
   (let [query (if (< (count genre) 4) (conj genre "*") genre)]
-    (println query)
     (mapcat vals
-            (db/q conn
-                  (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
+            (db/q (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
                       (from :tokens :sentences :sources)
                       (where [:and
                               [:= :tokens.sentences-id :sentences.id]
@@ -311,49 +253,43 @@
                       (group :tokens.sentences-id))))))
 
 
-(defn all-sentences-with-genre [conn]
-  (db/q conn
-        (-> (select :text :sources.genre)
+(defn all-sentences-with-genre []
+  (db/q (-> (select :text :sources.genre)
             (from :sentences :sources)
             (where [:= :sentences.sources_id :sources.id])
             (group :sources.genre :sentences.id))))
 
-(defn sources-ids-by-genre [conn genre]
+(defn sources-ids-by-genre [genre]
   (let [query (if (< (count genre) 4) (conj genre "*") genre)]
     (map :id
-         (db/q conn
-            (-> (select :id)
-                (from :sources)
-                (where [:tilda :genre query]))))))
+         (db/q (-> (select :id)
+                   (from :sources)
+                   (where [:tilda :genre query]))))))
 
-(defn sources-text [conn id]
+(defn sources-text [id]
   (map :text
-       (db/q conn
-          (-> (select :text)
-              (from :sentences :sources)
-              (where [:and
-                      [:= :sources.id id]
-                      [:= :sentences.sources_id :sources.id]])))))
-
-(defn sources-tokens [conn id & {:keys [field] :or {field :lemma}}]
-  (mapcat vals
-          (db/q conn
-             (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
-                 (from :tokens :sentences :sources)
+       (db/q (-> (select :text)
+                 (from :sentences :sources)
                  (where [:and
                          [:= :sources.id id]
-                         [:= :tokens.sentences-id :sentences.id]
-                         [:= :sentences.sources_id :sources.id]])
-                 (group :tokens.sentences-id)))))
+                         [:= :sentences.sources_id :sources.id]])))))
+
+(defn sources-tokens [id & {:keys [field] :or {field :lemma}}]
+  (mapcat vals
+          (db/q (-> (select (h/raw (str "string_agg(tokens." (name field) ", ' ')")))
+                    (from :tokens :sentences :sources)
+                    (where [:and
+                            [:= :sources.id id]
+                            [:= :tokens.sentences-id :sentences.id]
+                            [:= :sentences.sources_id :sources.id]])
+                    (group :tokens.sentences-id)))))
 
 ;; FIXME TODO add compact-numbers
 ;; TODO add natsume-units version
-(defn get-search-tokens [conn query-map & {:keys [norm] :or {norm :tokens}}]
-  (->> (qm conn
-           {:select [:*]
-            :from [:search-tokens]
-            :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
-          genre-ltree-transform)
+(defn get-search-tokens [query-map & {:keys [norm] :or {norm :tokens}}]
+  (->> (qm {:select [:*]
+            :from   [:search-tokens]
+            :where  (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))})
        (group-by #(select-keys % [:lemma :orth-base :pos-1 :pos-2]))
        (map-vals seq-to-tree)
        ;; Optionally normalize results if :norm key is set and available.
@@ -366,12 +302,10 @@
         (get-search-tokens {:orth-base "こと"})))
 
 (defn get-one-search-token
-  [conn query-map & {:keys [norm compact-numbers] :or {norm :tokens compact-numbers true}}]
-  (->> (qm conn
-           {:select [:*]
-            :from [:search-tokens]
-            :where (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))}
-           genre-ltree-transform)
+  [query-map & {:keys [norm compact-numbers] :or {norm :tokens compact-numbers true}}]
+  (->> (qm {:select [:*]
+            :from   [:search-tokens]
+            :where  (map->and-query (select-keys query-map [:lemma :orth-base :pos-1 :pos-2]))})
        seq-to-tree
        ;; Optionally normalize results if :norm key is set and available.
        (?>> (and norm (contains? db/!norm-map norm)) (#(normalize-tree (norm db/!norm-map) % {:clean-up-fn (if compact-numbers compact-number identity)})))))
@@ -385,13 +319,12 @@
   -   aggregates: fields to sum over (default: [:count :f-io :f-oi])
   -   selected: fields to return (default: [:string-1 :string-2 :string-3 :type :genre])
   -   genre: optionally filter by genre (default: all data)"
-  [conn
-   {:keys [string-1 string-2 string-3 string-4 type genre offset limit measure compact-numbers scale relation-limit]
-    :or {type :noun-particle-verb
-         measure :count
-         compact-numbers true
-         scale false}
-    :as m}]
+  [{:keys [string-1 string-2 string-3 string-4 type genre offset limit measure compact-numbers scale relation-limit]
+    :or   {type            :noun-particle-verb
+           measure         :count
+           compact-numbers true
+           scale           false}
+    :as   m}]
   (let [n (count (string/split (name type) #"-"))
         aggregates (if (= n 1) [:count] [:count :f-ix :f-xi])
         query (select-keys m [:string-1 :string-2 :string-3 :string-4])
@@ -409,31 +342,29 @@
                                     (?>> (and offset (pos? offset)) (drop offset))
                                     (?>> (and limit (pos? limit)) (take limit))
                                     (?>> compact-numbers (map (fn [r] (update-in r [measure] compact-number))))))]
-    (->> (qm conn
-             (-> {:select (vec (distinct (concat aggregates-clause selected)))
-                  :from [(keyword (str "search_gram_" n))]
-                  :where where-clause}
+    (->> (qm (-> {:select (vec (distinct (concat aggregates-clause selected)))
+                  :from   [(keyword (str "search_gram_" n))]
+                  :where  where-clause}
                  (?> (not-empty selected) (assoc :group-by selected))))
-         #_(map genre-ltree-transform)
          (?>> (> n 1) (map #(let [contingency-table (stats/expand-contingency-table
-                                                     {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
-                                                      ;; FIXME : we probably want to have the option of using the total count per n-gram order...
-                                                      :f-xx (-> !gram-totals type :count)})] ;; FIXME Should add :genre filtering to !gram-totals when we specify some genre filter!
+                                                      {:f-ii (:count %) :f-ix (:f-ix %) :f-xi (:f-xi %)
+                                                       ;; FIXME : we probably want to have the option of using the total count per n-gram order...
+                                                       :f-xx (-> !gram-totals type :count)})] ;; FIXME Should add :genre filtering to !gram-totals when we specify some genre filter!
                               (case measure
                                 :log-dice (merge % contingency-table)
-                                :count % ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
+                                :count %                    ;; FIXME count should be divided by :f-xx (see above), especially when filtering by genre.
                                 (assoc % measure
-                                       ((measure stats/association-measures-graph) contingency-table))))))
+                                         ((measure stats/association-measures-graph) contingency-table))))))
          (?>> (= :log-dice measure) ((fn [coll] (stats/log-dice coll (if (:string-1 query) :string-3 :string-1)))))
          (map #(-> % (dissoc :f-ii :f-io :f-oi :f-oo :f-xx :f-ix :f-xi :f-xo :f-ox) (?> (not= :count measure) (dissoc :count))))
-         (sort-by (comp - measure)) ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
+         (sort-by (comp - measure))                         ;; FIXME group-by for offset+limit after here, need to modularize this following part to be able to apply on groups
          (?>> (:string-2 selected) ((fn [rows] (->> rows
                                                     (group-by :string-2)
                                                     (map-vals (fn [row] (map #(dissoc % :string-2) row)))
                                                     ;; Sorting assumes higher measure values are better.
                                                     (sort-by #(- (apply + (map measure (second %)))))
                                                     (map (fn [[p fs]] {:string-2 p
-                                                                       :data (clean-up-fn fs)}))
+                                                                       :data     (clean-up-fn fs)}))
                                                     (?>> relation-limit (take relation-limit))))))
          (?>> (not (:string-2 selected)) (clean-up-fn)))))
 ;; FIXME include option for human-readable output (log-normalized to max): scale option
@@ -445,13 +376,12 @@
 
 ;; FIXME / TODO: optimization: !! do not select :f-ix/:f-xi when measure is :count. !!
 (defn query-collocations-tree
-  [conn
-   {:keys [string-1 string-2 string-3 string-4 type genre tags measure compact-numbers normalize?]
-    :or {type :noun-particle-verb
-         measure #{:count} ;; (keys stats/association-measures-graph)
-         normalize? true
-         compact-numbers true}
-    :as m}]
+  [{:keys [string-1 string-2 string-3 string-4 type genre tags measure compact-numbers normalize?]
+    :or   {type            :noun-particle-verb
+           measure         #{:count}                        ;; (keys stats/association-measures-graph)
+           normalize?      true
+           compact-numbers true}
+    :as   m}]
   (let [n (count (string/split (name type) #"-"))
         aggregates (if (= n 1) [:count] [:count :f-ix :f-xi])
         query (select-keys m [:string-1 :string-2 :string-3 :string-4])
@@ -470,16 +400,14 @@
                          (?> genre (conj [:tilda :genre genre])))
         merge-fns (for-map [m measure] m (if (#{:count :f-xi :f-ix #_:f-io #_:f-oi} m) + #(or %1 %2)))
         clean-up-fn (fn [data] (->> data
-                                   (?>> compact-numbers (map (fn [r] (for-map [[k v] r] k (if (measure k) (compact-number v) v)))))))]
-    (if (= (count query) n) ;; Only fully-specified queries are allowed.
-      (if (= n 1) ;; 1-gram is a specialized case, as it uses :tags. -> not anymore.
+                                    (?>> compact-numbers (map (fn [r] (for-map [[k v] r] k (if (measure k) (compact-number v) v)))))))]
+    (if (= (count query) n)                                 ;; Only fully-specified queries are allowed.
+      (if (= n 1)                                           ;; 1-gram is a specialized case, as it uses :tags. -> not anymore.
         (let [tags (if (empty? tags) #{:none} tags)
-              db-results (qm conn
-                             {:select (vec (distinct (concat aggregates-clause selected #_[:tags])))
-                              :from [(keyword (str "search_gram_" n))]
-                              :where where-clause
-                              :group-by selected #_(conj selected :tags)}
-                             genre-ltree-transform)
+              db-results (qm {:select   (vec (distinct (concat aggregates-clause selected #_[:tags])))
+                              :from     [(keyword (str "search_gram_" n))]
+                              :where    where-clause
+                              :group-by selected #_(conj selected :tags)})
               tree (seq-to-tree db-results)]
           (if (empty? db-results)
             tree
@@ -492,22 +420,20 @@
               (fn [record]
                 (let [contingency-table
                       (stats/expand-contingency-table
-                       {:f-ii (:count record)
-                        :f-ix (:f-ix record)
-                        :f-xi (:f-xi record)
-                        :f-xx (get !tokens-by-gram n) #_(-> !gram-totals type :count)})]
+                        {:f-ii (:count record)
+                         :f-ix (:f-ix record)
+                         :f-xi (:f-xi record)
+                         :f-xx (get !tokens-by-gram n) #_(-> !gram-totals type :count)})]
                   (-> record
                       (merge contingency-table)
                       (merge (for-map [m (set/difference measure #{:count :f-ix :f-xi :log-dice})]
-                                 m ((m stats/association-measures-graph) contingency-table))))))
+                                      m ((m stats/association-measures-graph) contingency-table))))))
 
               db-results
-              (qm conn
-                  {:select (vec (distinct (concat aggregates-clause selected)))
-                   :from [(keyword (str "search_gram_" n))]
-                   :where where-clause
+              (qm {:select   (vec (distinct (concat aggregates-clause selected)))
+                   :from     [(keyword (str "search_gram_" n))]
+                   :where    where-clause
                    :group-by selected}
-                  genre-ltree-transform
                   ;; FIXME tree contingency table is broken right now?? need to first sum up the counts for correct genre comparisons??? or is the f-xx here good enough (it's not, because it ignores genre counts).
                   merge-stats)]
           (if (empty? db-results)
@@ -531,12 +457,12 @@
 ;; TODO graph?
 (defn query-tokens
   [{:keys [query selected aggregates]
-    :or {selected [:lemma :orth-base :pos-1 :pos-2 :genre]
-         aggregates [:count]}}]
+    :or   {selected   [:lemma :orth-base :pos-1 :pos-2 :genre]
+           aggregates [:count]}}]
   {:select (set/difference (set (concat selected aggregates))
                            (set (keys query)))
-   :from [:search-tokens]
-   :where (map->and-query query)})
+   :from   [:search-tokens]
+   :where  (map->and-query query)})
 
 ;; FIXME: this is actually not useful as we want to sort by measures....
 ;; :order-by (reduce #(conj %1 [%2 :desc]) [] aggregates)
@@ -549,26 +475,25 @@
                   (sort-by key >))]
     (-> m
         (assoc :text
-          (reduce
-           (fn [tagged-text [n begin-end]]
-             (let [[begin-index end-index] (-> (into {} begin-end)
-                                               (map [(keyword (str "begin-" n))
-                                                     (keyword (str "end-" n))]))
-                   key-string (str "<span class=\"key" n "\">" (subs tagged-text begin-index end-index) "</span>")
-                   before-string (subs tagged-text 0 begin-index)
-                   after-string (subs tagged-text end-index (count tagged-text))]
-               (str before-string key-string after-string)))
-           text
-           tags))
+               (reduce
+                 (fn [tagged-text [n begin-end]]
+                   (let [[begin-index end-index] (-> (into {} begin-end)
+                                                     (map [(keyword (str "begin-" n))
+                                                           (keyword (str "end-" n))]))
+                         key-string (str "<span class=\"key" n "\">" (subs tagged-text begin-index end-index) "</span>")
+                         before-string (subs tagged-text 0 begin-index)
+                         after-string (subs tagged-text end-index (count tagged-text))]
+                     (str before-string key-string after-string)))
+                 text
+                 tags))
         (dissoc :begin-1 :begin-2 :begin-3 :begin-4 :end-1 :end-2 :end-3 :end-4))))
 
 (defn query-sentences
   "Query sentences containing given collocations, up to 'limit' times per top-level genre.
   Including the optional genre parameter will only return sentences from given genre, which can be any valid PostgreSQL ltree query."
-  [conn
-   {:keys [type limit offset genre html sort]
-    :or {limit 6 offset 0 type :noun-particle-verb}
-    :as m}]
+  [{:keys [type limit offset genre html sort]
+    :or   {limit 6 offset 0 type :noun-particle-verb}
+    :as   m}]
   (let [sort (if sort
                (if (re-seq #"(?i)^(length|tokens|chunks|jlpt.?level|bccwj.?level|link.?dist|chunk.?depth)$" sort) (str (name (underscores->dashes sort)) " ASC") "abs(4 - chunks)")
                "abs(4 - chunks)")
@@ -581,9 +506,8 @@
         begin-end-fields (for [number (range 1 (inc n))
                                s ["begin-" "end-"]]
                            (keyword (str s number)))]
-    (db/q conn {:select [(h/call :setseed 0.2)]}) ; FIXME Better way to get consistent ordering? -> when setting connection?
-    (qm conn
-        {:select [:*]
+    (db/q {:select [(h/call :setseed 0.2)]})           ; FIXME Better way to get consistent ordering? -> when setting connection?
+    (qm {:select [:*]
          :where  [:<= :part.r limit]
          :from   [[{:select   (-> selected-fields
                                   (concat begin-end-fields)
@@ -595,9 +519,8 @@
                                   (?> genre (conj [:tilda :sources.genre genre])))
                     :group-by (apply conj selected-fields :sentences.chunks begin-end-fields)}
                    :part]]}
-        genre-ltree-transform
-        #(dissoc % :r)
-        (if html tag-html identity))))
+        (comp (if html tag-html identity)
+              #(dissoc % :r)))))
 
 (comment
   (query-sentences conn {:string-1 "こと" :type :noun-particle-verb})
@@ -606,19 +529,17 @@
 (defn query-sentences-tokens
   "Query sentences containing given tokens, up to 'limit' times per top-level genre.
   Including the optional genre parameter will only return sentences from given genre, which can be any valid PostgreSQL ltree query."
-  [conn
-   {:keys [limit offset genre html sort] ;; FIXME lemma should be optional--instead we should require some set of orth/lemma/pron etc.
-    :or {limit 6 offset 0}
-    :as m}]
+  [{:keys [limit offset genre html sort]                    ;; FIXME lemma should be optional--instead we should require some set of orth/lemma/pron etc.
+    :or   {limit 6 offset 0}
+    :as   m}]
   (let [sort (if sort
                (if (re-seq #"(?i)^(length|tokens|chunks|jlpt.?level|bccwj.?level|link.?dist|chunk.?depth)$" sort) (str (name (underscores->dashes sort)) " ASC") "abs(4 - chunks)")
                "abs(4 - chunks)")
         query-fields (select-keys m [:orth :orth-base :lemma :pron :pron-base :pos-1 :pos-2 :pos-3 :pos-4 :c-form :c-type :goshu])
         selected-fields [:sources.genre :sources.title :sources.author :sources.year :sentences.text]
         search-table :tokens]
-    (db/q conn {:select [(h/call :setseed 0.2)]}) ; FIXME Better way to get consistent ordering? -> when setting connection?
-    (qm conn
-        {:select [:*]
+    (db/q {:select [(h/call :setseed 0.2)]})           ; FIXME Better way to get consistent ordering? -> when setting connection?
+    (qm {:select [:*]
          :where  [:<= :part.r limit]
          :from   [[{:select   (-> selected-fields
                                   (conj [(h/raw (str "ROW_NUMBER() OVER (PARTITION BY subltree(sources.genre, 0, 1) ORDER BY RANDOM(), " sort ")")) :r]))
@@ -629,6 +550,5 @@
                                   (?> genre (conj [:tilda :sources.genre genre])))
                     :group-by (conj selected-fields :sentences.chunks)}
                    :part]]}
-        genre-ltree-transform
-        #(dissoc % :r)
-        (if html tag-html identity))))
+        (comp (if html tag-html identity)
+              #(dissoc % :r)))))

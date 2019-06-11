@@ -68,41 +68,41 @@
   "Conjugates verb lemmas from 終止形 to 連用形.
   TODO compare speed of `string/join` vs. `str`.
   TODO the bungo stuff should be thoroughly debugged."
-  [{:keys [lemma c-type c-form]}]
+  [{:keys [morpheme/lemma morpheme/c-type morpheme/c-form]}]
   (let [[type-main type-sub] (string/split c-type #"-")
         [form-main form-sub] (string/split c-form #"-")
         lemma-stem (subs lemma 0 (dec (count lemma)))]
     ;;(println type-main type-sub form-main form-sub lemma lemma-stem)
     (cond
-     (or (= lemma "する")
-         (= lemma "来る"))
-     (case form-main
-       "未然形" ({"カ行変格" "こ"
+      (or (= lemma "する")
+          (= lemma "来る"))
+      (case form-main
+        "未然形" ({"カ行変格" "こ"
                   "サ行変格" "さ"} form-sub)
-       "仮定形" (str lemma-stem "れ")
-       ({"する" "し"
+        "仮定形" (str lemma-stem "れ")
+        ({"する" "し"
          "来る" "き"} lemma))
 
-     (= type-main "五段") (str lemma-stem (if-let [r (cond
+      (= type-main "五段") (str lemma-stem (if-let [r (cond
                                                      (re-seq #"音便$" form-sub) (get godan-onbin-tr form-sub)
                                                      (= form-main "未然形")     (get godan-mizen-tr type-sub)
                                                      :else                      (get godan-tr type-sub))]
-                                            r
-                                            (do (println type-main type-sub form-main form-sub lemma lemma-stem))))
-     (re-find #"([上下]一段|[カサ]行変格)" type-main) lemma-stem
-     (= type-main "ザ行変格") (str (subs lemma 0 (dec (count lemma-stem))) "じ")
-     (re-find #"文語" type-main) (case (subs type-main 2)
-                                   "四段"     (str lemma-stem (get bungo-yodan-tr type-sub))
-                                   "上一段"   lemma-stem
-                                   "下二段"   (if (= type-sub "ア行") ; special case
-                                                lemma
-                                                (str lemma-stem
+                                           r
+                                           (do (println type-main type-sub form-main form-sub lemma lemma-stem))))
+      (re-find #"([上下]一段|[カサ]行変格)" type-main) lemma-stem
+      (= type-main "ザ行変格") (str (subs lemma 0 (dec (count lemma-stem))) "じ")
+      (re-find #"文語" type-main) (case (subs type-main 2)
+                                  "四段" (str lemma-stem (get bungo-yodan-tr type-sub))
+                                  "上一段" lemma-stem
+                                  "下二段" (if (= type-sub "ア行") ; special case
+                                          lemma
+                                          (str lemma-stem
                                                      (get bungo-shimo-nidan-tr type-sub)))
-                                   "上二段"   (str lemma-stem (get bungo-kami-nidan-tr type-sub))
-                                   "サ行変格" (str lemma-stem "し")
-                                   "ザ行変格" (str lemma-stem "じ")
-                                   "ナ行変格" (str lemma-stem "ね")
-                                   "カ行変格" lemma ; 「巡り来」など
-                                   "ラ行変格" lemma
-                                   lemma) ; TODO log these
-     :else lemma))) ; TODO should print to log for debugging
+                                  "上二段" (str lemma-stem (get bungo-kami-nidan-tr type-sub))
+                                  "サ行変格" (str lemma-stem "し")
+                                  "ザ行変格" (str lemma-stem "じ")
+                                  "ナ行変格" (str lemma-stem "ね")
+                                  "カ行変格" lemma ; 「巡り来」など
+                                  "ラ行変格" lemma
+                                  lemma) ; TODO log these
+      :else lemma))) ; TODO should print to log for debugging

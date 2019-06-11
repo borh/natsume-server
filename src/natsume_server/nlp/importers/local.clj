@@ -26,4 +26,4 @@
 
 (defn extract-labeled-tokens
   [stream]
-  (map (juxt :genre :text) stream))
+  (map (juxt :metadata/genre :text) stream))

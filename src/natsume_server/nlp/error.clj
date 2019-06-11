@@ -26,7 +26,7 @@
 
         freqs
         (->> tree
-             (#(normalize-tree (:tokens db/!norm-map) %))
+             (#(normalize-tree (:chunk/tokens db/!norm-map) %))
              :children
              (map (juxt :name :count))
              (into {}))]
@@ -101,7 +101,7 @@
 
 (defn collocation-register-score [conn query]
   (let [collocation (-> (zipmap [:string-1 :string-2 :string-3 :string-4]
-                                (mapcat (fn [part] (remove nil? [(:head-string part) (:tail-string part)]))
+                                (mapcat (fn [part] (remove nil? [(:chunk/head-string part) (:chunk/tail-string part)]))
                                         (:data query)))
                         (assoc :compact-numbers false
                                :measure #{:count :mi :f-xi :f-ix}
@@ -110,7 +110,7 @@
                                           (map name)
                                           (clojure.string/join "-")
                                           keyword)))
-        tree (q/query-collocations-tree conn collocation)
+        tree (q/query-collocations-tree collocation)
         n (count (:type-vector collocation))]
     (if (seq (:children tree))
       (sigma-score :collocation n tree)
@@ -121,22 +121,22 @@
 (s/defn token-register-score
   "Old formula, but includes measures other than chi-sq."
   [conn query]
-  (let [results (q/get-one-search-token conn query :compact-numbers false :norm nil)]
-    (sigma-score (:pos query) 1 results)))
+  (let [results (q/get-one-search-token query :compact-numbers false :norm nil)]
+    (sigma-score (:morpheme/pos query) 1 results)))
 
 (s/defn score-sentence [conn tree sentence]
   (let [tokens (->> tree
-                    (mapcat :tokens)
-                    (remove (fn [{:keys [pos pos-1 pos-2]}] (or (= pos :symbol) (and (= pos-1 "助詞") (or (= pos-2 "格助詞") (= pos-2 "係助詞"))))))
+                    (mapcat :chunk/tokens)
+                    (remove (fn [{:keys [morpheme/pos pos-1 pos-2]}] (or (= pos :symbol) (and (= pos-1 "助詞") (or (= pos-2 "格助詞") (= pos-2 "係助詞"))))))
                     (pmap (fn [m]
                             (let [register-score (token-register-score conn m)
-                                  response {:type :token
-                                            :tags (:tags m)
-                                            :pos (:pos m)
-                                            :begin (:begin m)
-                                            :end (:end m)
-                                            :lemma (:lemma m)
-                                            :string (:orth m)}]
+                                  response {:type           :token
+                                            :tags           (:tags m)
+                                            :morpheme/pos   (:morpheme/pos m)
+                                            :morpheme/begin (:morpheme/begin m)
+                                            :morpheme/end   (:morpheme/end m)
+                                            :morpheme/lemma (:morpheme/lemma m)
+                                            :string         (:morpheme/orth m)}]
                               (if (map? register-score)
                                 (merge response register-score)
                                 response))))
@@ -147,24 +147,24 @@
                           (remove (fn [m] (= (:type m) [:verb :verb]))) ;; FIXME
                           (pmap (fn [m]
                                   (let [record
-                                        {:type :collocation
-                                         :pos (:type m)
-                                         :tags (:tags m)
-                                         :parts (->> m
-                                                     :data
-                                                     (r/map (fn [part]
-                                                              (let [begin (or (:head-begin part) (:tail-begin part))
-                                                                    end   (or (:head-end part)   (:tail-end part))
-                                                                    pos   (or (:head-pos part)   (:tail-pos part))
-                                                                    tags  (or (:head-tags part)  (:tail-tags part))
-                                                                    lemma (or (:head-string part) (:tail-string part))]
-                                                                {:begin begin
-                                                                 :end end
-                                                                 :pos pos
-                                                                 :tags tags
-                                                                 :lemma lemma
-                                                                 :string (subs sentence begin end) #_(:head-string part) #_(:tail-string part)})))
-                                                     (into []))}
+                                        {:type         :collocation
+                                         :morpheme/pos (:type m)
+                                         :tags         (:tags m)
+                                         :parts        (->> m
+                                                            :data
+                                                            (r/map (fn [part]
+                                                                     (let [begin (or (:chunk/head-begin part) (:chunk/tail-begin part))
+                                                                           end (or (:chunk/head-end part) (:chunk/tail-end part))
+                                                                           pos (or (:chunk/head-pos part) (:chunk/tail-pos part))
+                                                                           tags (or (:chunk/head-tags part) (:chunk/tail-tags part))
+                                                                           lemma (or (:chunk/head-string part) (:chunk/tail-string part))]
+                                                                       {:morpheme/begin begin
+                                                                        :morpheme/end   end
+                                                                        :morpheme/pos   pos
+                                                                        :tags           tags
+                                                                        :morpheme/lemma lemma
+                                                                        :string         (subs sentence begin end) #_(:chunk/head-string part) #_(:chunk/tail-string part)})))
+                                                            (into []))}
                                         register-score (collocation-register-score conn m)]
                                     (-> record
                                         (assoc :string (clojure.string/join (map :string (:parts record))))
@@ -176,7 +176,7 @@
   [conn :- s/Any
    text :- s/Str]
   (if-let [paragraphs (->> text vector text/lines->paragraph-sentences)]
-    (let [update-positions (fn [m offset] (-> m (update-in [:begin] + offset) (update-in [:end] + offset)))
+    (let [update-positions (fn [m offset] (-> m (update-in [:morpheme/begin] + offset) (update-in [:morpheme/end] + offset)))
 
           [scored-sentences parsed-tokens]
           (loop [ss (for [paragraph paragraphs sentence paragraph] sentence)
@@ -185,14 +185,14 @@
                  results []]
             (if-let [s (first ss)]
               (let [tree (anno/sentence->tree s)
-                    token-seq (mapv #(select-keys % [:orth :orth-base :lemma :pos-1 :pos-2 :c-form :c-type :tags]) (mapcat :tokens tree))
+                    token-seq (mapv #(select-keys % [:morpheme/orth :orth-base :morpheme/lemma :pos-1 :pos-2 :morpheme/c-form :morpheme/c-type :tags]) (mapcat :chunk/tokens tree))
                     scored-s (score-sentence conn tree s)
                     length-s (count s)
                     new-offset (+ offset length-s)
                     nl? (and (< new-offset (count text)) (= \newline (first (subs text new-offset (inc new-offset)))))]
                 (recur (next ss)
                        (+ new-offset (if nl? 1 0))
-                       (concat parsed-tokens (if nl? (conj token-seq {:orth "\n" :orth-base "\n" :lemma "\n" :pos-1 "補助記号" :pos-2 "*" :c-form "*" :c-type "*"}) token-seq))
+                       (concat parsed-tokens (if nl? (conj token-seq {:morpheme/orth "\n" :orth-base "\n" :morpheme/lemma "\n" :pos-1 "補助記号" :pos-2 "*" :morpheme/c-form "*" :morpheme/c-type "*"}) token-seq))
                        (concat results
                                (map (fn [m] (case (:type m)
                                               :token (update-positions m offset)

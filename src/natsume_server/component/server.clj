@@ -57,7 +57,8 @@
   :start (when (:server config)
            (-> (routes
                 api-routes
-                (wrap-anti-forgery site-routes #_{:read-token (fn [request] (get-in request [:headers "x-csrf-token"]))}))
+                site-routes
+                #_(wrap-anti-forgery site-routes #_{:read-token (fn [request] (get-in request [:headers "x-csrf-token"]))}))
                (logger/wrap-with-logger)
                (wrap-cors
                 :access-control-allow-origin (->> config :http :access-control-allow-origin (mapv re-pattern))

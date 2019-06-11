@@ -1,9 +1,10 @@
 (ns natsume-server.nlp.cabocha-wrapper
   (:require [clojure.string :as string]
             [qbits.knit :as knit]
-            [schema.core :as s])
-  (:import [org.chasen.cabocha Parser Token]
-           [clojure.lang PersistentHashSet IDeref]))
+            [clojure.spec.alpha :as s]
+            [clj-mecab.parse :as mecab])
+  (:import [org.chasen.cabocha Parser Token Tree]
+           [clojure.lang IDeref]))
 
 ;; # Simple CaboCha JNI Wrapper
 
@@ -17,202 +18,157 @@
 
 (defonce parser (thread-local* (fn [] (Parser.))))
 
-(defonce version (org.chasen.cabocha.Parser/version))
+(defonce version (Parser/version))
 
 (defonce mecab-version "0.996")
 
-(def ^:private unidic-features
-  "A vector of all UniDic features, in order, as defined in the UniDic Manual (p. ?) version `2.3.0`."
-  #_[:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :l-form :lemma :orth :pron :orth-base :pron-base :goshu :i-type :i-form :f-type :f-form]
-  [:pos-1 :pos-2 :pos-3 :pos-4 :c-type :c-form :l-form :lemma :orth :pron :orth-base :pron-base :goshu :i-type :i-form :f-type :f-form :i-con-type :f-con-type :type :kana :kana-base :form :form-base :a-type :a-con-type :a-mod-type :lid :lemma-id])
+;; We remap to more sensible namespace for this project.
+(def mecab-features (map #(keyword "morpheme" (name %)) mecab/*features*))
 
-(s/defrecord Morpheme
-  [pos :- (s/maybe s/Keyword)
-   pos-1 :- s/Str
-   pos-2 :- s/Str
-   pos-3 :- s/Str
-   pos-4 :- s/Str
-   c-type :- s/Str
-   c-form :- s/Str
-   l-form :- (s/maybe s/Str)
-   lemma :- s/Str
-   orth :- s/Str
-   pron :- (s/maybe s/Str)
-   orth-base :- s/Str
-   pron-base :- s/Str
-   goshu :- s/Str
-   i-type :- (s/maybe s/Str)
-   i-form :- (s/maybe s/Str)
-   f-type :- (s/maybe s/Str)
-   f-form :- (s/maybe s/Str)
-   ne :- (s/maybe s/Str)
-   begin :- s/Num
-   end :- s/Num
-   tags :- (s/maybe PersistentHashSet)])
+(s/def :mecab/morpheme
+  (s/keys :req [:morpheme/pos-1 :morpheme/pos-2 :morpheme/pos-3 :morpheme/pos-4 :morpheme/c-type :morpheme/c-form :morpheme/l-form :morpheme/lemma :morpheme/orth :morpheme/pron :morpheme/orth-base :morpheme/pron-base :morpheme/goshu :morpheme/i-type :morpheme/i-form :morpheme/f-type :morpheme/f-form :morpheme/i-con-type :morpheme/f-con-type :morpheme/type :morpheme/kana :morpheme/kana-base :morpheme/form :morpheme/form-base :morpheme/a-type :morpheme/a-con-type :morpheme/a-mod-type :morpheme/lid :morpheme/lemma-id]))
 
-(s/defschema MorphemeSchema
-  {:pos (s/maybe s/Keyword)
-   :pos-1 s/Str
-   :pos-2 s/Str
-   :pos-3 s/Str
-   :pos-4 s/Str
-   :c-type s/Str
-   :c-form s/Str
-   :l-form (s/maybe s/Str)
-   :lemma s/Str
-   :orth s/Str
-   :pron (s/maybe s/Str)
-   :orth-base s/Str
-   :pron-base s/Str
-   :goshu s/Str
-   :i-type (s/maybe s/Str)
-   :i-form (s/maybe s/Str)
-   :f-type (s/maybe s/Str)
-   :f-form (s/maybe s/Str)
-   :ne (s/maybe s/Str)
-   :begin s/Num
-   :end s/Num
-   :tags (s/maybe PersistentHashSet)})
+;; ADJ – ADP – ADV – AUX – CCONJ – DET – INTJ – NOUN – NUM – PART – PRON – PROPN – PUNCT – SCONJ – SYM – VERB – X
+(s/def :pos/ud #{:adj :adp :adv :aux :cconj :det :intj :noun :num :part :pron :propn :punct :sconj :sym :verb :x})
+(s/def :pos/natsume #{:verb :noun :adverb :adjective :preposition
+                      :suffix :prefix :utterance :auxiliary-verb :symbol
+                      :particle})
+(s/def :morpheme/pos :pos/natsume)                          ;; TODO switchable
+(s/def :morpheme/ne (s/nilable keyword?))
+(s/def :morpheme/begin int?)
+(s/def :morpheme/end int?)
+(s/def :morpheme/tag #{:dekiru :iru :simau :kuru :morau :ageru
+                       :negative :teido :you :hoshii :ii :sou-dengon
+                       :potential :past :aspect-ku
+                       :passive :active :polite :tari})
 
-;; TODO Check if maybe's are justified. This also comes back to the utility of the Chunk as a unified record type, as it undergoes a lot of transformations along the way (hence the maybe's). Two defschema (Chunk + AnnotatedChunk) might be the best-performing and safe solution.
-(s/defrecord Chunk
-  [id :- s/Num
-   link :- s/Num
-   head :- (s/maybe s/Num)
-   tail :- (s/maybe s/Num)
-   head-string :- (s/maybe (s/conditional not-empty s/Str))
-   head-orth :- (s/maybe (s/conditional not-empty s/Str))
-   head-begin :- (s/maybe s/Num)
-   head-end :- (s/maybe s/Num)
-   head-pos :- (s/maybe s/Keyword)
-   head-tags :- (s/maybe #{s/Keyword})
-   head-begin-index :- (s/maybe s/Num)
-   head-end-index :- (s/maybe s/Num)
-   tail-string :- (s/maybe (s/conditional not-empty s/Str))
-   tail-orth :- (s/maybe (s/conditional not-empty s/Str))
-   tail-begin :- (s/maybe s/Num)
-   tail-end :- (s/maybe s/Num)
-   tail-pos :- (s/maybe s/Keyword)
-   tail-tags :- (s/maybe #{s/Keyword})
-   tail-begin-index :- (s/maybe s/Num)
-   tail-end-index :- (s/maybe s/Num)
-   prob :- s/Num
-   tokens :- [Morpheme]])
+(s/def :sentence/morpheme
+  (s/merge :mecab/morpheme
+           (s/keys :opt [:morpheme/pos :morphemes/ne
+                         :morpheme/begin :morpheme/end
+                         :morpheme/tags])))
 
-(def opt s/optional-key)
-(s/defschema ChunkSchema
-  {:id               s/Num
-   :link             s/Num
-   (opt :head)       (s/maybe s/Num)
-   (opt :tail)       (s/maybe s/Num)
-   :head-string      (s/maybe s/Str)
-   :head-orth        (s/maybe s/Str)
-   :head-begin       (s/maybe s/Num)
-   :head-end         (s/maybe s/Num)
-   :head-pos         (s/maybe s/Keyword)
-   :head-tags        (s/maybe PersistentHashSet)
-   :head-begin-index (s/maybe s/Num)
-   :head-end-index   (s/maybe s/Num)
-   :tail-string      (s/maybe s/Str)
-   :tail-orth        (s/maybe s/Str)
-   :tail-begin       (s/maybe s/Num)
-   :tail-end         (s/maybe s/Num)
-   :tail-pos         (s/maybe s/Keyword)
-   :tail-tags        (s/maybe PersistentHashSet)
-   :tail-begin-index (s/maybe s/Num)
-   :tail-end-index   (s/maybe s/Num)
-   :prob             s/Num
-   :tokens           [MorphemeSchema]})
+(s/def :chunk/id int?)
+(s/def :chunk/link int?)
+(s/def :chunk/head string?)
+(s/def :chunk/tail string?)
+(s/def :chunk/prob float?)
+(s/def :chunk/tokens (s/coll-of :sentence/morpheme))
+(s/def :cabocha/chunk
+  (s/keys :req [:chunk/id :chunk/link :chunk/prob :chunk/tokens]
+          :opt [:chunk/head :chunk/tail]))
 
-(s/defn recode-pos :- s/Keyword
+(s/def :sentence/chunk
+  (s/merge :cabocha/chunk
+           (s/keys
+             :opt [:chunk/head-string :chunk/head-orth :chunk/head-begin :chunk/head-end
+                   :chunk/head-pos :chunk/head-tags :chunk/head-begin-index :chunk/head-end-index
+                   :chunk/tail-string :chunk/tail-orth :chunk/tail-begin :chunk/tail-end
+                   :chunk/tail-pos :chunk/tail-tags :chunk/tail-begin-index :chunk/tail-end-index])))
+
+(s/fdef recode-pos
+  :args (s/cat :m :sentence/morpheme)
+  :ret :morpheme/pos)
+
+(defn recode-pos
   [m]
-  (condp re-seq (str (:pos-1 m) (:pos-2 m) (:pos-3 m))
+  (condp re-seq (str (:morpheme/pos-1 m) (:morpheme/pos-2 m) (:morpheme/pos-3 m))
     #"^動詞" :verb
     #"^(副詞|名詞.+副詞可能)" :adverb
     #"^(代?名詞[^副]+|記号文字)" :noun
     #"^(形(容|状)詞|接尾辞形(容|状)詞的)" :adjective
     #"^助詞" (if (or (and (= "接続助詞" (:pos-2 m))
-                          (re-seq #"^(て|ば)$" (:lemma m)))
-                     (re-seq #"^たり$" (:lemma m)))
-               :auxiliary-verb
-               :particle)
+                        (re-seq #"^(て|ば)$" (:morpheme/lemma m)))
+                   (re-seq #"^たり$" (:morpheme/lemma m)))
+             :auxiliary-verb
+             :particle)
     #"^接続詞" :particle
     #"^((補助)?記号|空白)" :symbol
-    #"^助動詞" (if (re-seq #"^助動詞-(ダ|デス)$" (:c-type m))
-                 :particle
-                 :auxiliary-verb)
+    #"^助動詞" (if (re-seq #"^助動詞-(ダ|デス)$" (:morpheme/c-type m))
+              :particle
+              :auxiliary-verb)
     #"^連体詞" :preposition
     #"^感動詞" :utterance
     #"^接頭辞" :prefix
-    #"^接尾辞" (cond (= (:pos-2 m) "動詞的") :adjective ; ~がかった
-                     (= (:pos-2 m) "名詞的") :noun ; ~ら
-                     :else :suffix)
-    :unknown-pos))
+    #"^接尾辞" (cond (= (:pos-2 m) "動詞的") :adjective           ;; ~がかった
+                  (= (:pos-2 m) "名詞的") :noun                ;; ~ら
+                  :else :suffix)
+    :unknown-pos))                                          ;; Catchall, but should not happen, so not speced.
 
-(s/defn parse-token :- Morpheme
+(s/fdef parse-token
+  :args (s/cat :token :cabocha/token :position int? :surface string? :token-length int?)
+  :ret :sentence/morpheme)
+
+(defn parse-token
   [^Token token position surface token-length]
-  (let [features  (string/split (.getFeature token) #",")
-        ne        (.getNe token)
-        token-map (-> unidic-features
+  (let [features (string/split (.getFeature token) #",")
+        ne (.getNe token)
+        token-map (-> mecab-features
                       (zipmap features)
-                      (assoc :orth  surface
-                             :ne    ne
-                             :begin position
-                             :end   (+ position token-length)))
-        token-map (assoc token-map :pos (recode-pos token-map))]
-    (map->Morpheme
-     (if (= (count features) 6)
-       (assoc token-map
-         :lemma     surface
-         :orth-base surface
-         :pron-base surface ; FIXME translate to katakana.
-         :goshu     "不明")
-       token-map))))
+                      (assoc :morpheme/orth surface
+                             :morpheme/ne ne
+                             :morpheme/begin position
+                             :morpheme/end (+ position token-length)))
+        token-map (assoc token-map :morpheme/pos (recode-pos token-map))]
+    (if (= (count features) 6)
+      (assoc token-map
+        :morpheme/lemma surface
+        :morpheme/orth-base surface
+        :morpheme/orth-base surface                         ; FIXME translate to katakana.
+        :morpheme/goshu "不明")
+      token-map)))
 
-(s/defn parse-tokens :- [Morpheme]
-  [tokens :- [Token]
-   position :- s/Num]
-  (loop [tokens*   tokens
+(s/fdef parse-tokens
+  :args (s/cat :chunk/tokens (s/coll-of :cabocha/token) :position int?)
+  :ret (s/coll-of :sentence/morpheme))
+
+(defn parse-tokens
+  [tokens position]
+  (loop [tokens* tokens
          position* position
-         parsed    []]
+         parsed []]
     (if-let [^Token token (first tokens*)]
       (let [token-surface (.getSurface token)
-            token-length  (count token-surface)]
-       (recur (rest tokens*)
-              (+ position* token-length)
-              (conj parsed (parse-token token position* token-surface token-length))))
+            token-length (count token-surface)]
+        (recur (rest tokens*)
+               (+ position* token-length)
+               (conj parsed (parse-token token position* token-surface token-length))))
       parsed)))
 
-(s/defn parse-sentence ;;:- [Chunk] ; Too many changes in Chunk to benefit from record here.
+(s/fdef parse-sentence
+  :args (s/cat :s string?)
+  :ret (s/coll-of :sentence/chunk))
+
+(defn parse-sentence
   "Parses input sentence string and returns a vector of CaboCha chunks containing dependency
    information and a vector of tokens, which are represented as maps."
-  [s :- String] ;; s/Str gives reflection warnings
-  (let [tree   (.parse ^Parser @parser s)
+  [^String s]
+  (let [^Tree tree (.parse ^Parser @parser s)
         chunks (.chunk_size tree)]
     (loop [chunk-id 0
            token-id 0
            position 0
-           parsed   []]
+           parsed []]
       (if (< chunk-id chunks)
-        (let [chunk   (.chunk tree chunk-id)
+        (let [chunk (.chunk tree chunk-id)
               link-id (.getLink chunk)
-              prob    (.getScore chunk)
-              head    (.getHead_pos chunk)
-              tail    (.getFunc_pos chunk)
+              prob (.getScore chunk)
+              head (.getHead_pos chunk)
+              tail (.getFunc_pos chunk)
               token-count (.getToken_size chunk)
-              token-list  (mapv #(.token tree %) (range token-id (+ token-id token-count)))
-              tokens      (parse-tokens token-list position)]
+              token-list (mapv #(.token tree %) (range token-id (+ token-id token-count)))
+              tokens (parse-tokens token-list position)]
           (recur
-           (inc chunk-id)
-           (+ token-id token-count)
-           (int (:end (last tokens)))
-           (conj parsed
-                 {:id chunk-id
-                  :link link-id
-                  :head head
-                  :tail tail
-                  :prob prob
-                  :tokens tokens})))
+            (inc chunk-id)
+            (+ token-id token-count)
+            (int (:morpheme/end (last tokens)))
+            (conj parsed
+                  #:chunk{:id     chunk-id
+                          :link   link-id
+                          :head   head
+                          :tail   tail
+                          :prob   prob
+                          :tokens tokens})))
         parsed))))
 
 ;; FIXME consider core.async ala https://github.com/lynaghk/zmq-async/blob/master/src/com/keminglabs/zmq_async/core.clj

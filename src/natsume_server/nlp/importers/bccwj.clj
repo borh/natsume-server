@@ -1,7 +1,11 @@
 (ns natsume-server.nlp.importers.bccwj
   (:require [clojure.java.io :as io]
             [clojure.xml :as xml]
-            [clojure.zip :as z]))
+            [clojure.zip :as z]
+            [natsume-server.models.corpus :as corpus]
+            [datoteka.core :refer [ext]]
+            [natsume-server.utils.fs :as fs]
+            [clojure.spec.alpha :as s]))
 
 ;; # Importer for BCCWJ-Formatted C-XML Data
 ;;
@@ -23,38 +27,38 @@
     :list
     :paragraph
     :verse
-    :br ; Inline tag. TODO: find example where this is right or wrong.
+    :br                                                     ; Inline tag. TODO: find example where this is right or wrong.
     :speech
-    :speaker ; For OM.
+    :speaker                                                ; For OM.
     :caption
     :citation
     :quotation
     :OCAnswer
     :OCQuestion})
 
-(comment ; Not used at present. The text attr should not be used as a string in the sentence.
+(comment                                                    ; Not used at present. The text attr should not be used as a string in the sentence.
   (def in-sentence-tags
     #{:ruby
-       :correction
-       :missingCharacter
-       :enclosedCharacter
-       :er
-       :cursive
-       :image ;; Inline tag (Emoji).
-       :noteBodyInline ;; Inline tag.
-       :noteMarker ;; Inline tag.
-       :superScript
-       :subScript
-       :fraction
-       :delete
-       :br
-       :verseLine
-       :info
-       :rejectedSpan
-       :substitution
-       :quote
-       :citation
-       :sentence}))
+      :correction
+      :missingCharacter
+      :enclosedCharacter
+      :er
+      :cursive
+      :image                                                ;; Inline tag (Emoji).
+      :noteBodyInline                                       ;; Inline tag.
+      :noteMarker                                           ;; Inline tag.
+      :superScript
+      :subScript
+      :fraction
+      :delete
+      :br
+      :verseLine
+      :info
+      :rejectedSpan
+      :substitution
+      :quote
+      :citation
+      :sentence}))
 
 ;; ## XML Extraction
 ;;
@@ -86,9 +90,9 @@
       (z/root par-loc)
       (let [xml-node (z/node xml-loc)
             tag (:tag xml-node)
-            xml-loc-down  (and (z/branch? xml-loc) (z/down xml-loc))
+            xml-loc-down (and (z/branch? xml-loc) (z/down xml-loc))
             xml-loc-right (and (not xml-loc-down) (z/right xml-loc))
-            xml-loc-up    (and (not xml-loc-down) (not xml-loc-right) (backtrack-with-distance xml-loc)) ; At lowest depth for this paragraph.
+            xml-loc-up (and (not xml-loc-down) (not xml-loc-right) (backtrack-with-distance xml-loc)) ; At lowest depth for this paragraph.
             next-direction (cond xml-loc-down :down
                                  xml-loc-right :same
                                  :else (second xml-loc-up))
@@ -99,19 +103,20 @@
                             :same (if (= :br tag) tag-stack (conj (pop tag-stack) coded-tag)) ; :br is an exception as a paragraph break, as it does not increase XML tree depth
                             ((apply comp (repeat next-direction pop)) tag-stack))] ; Discard equal to up depth.
         (recur
-         (or xml-loc-down xml-loc-right (first xml-loc-up)) ; Same as (z/next xml-loc).
-         new-tag-stack
-         (cond (paragraph-level-tags tag) ; Insert new paragraph, inserting the new tag stack.
-               (-> par-loc (z/insert-right {:tags new-tag-stack :sentences [""]}) z/right)
+          (or xml-loc-down xml-loc-right (first xml-loc-up)) ; Same as (z/next xml-loc).
+          new-tag-stack
+          (cond (paragraph-level-tags tag)                  ; Insert new paragraph, inserting the new tag stack.
+                (-> par-loc (z/insert-right {:tags new-tag-stack :sentences [""]}) z/right)
 
-               (= :sentence tag) ; Insert new sentence.
-               (let [tag-stack (-> par-loc z/node :tag-stack)]
-                 (-> par-loc (z/edit update-in [:sentences] conj "")))
+                (= :sentence tag)                           ; Insert new sentence.
+                (let [tag-stack (-> par-loc z/node :tag-stack)]
+                  ;; FIXME debug tag-stack
+                  (-> par-loc (z/edit update-in [:sentences] conj "")))
 
-               (string? xml-node) ; Update last-inserted sentence's text.
-               (-> par-loc (z/edit update-in [:sentences (-> par-loc z/node :sentences count dec)] #(str % xml-node)))
+                (string? xml-node)                          ; Update last-inserted sentence's text.
+                (-> par-loc (z/edit update-in [:sentences (-> par-loc z/node :sentences count dec)] #(str % xml-node)))
 
-               :else par-loc)))))) ; Do nothing.
+                :else par-loc))))))                         ; Do nothing.
 
 (defn xml->paragraph-sentences
   [filename corpus]
@@ -119,41 +124,61 @@
        io/input-stream
        xml/parse
        (walk-and-emit (case corpus "OY"
-                            (disj paragraph-level-tags :br)
-                            paragraph-level-tags))
-       (map #(hash-map ; Remove nils/empty strings from :tags and :sentences.
-              :tags (set (filter identity (:tags %)))
-              :sentences (vec (remove empty? (:sentences %)))))
-       (remove #(empty? (:sentences %))); Remove paragraphs with no sentences.
+                                   (disj paragraph-level-tags :br)
+                                   paragraph-level-tags))
+       (map #(hash-map                                      ; Remove nils/empty strings from :tags and :sentences.
+               :paragraph/tags (set (filter identity (:tags %)))
+               :paragraph/sentences (vec (remove empty? (:sentences %)))))
+       (remove #(empty? (:paragraph/sentences %)))                    ; Remove paragraphs with no sentences.
        vec))
+
+(s/fdef xml->paragraph-sentences
+  :args (s/cat :filename :corpus/file :corpus string?)
+  :ret :document/paragraphs)
+
+(defmethod corpus/files :corpus/bccwj
+  [{:keys [corpus-dir]}]
+  (into #{} (fs/walk-path corpus-dir "xml")))
+
+(defn infer-subcorpus
+  [filename]
+  (subs (fs/base-name filename) 0 2))
+
+(defmethod corpus/documents :corpus/bccwj
+  [{:keys [files]}]
+  (map (fn [filename]
+         (let [subcorpus (infer-subcorpus filename)]
+           {:document/paragraphs (xml->paragraph-sentences filename subcorpus)
+            :document/basename (fs/base-name filename)}))
+       files))
 
 ;; ## Metadata
 ;;
 ;; Metadata is not contained in the XML files and must be read from the Joined_info.zip (CSV) file distributed with the BCCWJ 1.0 DVD.
 
-(comment ; Plain-text version (DEPRECATED).
- (defn emit-tags-flat
-   [{:keys [tag] :as el}]
-   (cond
-    (contains? paragraph-level-tags tag) "\n\n"
-    (= :sentence tag) "\n"
-    (string? el) el
-    :else ""))
+(comment                                                    ; Plain-text version (DEPRECATED).
+  (defn emit-tags-flat
+    [{:keys [tag] :as el}]
+    (cond
+      (contains? paragraph-level-tags tag) "\n\n"
+      (= :sentence tag) "\n"
+      (string? el) el
+      :else ""))
 
- (defn seq->zip->text
-   [xs]
-   (clojure.walk/walk emit-tags-flat
-                      string/join
-                      xs))
+  (defn seq->zip->text
+    [xs]
+    (clojure.walk/walk emit-tags-flat
+                       string/join
+                       xs))
 
- (defn xml->plain-text
-   [filename]
-   (clojure.string/replace
-    (->> filename
-         io/input-stream
-         xml/parse
-         xml-seq
-         seq->zip->text
-         s/trim)
-    #"[\n]{3,}"
-    "\n\n")))
+  (defn xml->plain-text
+    [filename]
+    (clojure.string/replace
+      (->> filename
+           io/input-stream
+           xml/parse
+           xml-seq
+           seq->zip->text
+           s/trim)
+      #"[\n]{3,}"
+      "\n\n")))

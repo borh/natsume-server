@@ -42,7 +42,8 @@
                 connected-uids]}
         (sente/make-channel-socket-server!
          (get-sch-adapter)
-         {:packer (sente-transit/get-transit-packer)})]
+         {:packer (sente-transit/get-transit-packer)
+          :csrf-token-fn nil})]                             ;; We use different auth.
     {:ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
      :ring-ajax-post-fn ajax-post-fn
      :connected-uids connected-uids
@@ -78,15 +79,15 @@
 
 (defmethod event-msg-handler :sentences/collocations
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (q/query-sentences db/connection ?data)))
+  (?reply-fn (q/query-sentences ?data)))
 
 (defmethod event-msg-handler :sentences/tokens
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (q/query-sentences-tokens db/connection ?data)))
+  (?reply-fn (q/query-sentences-tokens ?data)))
 
 (defmethod event-msg-handler :tokens/tree
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (q/get-one-search-token db/connection ?data)))
+  (?reply-fn (q/get-one-search-token ?data)))
 
 (defmethod event-msg-handler :tokens/similarity
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
@@ -107,11 +108,11 @@
 
 (defmethod event-msg-handler :collocations/collocations
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (q/query-collocations db/connection ?data)))
+  (?reply-fn (q/query-collocations ?data)))
 
 (defmethod event-msg-handler :collocations/tree
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (q/query-collocations-tree db/connection ?data)))
+  (?reply-fn (q/query-collocations-tree ?data)))
 
 (defmethod event-msg-handler :errors/register
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
@@ -119,16 +120,15 @@
 
 (defmethod event-msg-handler :suggestions/tokens
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
-  (?reply-fn (->> (db/q db/connection
-                        {:select [:orth-base :pos-1]
+  (?reply-fn (->> (db/q {:select    [:orth-base :pos-1]
                          :modifiers [:distinct]
-                         :from [:search-tokens]
-                         :group-by [:lemma :orth-base :pos-1]
-                         :where [:= :lemma (:lemma ?data)]})
+                         :from      [:search-tokens]
+                         :group-by  [:morpheme/lemma :orth-base :pos-1]
+                         :where     [:= :morpheme/lemma (:morpheme/lemma ?data)]})
                   (map (fn [m]
                          (assoc m :score
                                 (->> m
-                                     (q/get-one-search-token db/connection)
+                                     q/get-one-search-token
                                      (error/sigma-score :default-pos 1)
                                      :register-score
                                      :good))))
@@ -138,7 +138,7 @@
   [{:as ev-msg :keys [event id ?data ring-req ?reply-fn send-fn]}]
   (let [text-tokens (->> (:text ?data)
                          (anno/sentence->cabocha)
-                         (mapcat :tokens)
+                         (mapcat :chunk/tokens)
                          (map (first (:features ?data))) ;; TODO Also, unit-type.
                          (str/join " "))]
     (?reply-fn (topic-model/make-prediction (:unit-type ?data) (:features ?data) text-tokens))))

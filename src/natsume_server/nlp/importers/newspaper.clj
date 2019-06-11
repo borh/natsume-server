@@ -1,7 +1,9 @@
 (ns natsume-server.nlp.importers.newspaper
   (:require [clojure.java.io :as io]
-            [clojure.string :as string]
-            [natsume-server.nlp.text :as text])
+            [natsume-server.nlp.text :as text]
+            [clojure.spec.alpha :as s]
+            [natsume-server.models.corpus :as corpus]
+            [taoensso.timbre :as timbre])
   (:import [com.ibm.icu.text Transliterator]))
 
 ;; Mainichi Newspaper format corpus reader.
@@ -33,6 +35,7 @@
    "４１" "社会"})
 
 (def y6-category-map
+  ;; http://www.nichigai.co.jp/sales/pdf/man_yomi_j.pdf
   {"Ｑ０１" "皇室"
    "Ｒ０１" "国際"
    "Ｒ０２" "アジア 太平洋"
@@ -101,50 +104,56 @@
    "Ｚ０７" "警察"
    "Ｚ０８" "日本外交"
    "Ｚ０９" "軍事"
-   "Ｚ１０" "戦争"})
+   "Ｚ１０" "戦争"
+   ;; FIXME
+   "" "不明"})
 
 (defn process-doc [tagged-lines]
   (reduce
-   (fn [m [tag s]]
-     (if (= s "【現在著作権交渉中の為、本文は表示できません】")
-       m
-       (case tag
-         "ＡＤ"
-         (assoc-in m [:sources :genre]
-                   (if-let [category (get mai-category-map s)]
-                     ["新聞" "毎日新聞" category]
-                     (if-let [category (get y6-category-map s)]
-                       ["新聞" "読売新聞" category]
-                       (do (throw (Exception. (format "Unknown newspaper category '%s'" s)))
-                           ["新聞"]))))
+    (fn [m [tag s]]
+      (if (= s "【現在著作権交渉中の為、本文は表示できません】")
+        (reduced m)
+        (condp contains? tag
+          ;; First match corresponds to codes in newest format, second for Mainichi <= 1993.
+          #{"ＡＤ" "ＭＥ" "Ｙ６"}
+          (assoc-in m [:document/metadata :metadata/genre]
+                    (if-let [category (get mai-category-map s)]
+                      ["新聞" "毎日新聞" category]
+                      (if-let [category (get y6-category-map s)]
+                        ["新聞" "読売新聞" category]
+                        (do (timbre/warn (format "Unknown newspaper category '%s' in map '%s'" s m))
+                            ["新聞"]))))
 
-         "Ｃ０"
-         (-> m
-             (assoc-in [:sources :basename] s)
-             (assoc-in [:sources :year]
-                       (let [year-fragment
-                             (convert-full-to-halfwidth (if (== (count s) 9)
-                                                          (subs s 0 2)
-                                                          (subs s 2 4)))]
-                         (Integer/parseInt
-                          (if (= \9 (first year-fragment))
-                            (str "19" year-fragment)
-                            (str "20" year-fragment))))))
+          #{"Ｃ０" "ＡＦ"}
+          (-> m
+              (assoc-in [:document/metadata :metadata/basename] s)
+              (assoc-in [:document/metadata :metadata/year]
+                        (let [year-fragment
+                              (convert-full-to-halfwidth (if (== (count s) 9)
+                                                           (subs s 0 2)
+                                                           (subs s 2 4)))]
+                          (Integer/parseInt
+                            (if (= \9 (first year-fragment))
+                              (str "19" year-fragment)
+                              (str "20" year-fragment))))))
 
-         "Ｔ１"
-         (assoc-in m [:sources :title] s)
+          #{"Ｔ１" "ＴＩＮ"}
+          (assoc-in m [:document/metadata :metadata/title] s)
 
-         "Ｔ２"
-         (update m :paragraphs
-                 (fn [paragraphs]
-                   (conj paragraphs
-                         {:tags #{}
-                          :sentences (text/split-japanese-sentence s)})))
+          #{"Ｔ２" "ＨＯＮ"}
+          (update m :document/paragraphs
+                  (fn [paragraphs]
+                    (conj paragraphs
+                          #:paragraph{:tags      #{}
+                                      :sentences (text/split-japanese-sentence s)})))
+          m)))
+    #:document{:paragraphs []
+               :metadata   #:metadata{:author "" :title "" :permission false :genre ["新聞"]}}
+    tagged-lines))
 
-         m)))
-   {:paragraphs []
-    :sources {:author "" :permission false}}
-   tagged-lines))
+(s/fdef process-doc
+  :args (s/cat :kv-seq (s/coll-of (s/tuple string? #_#{"ＡＤ" "ＭＥ" "Ｃ０" "ＡＦ" "Ｔ１" "ＴＩＮ" "Ｔ２" "ＨＯＮ"} string?)))
+  :ret (s/keys :req [:document/paragraphs :document/metadata]))
 
 (defn doc-start? [s]
   (if (= (subs s 0 4) "＼ＩＤ＼")
@@ -163,6 +172,15 @@
     (sequence (comp (partition-by doc-start?)
                     (partition-all 2)
                     (map flatten)
-                    (map #(map split-tags %))
-                    (map process-doc))
+                    (map #(sequence (comp (map split-tags)
+                                          (filter not-empty))
+                                    %))
+                    (map process-doc)
+                    (remove #(empty? (:document/paragraphs %))))
               lines)))
+
+(defmethod corpus/metadata :corpus/newspaper [_])
+
+(defmethod corpus/documents :corpus/newspaper
+  [{:keys [files]}]
+  (mapcat doc-seq files))

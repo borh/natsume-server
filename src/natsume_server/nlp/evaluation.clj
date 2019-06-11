@@ -22,9 +22,9 @@
   (string/replace (.transliterate ^Transliterator romaji-transliterator s) "~tsu" "t"))
 
 (s/defschema Token
-  {:orth-base s/Str :lemma s/Str :pos-1 s/Str :pos s/Keyword :romaji s/Str :lemma-romaji s/Str :display-lemma s/Str
+  {:orth-base   s/Str :morpheme/lemma s/Str :pos-1 s/Str :morpheme/pos s/Keyword :romaji s/Str :lemma-romaji s/Str :display-lemma s/Str
    :アカデミックな書き言葉 (s/maybe s/Bool) :アカデミックな書き言葉-n (s/maybe s/Bool) :一般的な書き言葉 (s/maybe s/Bool)
-   :公的な話し言葉 (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
+   :公的な話し言葉     (s/maybe s/Bool) :日常の話し言葉 (s/maybe s/Bool)})
 
 (s/defschema ScoredToken
   (assoc Token :準正用判定 (s/maybe s/Bool) :準誤用判定 (s/maybe s/Bool)))
@@ -43,8 +43,8 @@
                  公的な話し言葉
                  日常の話し言葉]]
            (assoc a
-                  {:orth-base 書字形出現形
-                   :lemma 語彙素}
+                  {:orth-base      書字形出現形
+                   :morpheme/lemma 語彙素}
                   {:アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
                    :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
                    :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
@@ -62,37 +62,37 @@
        (map (fn [[表層形 左文脈ID 右文脈ID コスト 品詞大分類 品詞中分類 品詞小分類 品詞細分類 活用型 活用形 語彙素読み 語彙素 書字形出現形 発音形出現形 書字形基本形 発音形基本形 語種 語頭変化型 語頭変化形 語末変化型 語末変化形 アカデミックな書き言葉 一般的な書き言葉 公的な話し言葉 日常の話し言葉 備考]]
               ;; We only need a few features to match.
               ;; FIXME How to handle "？" in annotation?
-              {:orth-base     書字形出現形
-               :lemma         語彙素
-               :pos-1         品詞大分類
-               :pos           :adverb #_(recode-pos 品詞大分類)
-               :romaji        (romanize 発音形基本形)
-               :lemma-romaji  (romanize 語彙素読み)
+              {:orth-base      書字形出現形
+               :morpheme/lemma 語彙素
+               :pos-1          品詞大分類
+               :morpheme/pos   :adverb #_(recode-pos 品詞大分類)
+               :romaji         (romanize 発音形基本形)
+               :lemma-romaji   (romanize 語彙素読み)
                ;; Note that empty annotations do not necessarily mean anything, so we cannot use them as true/false values like we can with the system NA scores.
-               :アカデミックな書き言葉   (case アカデミックな書き言葉 "○" true "×" false nil)
-               :アカデミックな書き言葉-n (case アカデミックな書き言葉 "○" false "×" true nil)
-               :一般的な書き言葉      (case 一般的な書き言葉 "○" true "×" false nil)
-               :公的な話し言葉       (case 公的な話し言葉 "○" true "×" false nil)
-               :日常の話し言葉       (case 日常の話し言葉 "○" true "×" false nil)}))
+               :アカデミックな書き言葉    (case アカデミックな書き言葉 "○" true "×" false nil)
+               :アカデミックな書き言葉-n  (case アカデミックな書き言葉 "○" false "×" true nil)
+               :一般的な書き言葉       (case 一般的な書き言葉 "○" true "×" false nil)
+               :公的な話し言葉        (case 公的な話し言葉 "○" true "×" false nil)
+               :日常の話し言葉        (case 日常の話し言葉 "○" true "×" false nil)}))
        ;; FIXME Care needs to be taken when interpreting overall frequenices based on this list, because the distinct here does not just look at orth-base and lemma values but also annotations which are outside the system
        (distinct)
-       (filter (fn [{:keys [orth-base lemma]}]
-                 (get filter-map {:orth-base orth-base :lemma lemma} false)))
-       (map (fn [{:keys [orth-base lemma] :as m}]
-              (let [changed (merge m (get filter-map {:orth-base orth-base :lemma lemma}))]
+       (filter (fn [{:keys [orth-base morpheme/lemma]}]
+                 (get filter-map {:orth-base orth-base :morpheme/lemma lemma} false)))
+       (map (fn [{:keys [orth-base morpheme/lemma] :as m}]
+              (let [changed (merge m (get filter-map {:orth-base orth-base :morpheme/lemma lemma}))]
                 #_(if (not= changed m)
                     (println "Change:" m changed)) ;; shirashira/shirajira
                 changed)))))
      (reduce
       (fn [a m]
-        (let [uniq-ident ((juxt :lemma :orth-base) m)]
+        (let [uniq-ident ((juxt :morpheme/lemma :orth-base) m)]
           (if (get a uniq-ident)
             (let [diff (clojure.set/difference (:lemma-romaji (get a uniq-ident)) #{(:lemma-romaji m)})
                   union (clojure.set/union (:lemma-romaji (get a uniq-ident)) #{(:lemma-romaji m)})]
               #_(clojure.pprint/pprint {:union union
                                         :diff diff
-                                        :m ((juxt :orth-base :lemma :romaji :lemma-romaji) m)
-                                        :a ((juxt :orth-base :lemma :romaji :lemma-romaji) (get a uniq-ident))})
+                                        :m ((juxt :orth-base :morpheme/lemma :romaji :lemma-romaji) m)
+                                        :a ((juxt :orth-base :morpheme/lemma :romaji :lemma-romaji) (get a uniq-ident))})
               (-> a
                   (update-in [uniq-ident :romaji]
                              (fn [r] (conj r (:romaji m))))
@@ -113,7 +113,7 @@
            (fn [m] (-> m
                        (update :romaji (fn [r] (clojure.string/join "/" r)))
                        (update :lemma-romaji (fn [r] (clojure.string/join "/" r)))
-                       (assoc :display-lemma (str (:lemma m) " /" (clojure.string/join "/" (get lemma-romaji-map (:lemma m))) "/"))))
+                       (assoc :display-lemma (str (:morpheme/lemma m) " /" (clojure.string/join "/" (get lemma-romaji-map (:morpheme/lemma m))) "/"))))
            a))))
      vals)))
 
@@ -131,7 +131,7 @@
        (r/map
          (fn [token]
            (let [{:keys [good bad verdict]}
-                 (:register-score (error/token-register-score conn (select-keys token [:orth-base :lemma :pos-1])))
+                 (:register-score (error/token-register-score conn (select-keys token [:orth-base :morpheme/lemma :pos-1])))
 
                  score (if (and good bad)
                          (let [diff (Math/abs ^Double (- ^Double good ^Double bad))]
@@ -160,16 +160,16 @@
   (->> tokens
        (r/map
          (fn [token]
-           (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn (select-keys token [:orth-base :lemma :pos-1])))
+           (let [{:keys [verdict mean chisq raw-freqs freqs]} (:register-score (error/token-register-score conn (select-keys token [:orth-base :morpheme/lemma :pos-1])))
                  total-freq (reduce + 0 (vals raw-freqs))]
-             (merge (select-keys token [:orth-base :lemma :romaji :pos-1 :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
+             (merge (select-keys token [:orth-base :morpheme/lemma :romaji :pos-1 :display-lemma :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉])
                     (map-keys (partial rename-corpus "-出現割合") freqs)
                     (map-keys (partial rename-corpus "-頻度") raw-freqs)
                     (map-keys (partial rename-corpus "-χ^2 検定の結果") chisq)
                     {:判定             verdict
                      :全コーパスにおける出現割合の平均 (or mean 0.0)
                      :全コーパスにおける頻度           total-freq
-                     :All-PPM          (* 1000000 (/ total-freq (-> db/!norm-map :tokens :count)))
+                     :All-PPM          (* 1000000 (/ total-freq (-> db/!norm-map :chunk/tokens :count)))
                      :Pos-PPM          (* (/ (reduce + (vals (select-keys raw-freqs ["白書" "科学技術論文" "法律"])))
                                              (reduce + (vals (select-keys db/!genre-tokens-map ["白書" "科学技術論文" "法律"]))))
                                           1000000)
@@ -188,7 +188,7 @@
 (s/defn save-table
   [fn :- s/Str
    tokens :- [ScoredToken]]
-  (let [ks [:orth-base :lemma :pos-1 :romaji :display-lemma
+  (let [ks [:orth-base :morpheme/lemma :pos-1 :romaji :display-lemma
             :アカデミックな書き言葉 :アカデミックな書き言葉-n :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉
             :準誤用判定 :準正用判定]]
     (with-open [w (io/writer fn)]
@@ -337,7 +337,7 @@
                         "Yahoo_ブログ"
                         "韻文"
                         "国会会議録"]
-        default-header [:lemma :orth-base :romaji :display-lemma :pos-1 :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :score-verdict :score :準誤用判定 :準正用判定 :All-PPM :Pos-PPM :Neg-PPM :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
+        default-header [:morpheme/lemma :orth-base :romaji :display-lemma :pos-1 :アカデミックな書き言葉 :一般的な書き言葉 :公的な話し言葉 :日常の話し言葉 :判定 :score-verdict :score :準誤用判定 :準正用判定 :All-PPM :Pos-PPM :Neg-PPM :全コーパスにおける出現割合の平均 :全コーパスにおける頻度]
         norm-freq-corpora-header (mapv (partial rename-corpus "-出現割合") sorted-corpora)
         freq-corpora-header (mapv (partial rename-corpus "-頻度") sorted-corpora)
         chisq-corpora-header (mapv (partial rename-corpus "-χ^2 検定の結果") sorted-corpora)
@@ -364,10 +364,10 @@
 
     (spreadsheet/add-sheet! wb "合計")
     (let [totals-sheet (spreadsheet/select-sheet "合計" wb)
-          corpora-counts (->> db/!norm-map :tokens :children (map (juxt :name :count)) (into {}))
+          corpora-counts (->> db/!norm-map :chunk/tokens :children (map (juxt :name :count)) (into {}))
           corpora-header sorted-corpora #_(vec (keys corpora-counts))]
       (spreadsheet/add-rows! totals-sheet [(into ["χ^2(α=0.1)" "全コーパス"] corpora-header)
-                                           (into [0.0 (-> db/!norm-map :tokens :count)]
+                                           (into [0.0 (-> db/!norm-map :chunk/tokens :count)]
                                                  (mapv (fn [k] (get corpora-counts k)) corpora-header))])
       (let [totals-header-row (first (spreadsheet/row-seq totals-sheet))]
         (spreadsheet/set-row-style! totals-header-row (spreadsheet/create-cell-style! wb {:font {:bold true}}))))
