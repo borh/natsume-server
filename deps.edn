@@ -1,139 +1,134 @@
 {:mvn/repos {"sonatype" {:url "https://oss.sonatype.org/content/repositories/snapshots/"}}
  :paths     ["src" "data"]
- :aliases
- {:jvm     {:jvm-opts ["-Dmain=natsume-server.main"
-                       "--add-exports" "java.base/jdk.internal.misc=ALL-UNNAMED"
-                       "-Dio.netty.tryReflectionSetAccessible=true"
-                       "-Dclojure.compiler.direct-linking=true"]}
-  :extract {:main-opts ["-m" "natsume-server.main" "-e"]}
-  :load    {:main-opts ["-m" "natsume-server.main" "-p" "load"]}
-  :server  {:main-opts ["-m" "natsume-server.main" "-p" "server"]
-            :jvm-opts ["-Dmain=natsume-server.main"
-                       "--add-exports" "java.base/jdk.internal.misc=ALL-UNNAMED"
-                       "-Dio.netty.tryReflectionSetAccessible=true"
-                       "-Dclojure.compiler.direct-linking=true"
-                       "-Xms4g" "-Xmx4g"]}
-  :test    {:extra-paths ["test"]
-            :extra-deps  {org.clojure/tools.nrepl {:mvn/version "0.2.13"}
-                          org.clojure/test.check  {:mvn/version "0.9.0"}
-                          restpect                {:mvn/version "0.2.1"}}}
-  :depstar {:extra-deps
-            {seancorfield/depstar {:mvn/version "0.1.5"}}}
-  :runner  {:extra-deps {com.cognitect/test-runner
-                         {:git/url "https://github.com/cognitect-labs/test-runner"
-                          :sha     "cb96e80f6f3d3b307c59cbeb49bb0dcb3a2a780b"}}
-            :main-opts  ["-m" "cognitect.test-runner"
-                         "-d" "test"]}}
+ :aliases                                                   ;; FIXME split deps into server/web/etc with multiple mains.
+            {:jvm     {:jvm-opts ["-Dmain=natsume-server.main"
+                                  "-Dclojure.compiler.direct-linking=true"
+                                  ;; Netty Java >=9 support
+                                  "--add-exports" "java.base/jdk.internal.misc=ALL-UNNAMED"
+                                  "-Dio.netty.tryReflectionSetAccessible=true"]}
+             :extract {:main-opts ["-m" "natsume-server.main" "-e"]}
+             :load    {:main-opts ["-m" "natsume-server.main" "-p" "load"]}
+             :server  {:main-opts ["-m" "natsume-server.main" "-p" "server"]
+                       :jvm-opts  ["-Xms4g" "-Xmx4g"]}
+             :test    {:extra-paths ["test"]
+                       :extra-deps  {lambdaisland/kaocha     {:mvn/version "0.0-418"}
+                                     org.clojure/tools.nrepl {:mvn/version "0.2.13"}
+                                     org.clojure/test.check  {:mvn/version "0.9.0"}
+                                     restpect                {:mvn/version "0.2.1"}
+                                     reloaded.repl           {:mvn/version "0.2.4"}}}
+             :uberjar {:extra-deps {uberdeps {:mvn/version "0.1.4"}}
+                       :main-opts  ["-m" "uberdeps.uberjar"]}
+             :depstar {:extra-deps
+                       {seancorfield/depstar {:mvn/version "0.2.1"}}}
+             :runner  {:extra-deps {com.cognitect/test-runner
+                                    {:git/url "https://github.com/cognitect-labs/test-runner"
+                                     :sha     "cb96e80f6f3d3b307c59cbeb49bb0dcb3a2a780b"}}
+                       :main-opts  ["-m" "cognitect.test-runner"
+                                    "-d" "test"]}}
  :deps
- {org.clojure/clojure {:mvn/version "1.10.0"}
+            {org.clojure/clojure                     {:mvn/version "1.10.1"}
 
-  ;;
-  mount            {:mvn/version "0.1.16"}
-  potemkin         {:mvn/version "0.4.5"} ; Override
-  aero             {:mvn/version "1.1.3"}
-  prismatic/schema {:mvn/version "1.1.10"}
 
-  ;; Web
-  com.fasterxml.jackson.core/jackson-core {:mvn/version "2.9.8"}
-  cheshire                                {:mvn/version "5.8.1"}
-  yada                                    {:mvn/version "1.2.16" :exclusions [manifold metosin/ring-swagger]}
-  metosin/ring-swagger                    {:mvn/version "0.26.1"}
-  manifold                                {:mvn/version "0.1.8"}
-  aleph                                   {:mvn/version "0.4.6"
-                                           :exclusions  [io.netty/netty-transport
-                                                         io.netty/netty-transport-native-epoll
-                                                         io.netty/netty-codec
-                                                         io.netty/netty-codec-http
-                                                         io.netty/netty-handler
-                                                         io.netty/netty-handler-proxy
-                                                         io.netty/netty-resolver
-                                                         io.netty/netty-resolver-dns]}
-  io.netty/netty-all                      {:mvn/version "4.1.33.Final"} ; Override: 4.1.32.Final
-  com.taoensso/sente                      {:mvn/version "1.13.1"}
-  com.cognitect/transit-clj               {:mvn/version "0.8.313"}
-  ;; Temporarily until yada-sente integration fixed:
-  ring                                    {:mvn/version "1.7.1"}
-  ring/ring-defaults                      {:mvn/version "0.3.2"}
-  ring-cors                               {:mvn/version "0.1.13"}
-  ring/ring-json                          {:mvn/version "0.5.0-beta1"}
-  ring-logger-timbre                      {:mvn/version "0.7.6"}
-  compojure                               {:mvn/version "1.6.1"}
-  buddy/buddy-sign                        {:mvn/version "3.0.0"}
-  buddy/buddy-auth                        {:mvn/version "2.1.0"}
+             ;; FIXME move to test alias
+             orchestra                               {:mvn/version "2019.02.17-SNAPSHOT"}
 
-  ;; Java >= 11 workaround
-  com.sun.xml.bind/jaxb-impl      {:mvn/version "2.4.0-b180830.0438"}
-  com.sun.xml.bind/jaxb-core      {:mvn/version "2.3.0.1"}
-  org.glassfish.jaxb/jaxb-runtime {:mvn/version "2.4.0-b180830.0438"}
+             ;;
+             mount                                   {:mvn/version "0.1.16"}
+             aero                                    {:mvn/version "1.1.3"}
+             prismatic/schema                        {:mvn/version "1.1.10"}
 
-  riddley {:mvn/version "0.2.0"}
+             ;; Web
+             com.fasterxml.jackson.core/jackson-core {:mvn/version "2.9.9"}
+             cheshire                                {:mvn/version "5.8.1"}
+             aleph                                   {:mvn/version "0.4.7-alpha5"
+                                                      :exclusions  [io.netty/netty-transport
+                                                                    io.netty/netty-transport-native-epoll
+                                                                    io.netty/netty-codec
+                                                                    io.netty/netty-codec-http
+                                                                    io.netty/netty-handler
+                                                                    io.netty/netty-handler-proxy
+                                                                    io.netty/netty-resolver
+                                                                    io.netty/netty-resolver-dns]}
+             io.netty/netty-all                      {:mvn/version "4.1.36.Final"} ; Override: 4.1.36.Final
+             com.taoensso/sente                      {:mvn/version "1.14.0-RC2"}
+             com.cognitect/transit-clj               {:mvn/version "0.8.313"}
+             ;; Temporarily until yada-sente integration fixed:
+             ring                                    {:mvn/version "1.7.1" :exclusions [ring/ring-jetty-adapter ring/ring-servlet]}
+             ring/ring-defaults                      {:mvn/version "0.3.2"}
+             ring-cors                               {:mvn/version "0.1.13"}
+             ring/ring-json                          {:mvn/version "0.5.0-beta1"}
+             ring-logger-timbre                      {:mvn/version "0.7.6"}
+             compojure                               {:mvn/version "1.6.1"}
+             buddy/buddy-sign                        {:mvn/version "3.0.0"}
+             buddy/buddy-auth                        {:mvn/version "2.1.0"}
 
-  org.clojure/core.async {:mvn/version "0.4.490"}
+             ;; Java >= 11 workaround
+             com.sun.xml.bind/jaxb-impl              {:mvn/version "2.4.0-b180830.0438"}
+             com.sun.xml.bind/jaxb-core              {:mvn/version "2.3.0.1"}
+             org.glassfish.jaxb/jaxb-runtime         {:mvn/version "2.4.0-b180830.0438"}
 
-  ;; Database
-  org.postgresql/postgresql {:mvn/version "42.2.5"}
-  org.clojure/java.jdbc     {:mvn/version "0.7.9"}
-  java-jdbc/dsl             {:mvn/version "0.1.3"}
-  com.alibaba/druid         {:mvn/version "1.1.13"}
-  honeysql                  {:mvn/version "0.9.4"}
-  com.layerware/hugsql      {:mvn/version "0.4.9"}
+             ;; Database
+             org.postgresql/postgresql               {:mvn/version "42.2.5"}
+             org.clojure/java.jdbc                   {:mvn/version "0.7.9"}
+             seancorfield/next.jdbc                  {:mvn/version "1.0.0-rc1"}
+             metosin/porsas                          {:mvn/version "0.0.1-alpha5"}
+             java-jdbc/dsl                           {:mvn/version "0.1.3"}
+             com.alibaba/druid                       {:mvn/version "1.1.17"}
+             honeysql                                {:mvn/version "0.9.4"}
+             com.layerware/hugsql                    {:mvn/version "0.4.9"}
 
-  ;; Utils
-  org.tukaani/xz                      {:mvn/version "1.8"}
-  org.apache.commons/commons-compress {:mvn/version "1.18"}
-  org.clojure/tools.reader            {:mvn/version "1.3.2"}
-  com.taoensso/timbre                 {:mvn/version "4.10.0"}
-  com.fzakaria/slf4j-timbre           {:mvn/version "0.3.12"}
-  org.slf4j/slf4j-api                 {:mvn/version "1.7.26"}
-  com.taoensso/encore                 {:mvn/version "2.106.0"}
-  robert/hooke                        {:mvn/version "1.3.0"}
-  reloaded.repl                       {:mvn/version "0.2.4" :scope "test"}
-  org.clojure/tools.namespace         {:mvn/version "0.3.0-alpha4"}
-  org.clojure/tools.cli               {:mvn/version "0.4.1"}
-  funcool/datoteka                    {:mvn/version "1.0.0"}
-  iota                                {:mvn/version "1.1.3"}
-  org.clojure/data.csv                {:mvn/version "0.1.4"}
-  dk.ative/docjure                    {:mvn/version "1.13.0" :exclusions [commons-codec]}
-  fast-zip                            {:mvn/version "0.6.1" :exclusions [com.cemerick/austin]} ; Override 0.6.1
-  org.apache.commons/commons-math3    {:mvn/version "3.6.1"}
-  org.flatland/ordered                {:mvn/version "1.5.7"} ;; For ordered routes in Swagger
-  camel-snake-kebab                   {:mvn/version "0.4.0" :exclusions [org.clojure/clojure]}
-  org.clojure/core.cache              {:mvn/version "0.7.2"}
-  ;;
+             ;; Utils
+             org.tukaani/xz                          {:mvn/version "1.8"}
+             org.apache.commons/commons-compress     {:mvn/version "1.18"}
+             org.clojure/tools.reader                {:mvn/version "1.3.2"}
+             com.taoensso/timbre                     {:mvn/version "4.10.0"}
+             com.fzakaria/slf4j-timbre               {:mvn/version "0.3.13"}
+             org.slf4j/slf4j-api                     {:mvn/version "1.7.26"}
+             com.taoensso/encore                     {:mvn/version "2.112.0"}
+             robert/hooke                            {:mvn/version "1.3.0"}
+             org.clojure/tools.namespace             {:mvn/version "0.3.0-alpha4"} ;; FIXME test only?
+             org.clojure/tools.cli                   {:mvn/version "0.4.2"}
+             funcool/datoteka                        {:mvn/version "1.0.0"}
+             iota                                    {:mvn/version "1.1.3"}
+             org.clojure/data.csv                    {:mvn/version "0.1.4"}
+             dk.ative/docjure                        {:mvn/version "1.13.0" :exclusions [commons-codec]}
+             fast-zip                                {:mvn/version "0.6.1" :exclusions [com.cemerick/austin]} ; Override 0.6.1
+             org.apache.commons/commons-math3        {:mvn/version "3.6.1"}
+             camel-snake-kebab                       {:mvn/version "0.4.0" :exclusions [org.clojure/clojure]}
+             org.clojure/core.cache                  {:mvn/version "0.7.2"}
+             ;;
 
-  ;; Stats/models/ML
-  bigml/sampling             {:mvn/version "3.2"}
-  prismatic/plumbing         {:mvn/version "0.5.5" :exclusions [fs potemkin prismatic/schema]}
-  lonocloud/synthread        {:mvn/version "1.4.0" :exclusions [org.clojure/clojurescript]}
-  cc.qbits/knit              {:mvn/version "1.0.0"}
-  org.clojure/core.incubator {:mvn/version "0.1.4"}
-  org.clojure/core.match     {:mvn/version "0.3.0-alpha5" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]}
+             ;; Stats/models/ML
+             bigml/sampling                          {:mvn/version "3.2"}
+             prismatic/plumbing                      {:mvn/version "0.5.5" :exclusions [fs potemkin prismatic/schema]}
+             cc.qbits/knit                           {:mvn/version "1.0.0"}
+             org.clojure/core.incubator              {:mvn/version "0.1.4"}
+             org.clojure/core.match                  {:mvn/version "0.3.0" :exclusions [org.clojure/tools.analyzer.jvm org.clojure/tools.analyzer org.clojure/core.memoize]}
 
-  ;; dep overrides
-  instaparse                      {:mvn/version "1.4.10"}
-  joda-time                       {:mvn/version "2.10.1"}
-  com.google.code.findbugs/jsr305 {:mvn/version "3.0.2"}
-  commons-io                      {:mvn/version "2.6"}
-  commons-logging                 {:mvn/version "1.2"}
-  ;; dl4j
-  com.google.guava/guava          {:mvn/version "25.0-jre"}
-  org.projectlombok/lombok        {:mvn/version "1.18.6"}
-  org.nd4j/jackson                {:mvn/version "1.0.0-beta"}
+             ;; dep overrides
+             joda-time                               {:mvn/version "2.10.2"}
+             com.google.code.findbugs/jsr305         {:mvn/version "3.0.2"}
+             commons-io                              {:mvn/version "2.6"}
+             commons-logging                         {:mvn/version "1.2"}
+             ;; dl4j overrides
+             com.google.guava/guava                  {:mvn/version "25.0-jre"}
+             org.projectlombok/lombok                {:mvn/version "1.18.8"}
 
-  org.nd4j/nd4j-common                   {:mvn/version "1.0.0-beta3"}
-  org.nd4j/nd4j-native                   {:mvn/version "1.0.0-beta3"}
-  org.nd4j/nd4j-native-platform          {:mvn/version "1.0.0-beta3"}
-  ;; {org.nd4j/nd4j-cuda-9.0-platform "0.9.0"}
-  org.deeplearning4j/deeplearning4j-core {:mvn/version "1.0.0-beta3"
-                                          :exclusions  [org.datavec/datavec-data-image]}
-  org.deeplearning4j/deeplearning4j-nlp  {:mvn/version "1.0.0-beta3"}
-  ;; Other NLP libs
-  com.github.vinhkhuc/jfasttext          {:mvn/version "0.4"}
-  de.julielab/jcore-mallet-2.0.9         {:mvn/version "2.1.1"}
-  marcliberatore.mallet-lda              {:mvn/version "0.1.1" :exclusions [cc.mallet/mallet]}
-  ;;
+             ;; Replace with org.apache.mxnet.contrib.clojure/clojure-mxnet "1.5.0-SNAPSHOT"
+             org.nd4j/jackson                        {:mvn/version "1.0.0-beta"}
+             org.nd4j/nd4j-common                    {:mvn/version "1.0.0-beta4"}
+             org.nd4j/nd4j-native                    {:mvn/version "1.0.0-beta4"}
+             org.deeplearning4j/deeplearning4j-core  {:mvn/version "1.0.0-beta4"
+                                                      :exclusions  [org.datavec/datavec-data-image]}
+             org.deeplearning4j/deeplearning4j-nlp   {:mvn/version "1.0.0-beta4"}
+             ;; Other NLP libs
+             com.github.vinhkhuc/jfasttext           {:mvn/version "0.4"}
+             de.julielab/jcore-mallet-2.0.9          {:mvn/version "2.1.1" :exclusions [org.jdom/jdom]}
+             marcliberatore.mallet-lda               {:mvn/version "0.1.1" :exclusions [cc.mallet/mallet]}
+             ;;
 
-  ;; Text processing
-  org.chasen/cabocha {:mvn/version "0.69"}
-  com.ibm.icu/icu4j  {:mvn/version "63.1"}
-  d3-compat-tree     {:mvn/version "0.0.11"}}}
+             ;; Text processing
+             org.chasen/cabocha                      {:mvn/version "0.69"}
+             clj-mecab                               {:mvn/version "0.4.19"}
+             com.ibm.icu/icu4j                       {:mvn/version "64.2"}
+             d3-compat-tree                          {:mvn/version "0.0.11"}}}
