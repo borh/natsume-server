@@ -41,6 +41,7 @@
                        :negative :teido :you :hoshii :ii :sou-dengon
                        :potential :past :aspect-ku
                        :passive :active :polite :tari})
+(s/def :morpheme/tags (s/nilable (s/coll-of :morpheme/tag)))
 
 (s/def :sentence/morpheme
   (s/merge :mecab/morpheme
