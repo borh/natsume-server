@@ -4,7 +4,7 @@
             [clojure.spec.test.alpha :as stest]
             [orchestra.spec.test :as st]
             [clojure.spec.alpha :as s]
-            [natsume-server.models.corpus-specs :as corpus]))
+            [natsume-server.models.corpus :as corpus]))
 
 (st/instrument)
 

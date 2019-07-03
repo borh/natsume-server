@@ -14,7 +14,6 @@
             [natsume-server.models.dsl :refer :all]
 
             [plumbing.core :refer [fn->> map-keys for-map map-vals]]
-            [schema.core :as schema]
 
             [natsume-server.config :refer [config]]
 
