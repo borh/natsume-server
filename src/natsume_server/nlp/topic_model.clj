@@ -8,8 +8,7 @@
             [natsume-server.config :refer [config]]
             [natsume-server.nlp.importers.local :as local]
             [marcliberatore.mallet-lda :refer [make-instance-list lda]]
-            [datoteka.core :as fs]
-            [hugsql.core :as hugsql])
+            [datoteka.core :as fs])
   (:import (cc.mallet.topics ParallelTopicModel)))
 
 (s/defn load-or-create-model! :- ParallelTopicModel
@@ -27,7 +26,7 @@
                                        features
                                        #{"noun" "verb" "adverb" "adjective" "preposition"}
                                        #{"非自立可能"}) ;; NOTE pos-2-filter excludes
-                  (map (fn [{:keys [basename metadata/genre text]}]
+                  (map (fn [{:keys [basename genre text]}]
                          [basename (str/split text #"\s")]))
                   make-instance-list)
              :num-topics 100
