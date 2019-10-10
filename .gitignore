@@ -37,3 +37,15 @@ logs/*
 target
 data/models
 data/natane
+.cpcache/
+.ipynb_checkpoints/
+.nrepl-history
+.nrepl-port
+.rebel_readline_history
+.shadow-cljs/
+*.txt
+*.tsv
+*.bin
+*.npy
+*.vec
+*.iml
