@@ -44,6 +44,7 @@ data/natane
 .rebel_readline_history
 .shadow-cljs/
 *.txt
+*.csv
 *.tsv
 *.bin
 *.npy
