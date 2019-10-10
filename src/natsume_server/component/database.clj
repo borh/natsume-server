@@ -1,8 +1,7 @@
 (ns natsume-server.component.database
   (:require [clojure.string :as string]
-            [next.jdbc.specs :as jdbc-specs]
             [next.jdbc.sql :as sql]
-            [clojure.java.jdbc :as j]
+            [clojure.java.jdbc :as j]                       ;; TODO deprecated, remove
             [java-jdbc.ddl :as ddl]
             [honeysql.core :as h]
             [honeysql.helpers :refer :all :exclude [update]]
@@ -28,6 +27,7 @@
 (defn druid-pool
   [spec]
   (let [cpds (doto (DruidDataSource.)
+               ;; :reWriteBatchedInserts true
                (.setDriverClassName "org.postgresql.Driver")
                (.setUrl (str "jdbc:postgresql:" (:subname spec)))
                (.setUsername (:user spec))

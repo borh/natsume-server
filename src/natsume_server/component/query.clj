@@ -19,7 +19,7 @@
             [natsume-server.nlp.stats :as stats]
 
             [natsume-server.utils.numbers :refer [compact-number]]
-            [plumbing.core :refer :all :exclude [update]]
+            [plumbing.core :refer [map-keys map-vals for-map ?> ?>>]]
 
             [plumbing.core :refer [fn->>]]
             [schema.core :as s]
@@ -29,8 +29,10 @@
             [natsume-server.component.database :as db :refer [connection !norm-map !genre-names !genre-tokens-map !gram-totals !gram-types !tokens-by-gram]]
             [clojure.string :as str]
             [taoensso.timbre :as timbre]
-            [next.jdbc :as nj]
-            [next.jdbc.sql :as sql]))
+            [next.jdbc :as jdbc]
+            [next.jdbc.sql :as sql]
+            [hugsql.adapter :as adapter]
+            [natsume-server.utils.fs :as fs]))
 
 ;; ## Database wrapper functions
 
@@ -69,6 +71,37 @@
 
 ;; Query
 
+;; TODO Factor this out and clean up.
+(deftype HugsqlAdapterNextJdbc []
+
+  adapter/HugsqlAdapter
+  (execute [this db sqlvec options]
+    (jdbc/execute! (:datasource db) sqlvec
+                   (if (some #(= % (:command options)) [:insert :i!])
+                     {:return-keys true}
+                     (:command-options options))))
+
+  (query [this db sqlvec options]
+    (sql/query (:datasource db) sqlvec {:builder-fn as-kebab-maps :table-fn dashes->underscores} #_(:command-options options)))
+
+  (result-one [this result options]
+    (first result))
+
+  (result-many [this result options]
+    result)
+
+  (result-affected [this result options]
+    (:next.jdbc/update-count (first result)))
+
+  (result-raw [this result options]
+    result)
+
+  (on-exception [this exception]
+    (throw exception)))
+
+(defn hugsql-adapter-next-jdbc []
+  (->HugsqlAdapterNextJdbc))
+(hugsql/set-adapter! (hugsql-adapter-next-jdbc))
 (hugsql/def-db-fns "natsume_server/component/sql/fulltext.sql")
 
 (defn re-pos [re s]
