@@ -37,3 +37,5 @@
     xs]
    (take (inc (int (* ratio total)))
          (sampling/sample xs :seed seed :replace replace))))
+
+(defonce tmp-path (fs/create-tempdir))
