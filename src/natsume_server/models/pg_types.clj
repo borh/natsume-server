@@ -1,6 +1,5 @@
 (ns natsume-server.models.pg-types
   (:require [clojure.string :as string]
-            [clojure.java.jdbc :as jdbc]
             [natsume-server.utils.naming :as naming]
             [next.jdbc.prepare :refer [SettableParameter]]
             [next.jdbc.result-set :as result-set :refer [ReadableColumn]])
