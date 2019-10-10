@@ -140,8 +140,8 @@
                               (take limit))))
       (let [results (sequence
                       (comp (mapcat (fn [{:keys [id tags title author year genre
-                                                 before_text key_text after_text]}]
-                                      (let [matches (kwic-regex-formatter (re-pattern query) key_text)]
+                                                 before-text key-text after-text]}]
+                                      (let [matches (kwic-regex-formatter (re-pattern query) key-text)]
                                         (for [match matches]
                                           {:id     id
                                            :tags   (into #{} (map keyword tags))
@@ -149,9 +149,9 @@
                                            :author author
                                            :year   year
                                            :genre  (str/join "." genre)
-                                           :before (str before_text (:before match))
+                                           :before (str before-text (:before match))
                                            :key    (:key match)
-                                           :after  (str (:after match) after_text)}))))
+                                           :after  (str (:after match) after-text)}))))
                             (remove (fn [m]
                                       (if (or (empty? remove-tags) ;; Filter not set.
                                               (empty? (:tags m))) ;; Sentence has no tags.
