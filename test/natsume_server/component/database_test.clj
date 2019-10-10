@@ -4,4 +4,4 @@
 
 (deftest db-test
   (testing "FIXME"
-    ))
+    (is connection)))
