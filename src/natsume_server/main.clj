@@ -15,7 +15,8 @@
     [clojure.string :as string]
     [aero.core :as aero]
     [taoensso.timbre.appenders.core :as appenders]
-    [taoensso.timbre :as timbre]))
+    [taoensso.timbre :as timbre]
+    [timbre-ns-pattern-level]))
 
 (defn start! []
   (when (:dev config)                                       ;; FIXME is this the right place?
