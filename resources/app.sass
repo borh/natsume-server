@@ -1,0 +1,231 @@
+// Mixins
+=kwic-before()
+  max-width: 30vw //300px
+  min-width: 15vw //200px
+  text-align: right
+  text-overflow: ellipsis
+  padding-right: 2px
+
+=kwic-after()
+  max-width: 30vw //300px
+  min-width: 15vw //200px
+  text-align: left
+  text-overflow: ellipsis
+  padding-left: 2px
+
+=kwic-key()
+  min-width: 6em
+  max-width: 12em
+  text-align: center
+  padding-left: 2px
+  padding-right: 2px
+
+=hover-reveal()
+  text-overflow: clip
+  white-space: normal
+  word-break: break-all
+
+=flex-column()
+  min-width: 5vw
+  max-width: 10vw //200px
+  padding-left: 4px
+  padding-right: 4px
+
+// Styles
+table.kwic
+  thead tr
+    th:nth-child(3)
+      +kwic-before()
+    th:nth-child(4)
+      +kwic-key()
+    td:nth-child(5)
+      +kwic-after()
+    td:nth-child(6)
+      +flex-column()
+    td:nth-child(7)
+      +flex-column()
+    td:nth-child(8)
+      +flex-column()
+
+  tbody tr
+    td:nth-child(3)
+      +kwic-before()
+      white-space: nowrap
+      overflow: hidden
+      // direction: rtl
+      // unicode-bidi: plaintext
+      display : flex
+      flex-direction : row-reverse
+      align-items: flex-start
+      text-overflow: ellipsis
+
+    td:nth-child(3):hover
+      +kwic-before()
+      +hover-reveal()
+      text-align: left
+
+    td:nth-child(4)
+      +kwic-key()
+      background: lighten(grey, 45%)
+
+    td:nth-child(5)
+      +kwic-after()
+      white-space: nowrap
+      overflow: hidden
+    td:nth-child(5):hover
+      +kwic-after()
+      +hover-reveal()
+
+    td:nth-child(6)
+      +flex-column()
+      white-space: nowrap
+      overflow: hidden
+    td:nth-child(6):hover
+      +flex-column()
+      +hover-reveal()
+
+    td:nth-child(7)
+      +flex-column()
+      white-space: nowrap
+      overflow: hidden
+    td:nth-child(7):hover
+      +flex-column()
+      +hover-reveal()
+
+    td:nth-child(8)
+      +flex-column()
+      white-space: nowrap
+      overflow: hidden
+    td:nth-child(8):hover
+      +flex-column()
+      +hover-reveal()
+
+th.sorted-by.desc:before
+  font-family: FontAwesome
+  content: "\f0dd  "
+th.sorted-by.asc:before
+  font-family: FontAwesome
+  content: "\f0de  "
+
+.is-centered
+  justify-content: center
+
+.is-padded
+  padding-top: 24px
+  padding-bottom: 24px
+
+a.nav-item.is-danger.is-active
+  color: hsl(348, 100%, 61%)
+  border-bottom: 3px solid hsl(348, 100%, 61%)
+
+.flex-grow
+  flex-grow: 1
+
+.no-overflow
+  overflow: scroll
+
+#barchart
+  max-height: 150px
+  overflow: hidden
+
+// Tree
+
+.tree
+  margin: 1em
+
+  input
+    position: absolute
+    clip: rect(0, 0, 0, 0)
+
+  input ~ ul
+    display: none
+
+  input:checked ~ ul
+    display: block
+  // Rows
+  li
+    line-height: 1.2
+    position: relative
+    padding: 0 0 1em 1em
+
+  ul li
+    padding: 1em 0 0 1em
+
+.tree > li:last-child
+  padding-bottom: 0
+
+.tree_label
+  position: relative
+  display: inline-block
+  background: #fff
+
+label.tree_label
+  cursor: pointer
+
+label.tree_label:hover
+  color: #666
+
+label.tree_label:before
+  background: #000
+  color: #fff
+  position: relative
+  z-index: 1
+  float: left
+  margin: 0 1em 0 -2em
+  width: 1em
+  height: 1em
+  border-radius: 1em
+  content: '+'
+  text-align: center
+  line-height: 0.9em
+
+input:checked ~ label.tree_label:before
+  content: '–'
+
+.tree li:before
+  position: absolute
+  top: 0
+  bottom: 0
+  left: -.5em
+  display: block
+  width: 0
+  border-left: 1px solid #777
+  content: ''
+
+.tree_label:after
+  position: absolute
+  top: 0
+  left: -1.5em
+  display: block
+  height: 0.5em
+  width: 1em
+  border-bottom: 1px solid #777
+  border-left: 1px solid #777
+  border-radius: 0 0 0 .3em
+  content: ''
+
+label.tree_label:after
+  border-bottom: 0
+
+input:checked ~ label.tree_label:after
+  border-radius: 0 .3em 0 0
+  border-top: 1px solid #777
+  border-right: 1px solid #777
+  border-bottom: 0
+  border-left: 0
+  bottom: 0
+  top: 0.5em
+  height: auto
+
+.tree li:last-child:before
+  height: 1em
+  bottom: auto
+
+.tree > li:last-child:before
+  display: none
+
+.tree_custom
+  display: block
+  background: #eee
+  padding: 1em
+  border-radius: 0.3em
