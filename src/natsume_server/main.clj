@@ -5,7 +5,6 @@
     [orchestra.spec.test :as st]
     [natsume-server.config :refer [config]]
     [natsume-server.component.database]
-    [natsume-server.component.sente]
     [natsume-server.component.server]
     [natsume-server.component.load]
     [natsume-server.nlp.word2vec]
@@ -48,8 +47,6 @@
 
   (when (:server config)
     (mount/start
-      #'natsume-server.component.sente/channel
-      #_#'natsume-server.endpoint.api/api-routes
       #'natsume-server.component.server/server)))
 
 (def cli-options
