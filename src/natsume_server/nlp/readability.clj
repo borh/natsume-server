@@ -9,7 +9,8 @@
     #_[plumbing.core :refer [fnk defnk]]
     #_[plumbing.graph :as graph]
     #_[schema.core :as schema]
-            [clojure.spec.alpha :as s])
+            [clojure.spec.alpha :as s]
+            [clojure.java.io :as io])
   #_(:import [natsume_server.nlp.cabocha_wrapper Chunk]))
 
 ;; # Features related to readability.
@@ -67,7 +68,7 @@
 ;; optional for the functions that only need to act on one morpheme at
 ;; a time.
 (defonce BCCWJ-word-map
-         (let [lines (xz-line-seq "data/BCCWJ-LB-pos-lemma-map.tsv.xz")]
+         (let [lines (xz-line-seq (io/resource "BCCWJ-LB-pos-lemma-map.tsv.xz"))]
            (reduce (fn [BCCWJ-map line]
                      (let [[pos1 lemma freq-string] (string/split line #"\t")
                            freq (Integer/parseInt freq-string)]
@@ -96,7 +97,7 @@
   [t corpus])
 
 (defonce JLPT-word-map
-         (let [lines (xz-line-seq "data/JLPT-Word-List.tsv.xz")]
+         (let [lines (xz-line-seq (io/resource "JLPT-Word-List.tsv.xz"))]
            (reduce (fn [JLPT-map line]
                      (let [[orth pron string-level] (map string/trim
                                                          (string/split (string/replace line #"～" "")
