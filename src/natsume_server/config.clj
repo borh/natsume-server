@@ -3,9 +3,9 @@
             [aero.core :as aero]))
 
 (defstate config
-  :start (aero/read-config "config.edn" {:profile :server})
+  :start (aero/read-config (clojure.java.io/resource "config.edn") {:profile :server})
   :stop :stopped)
 
 (defstate secrets
-  :start (aero/read-config "secrets.edn")
+  :start (aero/read-config (clojure.java.io/resource "secrets.edn"))
   :stop :stopped)

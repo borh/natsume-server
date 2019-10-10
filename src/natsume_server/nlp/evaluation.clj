@@ -29,7 +29,7 @@
 (s/defschema ScoredToken
   (assoc Token :準正用判定 (s/maybe s/Bool) :準誤用判定 (s/maybe s/Bool)))
 
-(def test-data "data/unidic-adverb-test-data.tsv.xz")
+(def test-data (io/resource "unidic-adverb-test-data.tsv.xz"))
 
 (s/defn get-tokens :- [Token]
   [test-file :- s/Str]
@@ -51,10 +51,10 @@
                    :公的な話し言葉       (case 公的な話し言葉 "○" true "×" false nil)
                    :日常の話し言葉       (case 日常の話し言葉 "○" true "×" false nil)}))
          {}
-         (with-open [ratings-reader (xz-reader "data/unidic-adverbs-ratings-final.tsv.xz")]
+         (with-open [ratings-reader (xz-reader (io/resource "unidic-adverbs-ratings-final.tsv.xz"))]
            (doall (csv/read-csv ratings-reader :separator \tab :quote 0))))]
     (->>
-     (with-open [test-reader (xz-reader test-file)]
+     (with-open [test-reader (xz-reader (io/resource test-file))]
        (doall (csv/read-csv test-reader :separator \tab :quote 0)))
      (sequence
       (comp
@@ -117,9 +117,7 @@
            a))))
      vals)))
 
-(def conn (db/druid-pool {:subname "//localhost:5432/natsumedev"
-                          :user "natsumedev"
-                          :password "riDJMq98LpyWgB7F"}))
+(def conn db/connection)
 
 ;; TODO add JLPT levels using JLPT-word-map from nlp.readability ns.
 

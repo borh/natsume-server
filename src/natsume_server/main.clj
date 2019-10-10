@@ -104,7 +104,7 @@
   (System/exit status))
 
 (defn run-with-profile [{:keys [config profile dev extract unit features out]}]
-  (let [config (-> (aero/read-config (or config "config.edn") {:profile profile})
+  (let [config (-> (aero/read-config (or config (clojure.java.io/resource "config.edn")) {:profile profile})
                    (update :log-level (fn [level] (or level (and dev :debug) :error)))
                    #_(assoc :profile (if dev? :dev :prod))
                    (update-in [:http :access-control-allow-origin] (fn [m] (if dev (:dev m) (:prod m))))

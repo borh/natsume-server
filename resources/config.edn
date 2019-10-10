@@ -1,0 +1,42 @@
+{:db           {:subname  #join["//localhost:5432/" #or [#env DB_NAME "natsumedev"]]
+                :user     #or [#env DB_USER "natsumedev"]
+                :password #or [#env DB_PASSWORD "riDJMq98LpyWgB7F"]}
+ :http         {:port           #long #or [#env PORT 3000]
+                :pretty-print?  true
+                :server-address #or [#env SERVER_ADDRESS
+                                     #join["//localhost:" #or [#env PORT 3000]]]
+                :access-control-allow-origin
+                                {:prod ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                                        "https://(wombat.)?hinoki-project.org"]
+                                 :dev  ["https://(nlp|gpgpu).lang.osaka-u.ac.jp"
+                                        "https://(wombat.)?hinoki-project.org"
+                                        "http://localhost:3010"
+                                        "http://localhost:3000"
+                                        "http://localhost:9500"]}}
+ :logfile      "natsume-server.log"
+ :dirs         #include #or [#env CORPORA_EDN_FILE "corpora.edn"]
+ :log-level    nil ;; (automatic based on dev/prod)
+ :clean        #profile {:load true :server false}
+ :process      #profile {:load true :server false}
+ :search       #profile {:load true :server false}
+ :server       #profile {:load false :server true}
+ :sampling     {:ratio    {:dev 0.00001 :prod 0.0}
+                :seed     2
+                :replace  false
+                :hold-out false}
+ :word2vec     [#_{:unit-type :suw
+                   :features  [:morpheme/orth]}
+                #_{:unit-type :suw
+                   :features  [:morpheme/lemma]}
+                #_{:unit-type :unigrams
+                   :features  [:string]}
+                #_{:unit-type :unigrams
+                   :features  [:morpheme/orth]}]
+ :topic-models [#_{:unit-type :suw
+                   :features  [:morpheme/orth]}
+                #_{:unit-type :suw
+                   :features  [:morpheme/lemma]}
+                #_{:unit-type :unigrams
+                   :features  [:string]}
+                #_{:unit-type :unigrams
+                   :features  [:morpheme/orth]}]}

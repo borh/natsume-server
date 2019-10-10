@@ -1,0 +1,32 @@
+["~/Corpora/Newspapers/Yomiuri2004"
+ "~/Corpora/Newspapers/Mainichi"
+ "~/Projects/natsume-server/jawiki"
+ ;; TODO Opensubs2016 (+ how to specify stuff that is only for loading?)
+
+ "~/Projects/ssc"
+ "~/Projects/hssrpc/pdfs"
+
+ "~/Projects/stjc/nlp_annual_txt"               ;; 309.25 min
+ "~/Projects/stjc/JNLP-Journal"                 ;;  16.55 min
+ "~/Projects/stjc/JStage-土木学会論文集A"
+ "~/Projects/stjc/JStage-土木学会論文集B"
+ "~/Projects/stjc/JStage-土木学会論文集C"
+ "~/Projects/stjc/JStage-土木学会論文集D"
+ "~/Projects/stjc/JStage-日本医科大学医学会雑誌"
+ "~/Projects/stjc/JStage-電気学会論文誌"
+ "~/Projects/stjc/JStage-日本化学会誌"
+ "~/Projects/stjc/JStage-環境資源工学"
+
+ "~/Projects/bccwj/C-XML/VARIABLE/OW"
+ "~/Projects/bccwj/C-XML/VARIABLE/OL"
+ "~/Projects/bccwj/C-XML/VARIABLE/OT"
+ "~/Projects/bccwj/C-XML/VARIABLE/OP"
+ "~/Projects/bccwj/C-XML/VARIABLE/PN"
+ "~/Projects/bccwj/C-XML/VARIABLE/PM"
+ "~/Projects/bccwj/C-XML/VARIABLE/OV"
+ "~/Projects/bccwj/C-XML/VARIABLE/PB"
+ "~/Projects/bccwj/C-XML/VARIABLE/LB"
+ "~/Projects/bccwj/C-XML/VARIABLE/OB"
+ "~/Projects/bccwj/C-XML/VARIABLE/OC"
+ "~/Projects/bccwj/C-XML/VARIABLE/OY"
+ "~/Projects/bccwj/C-XML/VARIABLE/OM"]
