@@ -7,8 +7,9 @@
 ;; EDN writer and reader utils
 
 (defn xz-reader
+  "fn must be consumable as stream"
   [fn]
-  (-> fn io/file io/input-stream XZCompressorInputStream. io/reader))
+  (-> fn io/input-stream XZCompressorInputStream. io/reader))
 
 (defn xz-line-seq
   "Utility function that turns XZ compressed text files into a line-seq."
