@@ -112,8 +112,11 @@
 
     (timbre/set-level! (:log-level config))
     (timbre/merge-config!
-      {:appenders    {:spit (assoc (appenders/spit-appender {:fname (:logfile config)})
-                              :min-level :debug)}
+      {:middleware   [(timbre-ns-pattern-level/middleware {"org.eclipse.jetty.*" :warn
+                                                           "com.alibaba.*"       :warn
+                                                           :all                  (:log-level config)})]
+       :appenders    {:spit (assoc (appenders/spit-appender {:fname (:logfile config)})
+                              :min-level (:log-level config))}
        :ns-blacklist ["io.netty.*" "cc.mallet.*"]})
     (timbre/debugf "Running system with profile %s in %s mode (extraction %s)" profile (if dev "dev" "prod") (if extract "on" "off"))
     (timbre/debug {:runtime-config config})
