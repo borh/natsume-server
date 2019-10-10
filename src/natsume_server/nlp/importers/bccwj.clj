@@ -2,10 +2,13 @@
   (:require [clojure.java.io :as io]
             [clojure.xml :as xml]
             [clojure.zip :as z]
-            [natsume-server.models.corpus :as corpus]
             [datoteka.core :refer [ext]]
+            [natsume-server.models.corpus :as corpus]
             [natsume-server.utils.fs :as fs]
-            [clojure.spec.alpha :as s]))
+            [corpus-utils.bccwj :as bccwj-utils]
+            [clojure.spec.alpha :as s]
+            [fast-zip.core :as fz])
+  (:import (fast_zip.core ZipperLocation)))
 
 ;; # Importer for BCCWJ-Formatted C-XML Data
 ;;
@@ -77,6 +80,22 @@
     (if (z/up p)
       (or (if-let [r (z/right (z/up p))] [r (inc depth)]) (recur (z/up p) (inc depth)))
       [[(z/node p) :end] depth])))
+
+(defn backtrack-with-distance
+  "Modified from `fast-zip.core/next` source. Like zip/next, but also keeps track of how far up the tree it goes."
+  [loc]
+  (loop [p loc
+         depth 0]
+    (if (and (not (identical? :end (.path p))) (fz/up p))
+      (or (if-let [r (fz/right (fz/up p))] {:loc r :depth (inc depth)}) (recur (fz/up p) (inc depth)))
+      {:loc   (ZipperLocation. (.ops loc) (.node loc) :end)
+       :depth depth})))
+
+(s/def ::loc #(instance? ZipperLocation %))
+(s/def ::depth int?)
+(s/fdef backtrack-with-distance
+  :args (s/cat :loc ::loc)
+  :ret (s/keys :req-un [::loc ::depth]))
 
 ;; FIXME break into emitter and consume-sequence-and-build-sentences functions; naming: next-direction conflates direction and depth
 
@@ -151,10 +170,6 @@
            {:document/paragraphs (xml->paragraph-sentences filename subcorpus)
             :document/basename (fs/base-name filename)}))
        files))
-
-;; ## Metadata
-;;
-;; Metadata is not contained in the XML files and must be read from the Joined_info.zip (CSV) file distributed with the BCCWJ 1.0 DVD.
 
 (comment                                                    ; Plain-text version (DEPRECATED).
   (defn emit-tags-flat
