@@ -51,8 +51,8 @@
 
 (s/def :chunk/id int?)
 (s/def :chunk/link int?)
-(s/def :chunk/head string?)
-(s/def :chunk/tail string?)
+(s/def :chunk/head int?)
+(s/def :chunk/tail int?)
 (s/def :chunk/prob float?)
 (s/def :chunk/tokens (s/coll-of :sentence/morpheme))
 (s/def :cabocha/chunk
