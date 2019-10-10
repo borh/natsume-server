@@ -1,88 +1,64 @@
 (ns natsume-server.component.server
   (:require [mount.core :refer [defstate]]
-            [aleph.http :as http]
-            #_[natsume-server.endpoint.api :refer [api-routes]]
-            [natsume-server.component.sente :as comm]
-            [ring.middleware.defaults :refer [wrap-defaults secure-site-defaults site-defaults]]
-            [ring.middleware.json :refer [wrap-json-params]]
-            [ring.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.anti-forgery :refer [wrap-anti-forgery]]
-            [ring.util.response :as response]
-            [ring.logger.timbre :as logger]
-            [buddy.auth :refer [authenticated? throw-unauthorized]]
-            [buddy.auth.middleware :refer [wrap-authentication wrap-authorization]]
-            [natsume-server.component.auth :as auth]
-            [cheshire.core :as json]
-            [compojure.core :refer [defroutes routes GET POST OPTIONS]]
-            [compojure.handler :as handler]
+            [taoensso.timbre :as timbre]
+            [ring.adapter.jetty :as jetty]
+            [compojure.core :refer [defroutes GET POST context]]
             [compojure.route :as route]
-            [natsume-server.config :refer [config]]))
+            [muuntaja.middleware :as mw]
+            [ring.middleware.file :refer [wrap-file]]
+            [ring.middleware.resource :refer [wrap-resource]]
+            [ring.middleware.not-modified :refer [wrap-not-modified]]
+            [ring.middleware.content-type :refer [wrap-content-type]]
+            [ring.middleware.webjars :refer [wrap-webjars]]
+            [natsume-server.component.transit :as transit]
+            [natsume-server.config :refer [config]]
+            [natsume-web.bulma-ui :as ui]
+            [natsume-server.utils.fs :as fs]))
 
-(defn create-authentication-token
-  [request]
-  (let [{:keys [username password]} (:params request)]
-    (try
-      (if-let [token (auth/get-jwt-token username password)]
-        {:status 200
-         :body (json/encode {:token token})
-         :headers {"Content-Type" "application/json"}}
-        {:status 401 :body "invalid credentials"})
-      (catch Exception e
-        {:status 401
-         :body (json/encode (ex-data e))
-         :headers {"Content-Type" "application/json"}}))))
+(def index-compiled
+  (ui/page {:author      "Bor Hodošček/Hinoki Project"
+            :description "Cypress Fulltext Search"
+            :title       "Cypress Fulltext Search"
+            :app-name    "Cypress Fulltext Search"
+            :lang        "en"}))
 
-(defroutes api-routes
-  (GET "/api/chsk" ring-req
-    (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
-      (throw-unauthorized)
-      ((:ring-ajax-get-or-ws-handshake comm/channel) ring-req)))
-  (POST "/api/chsk" ring-req
-    (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
-      (throw-unauthorized)
-      ((:ring-ajax-post-fn comm/channel) ring-req)))
-  (POST "/api/authenticate" ring-req
-    (create-authentication-token ring-req))
-  (OPTIONS "/api/authenticate" ring-req {:status 200 :body "preflight complete"})
-  (GET "/api/auth-files/:filename" [filename :as ring-req]
-    (if-not (auth/authfn ring-req (-> ring-req :params :client-id))
-      (throw-unauthorized)
-      (response/file-response (str "auth-files/" filename)))))
+(defn api-handler [request]                                 ;; FIXME errors should be transit too!
+  (if-let [body (:body-params request)]
+    (let [[event data] body]
+      (try (if-let [response (transit/process-request event data)]
+             {:status 200
+              :body   response}
+             {:status 405 :body request})
+           (catch org.postgresql.util.PSQLException e
+             {:status 500
+              :body   {:error/message (str "SQL " (.getMessage e))}})))
+    {:status 400 :body request}))
 
-(defroutes site-routes
-  (route/resources "/")
-  (route/not-found "<h1>Page not found</h1>"))
+(defroutes
+  web-router
+  (context "/natsume-search" []
+    (GET "/" [] {:status 301 :headers {"Location" "fulltext"}})
+    (GET "/index.html" [] {:status 301 :headers {"Location" "fulltext"}})
+    (GET "/api" request (api-handler request))
+    (POST "/api" request (api-handler request))
+    (GET "/fulltext" []
+      {:status  200
+       :headers {"Content-Type" "text/html"}
+       :body    index-compiled})
+    (context "/cache/files" [] (wrap-file (route/not-found "File Not Found") (str fs/tmp-path)))
+    (route/resources "/public")
+    (route/not-found "Not Found")))
+
+(def app
+  (-> web-router
+      mw/wrap-format
+      (wrap-webjars "/natsume-search/assets")
+      (wrap-resource "/resources/public")
+      (wrap-content-type)
+      (wrap-not-modified)))
 
 (defstate server
-  :start (when (:server config)
-           (-> (routes
-                api-routes
-                site-routes
-                #_(wrap-anti-forgery site-routes #_{:read-token (fn [request] (get-in request [:headers "x-csrf-token"]))}))
-               (logger/wrap-with-logger)
-               (wrap-cors
-                :access-control-allow-origin (->> config :http :access-control-allow-origin (mapv re-pattern))
-                :access-control-allow-methods [:get :post :options]
-                :access-control-allow-headers ["Content-Type"])
-               (wrap-authentication auth/backend)
-               (wrap-authorization auth/backend)
-               (wrap-defaults (-> (if (= :prod (:profile config))
-                                    (assoc secure-site-defaults :proxy true)
-                                    site-defaults)
-                                  (assoc-in [:security :anti-forgery] false)
-                                  (assoc :session false)))
-               (wrap-json-params)
-               (handler/site)
-               (http/start-server {:port (-> config :http :port)})))
-  :stop (when (:server config)
-          (.close server)))
-
-(comment
-  (defstate server
-    :start (when (:server config)
-             (http/start-server
-              (make-handler api-routes)
-              {:port (-> config :http :port)
-               :raw-stream? true}))
-    :stop (when (:server config)
-            (.close server))))
+          :start (when (:server config)
+                   (jetty/run-jetty #'app {:join? false :port (-> config :http :port)}))
+          :stop (when (:server config)
+                  (.stop server)))
