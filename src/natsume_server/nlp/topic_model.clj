@@ -9,7 +9,7 @@
             [natsume-server.nlp.importers.local :as local]
             [marcliberatore.mallet-lda :refer [make-instance-list lda]]
             [datoteka.core :as fs])
-  (:import (cc.mallet.topics ParallelTopicModel)))
+  (:import [cc.mallet.topics ParallelTopicModel]))
 
 (s/defn load-or-create-model! :- ParallelTopicModel
   [unit-type :- (s/enum :suw :unigrams)
