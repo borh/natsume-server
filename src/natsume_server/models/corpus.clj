@@ -17,7 +17,11 @@
                  :author     author
                  :year       (Integer/parseInt year)
                  :basename   basename
-                 :genre      [genres-name subgenres-name subsubgenres-name subsubsubgenres-name]
+                 :genre      (reduce (fn                    ;; Remove repeated categories.
+                                       ([] [])
+                                       ([a b] (if (= (peek a) b) a (conj a b))))
+                                     [genres-name]
+                                     [subgenres-name subsubgenres-name subsubsubgenres-name])
                  :permission (if (re-seq #"(?i)true|false" permission)
                                (Boolean/valueOf ^String permission)
                                (= "1" permission))})
