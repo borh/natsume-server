@@ -1,5 +1,6 @@
 (ns natsume-server.models.pg-types
   (:require [clojure.string :as string]
+            [net.cgrand.xforms :as x]
             [natsume-server.utils.naming :as naming]
             [next.jdbc.prepare :refer [SettableParameter]]
             [next.jdbc.result-set :as result-set :refer [ReadableColumn]])
@@ -11,16 +12,22 @@
 
 (defn seq->ltree
   "Converts a sequence into a PostgreSQL ltree object.
-  The ltree data type is picky and supports Unicode minus punctuation and some JIS codes."
+  The ltree data type is picky and supports Unicode letters and numbers minus punctuation and some JIS codes. All
+  invalid characters are mapped to '_'. Leafs having over 256 UTF-8 encoded bytes are discarded."
   [fields]
-  (doto (PGobject.)
-    (.setType "ltree")
-    (.setValue
-      (string/join "."
-                   (->> fields
-                        (remove empty?)
-                        (reduce #(if (not= (peek %1) %2) (conj %1 %2) %1) [])
-                        (map #(string/replace % #"(\p{P}|\s|→)+" "_")))))))
+  (let [ltree-xf (comp
+                   (remove empty?)
+                   ;; ltree labels must contain only (Unicode) letters and numbers, so we replace all else with '_'.
+                   ;; Note that naively stripping \p{P} is not enough, so we go with the (inverted) whitelist approach.
+                   (map #(string/replace % #"[^\p{L}\p{N}]+" "_"))
+                   ;; ltree labels must be less than 256 bytes long. We discard longer labels altogether, as they are
+                   ;; not really interpretable anymore and signify a metadata (usability) problem.
+                   (remove #(if (>= (alength (.getBytes ^String % "UTF-8")) 256) true))
+                   (interpose "."))]
+    (doto (PGobject.)
+      (.setType "ltree")
+      (.setValue
+        (x/str ltree-xf fields)))))
 
 (defn ltree->seq
   "Converts a PostgreSQL ltree object into a sequence."
