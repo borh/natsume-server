@@ -2,7 +2,8 @@
   (:require [clojure.string :as string]
             [qbits.knit :as knit]
             [clojure.spec.alpha :as s]
-            [clj-mecab.parse :as mecab])
+            [clj-mecab.parse :as mecab]
+            [taoensso.timbre :as timbre])
   (:import [org.chasen.cabocha Parser Token Tree]
            [clojure.lang IDeref]))
 
@@ -89,8 +90,8 @@
               :particle
               :auxiliary-verb)
     #"^連体詞" :preposition
-    #"^感動詞" :utterance
-    #"^接頭辞" :prefix
+    #"^感動詞" :utterance                                      ; :INTJ
+    #"^接頭辞" :prefix                                         ; :NOUN
     #"^接尾辞" (cond (= (:pos-2 m) "動詞的") :adjective           ;; ~がかった
                   (= (:pos-2 m) "名詞的") :noun                ;; ~ら
                   :else :suffix)
@@ -184,11 +185,26 @@
     (newThread [_ f]
       (doto (Thread. ^ThreadGroup thread-group ^Runnable f)
         (.setDaemon true)))))
-(def cabocha-executor
+
+(defn create-executor []
+  ^java.util.concurrent.ExecutorService
   (knit/executor :fixed
-                 {:num-threads    (.. Runtime getRuntime availableProcessors)
+                 {:num-threads    (let [cores (.. Runtime getRuntime availableProcessors)]
+                                    ;; CaboCha is a memory expensive process, so we limit to 6.
+                                    (if (>= cores 6) 6 cores))
                   :thread-factory (cabocha-thread-factory (knit/thread-group "cabocha-thread"))}))
+
+(def cabocha-executor (create-executor))
 
 (defn parse-sentence-synchronized [^String s]
   @(knit/execute cabocha-executor
                  (callable-parse-sentence s)))
+
+(defn reset-threadpool! []
+  (timbre/info {:cabocha-executor-state :running :info cabocha-executor})
+  (try
+    (.shutdownNow cabocha-executor)
+    (catch Exception e (println e)))
+  (alter-var-root #'natsume-server.nlp.cabocha-wrapper/cabocha-executor
+                  (fn [_] (create-executor)))
+  (timbre/info {:cabocha-executor-state :restarted :info cabocha-executor}))

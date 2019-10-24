@@ -66,6 +66,9 @@
 (defstate data
   :start (let [{:keys [dirs sampling search]} config]
            (when (:process config)
-             (process dirs sampling))
+             (process dirs sampling)
+             ;; Make sure to free all instances of CaboCha after processing.
+             (natsume-server.nlp.cabocha-wrapper/reset-threadpool!)
+             (System/gc))
            (when search
              (db/create-search-tables!))))
