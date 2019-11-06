@@ -47,7 +47,8 @@
        :body    index-compiled})
     (context "/cache/files" [] (wrap-file (route/not-found "File Not Found") (str fs/tmp-path)))
     (route/resources "/public")
-    (route/not-found "Not Found")))
+    (route/not-found "Not Found"))
+  (route/not-found "Not Found"))
 
 (def app
   (-> web-router
