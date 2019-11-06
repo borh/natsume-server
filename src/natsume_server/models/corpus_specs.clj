@@ -18,7 +18,8 @@
 (s/def :document/metadata
   (s/keys :req
           [:metadata/title :metadata/author :metadata/year :metadata/basename
-           :metadata/genre :metadata/permission]))
+           :metadata/genre :metadata/permission]
+          :opt [:metadata/category]))
 
 (s/def :sentence/text string?)
 (s/def :paragraph/sentences (s/coll-of :sentence/text))
