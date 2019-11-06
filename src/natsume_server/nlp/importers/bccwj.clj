@@ -10,7 +10,7 @@
 
 (defmethod corpus/files :corpus/bccwj
   [{:keys [corpus-dir]}]
-  (mapcat corpus-utils.utils/zipfile-cached-files (fs/walk-path corpus-dir "zip")))
+  (mapcat corpus-utils.utils/zipfile-cached-files (map #(.toFile %) (fs/walk-path corpus-dir "zip"))))
 
 (defmethod corpus/documents :corpus/bccwj
   [{:keys [files corpus-dir]}]
@@ -20,5 +20,5 @@
                                 doc-dir
                                 (recur (d/parent f)))))
         metadata-dir (find-metadata-dir corpus-dir)]
-    (bccwj-utils/document-seq {:metadata-dir metadata-dir
-                               :corpus-dir   corpus-dir})))
+    (bccwj-utils/document-seq {:metadata-dir (.toFile metadata-dir)
+                               :corpus-dir   (.toFile corpus-dir)})))
