@@ -12,15 +12,9 @@
 
 (deftest load-test
   (testing "Wikipedia corpus dump file exists and only one present"
-    (let [files (corpus/files {:corpus/type :corpus/wikipedia
-                               :corpus-dir  "/home/bor/Projects/natsume-server/jawiki"})]
-      (is (s/valid? :corpus/files files))
-      (is (= 1 (count files)))))
-  ;; Wikipedia is quite large, so we only test a subset.
-  (testing "Schema check for first 10 Wikipedia documents"
-    (doseq [doc (take 10 (corpus/documents
-                           {:corpus/type :corpus/wikipedia
-                            :files       (corpus/files
-                                           {:corpus/type :corpus/wikipedia
-                                            :corpus-dir  "/home/bor/Projects/natsume-server/jawiki"})}))]
-      (is (s/valid? :corpus/document doc)))))
+    ;; Wikipedia is quite large, so we only test a subset.
+    (testing "Schema check for first 10 Wikipedia documents"
+      (doseq [doc (take 10 (corpus/documents
+                             {:corpus/type :corpus/wikipedia
+                              :corpus-dir  "/home/bor/Corpora/Wikipedia/Ja/jawiki-20191001-pages-articles-wikiextractor-categories.xml.xz"}))]
+        (is (s/valid? :corpus/document doc))))))
