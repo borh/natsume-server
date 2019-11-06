@@ -19,10 +19,7 @@
             [natsume-server.nlp.stats :as stats]
 
             [natsume-server.utils.numbers :refer [compact-number]]
-            [plumbing.core :refer [map-keys map-vals for-map ?> ?>>]]
-
-            [plumbing.core :refer [fn->>]]
-            [schema.core :as s]
+            [plumbing.core :refer [map-keys map-vals for-map ?> ?>> fn->>]]
 
             [mount.core :refer [defstate]]
             [natsume-server.config :refer [config]]
@@ -31,8 +28,11 @@
             [taoensso.timbre :as timbre]
             [next.jdbc :as jdbc]
             [next.jdbc.sql :as sql]
-            [hugsql.adapter :as adapter]
-            [natsume-server.utils.fs :as fs]))
+            [next.jdbc.prepare :as p]
+            [hugsql.adapter.next-jdbc :as adapter]
+            [natsume-server.utils.fs :as fs]
+            [net.cgrand.xforms :as x])
+  (:import [org.postgresql.util PSQLException]))
 
 ;; ## Database wrapper functions
 
@@ -57,52 +57,44 @@
 
 (defn i1!
   [tbl-name row]
-  (sql/insert! (:datasource connection) tbl-name row {:table-fn dashes->underscores :column-fn dashes->underscores}))
+  (try
+    (sql/insert! connection tbl-name row {:table-fn dashes->underscores :column-fn dashes->underscores})
+    (catch PSQLException e
+      (timbre/fatal {:sql-error (.getMessage e)
+                     :table     tbl-name
+                     :values    row}))))
 
-(defn i!
-  [tbl-name rows]
-  (let [ks (keys (first rows))]
-    (sql/insert-multi! (:datasource connection) tbl-name ks
-                       (map (apply juxt ks) rows)
-                       {:table-fn dashes->underscores :column-fn dashes->underscores})))
+(defn generate-prepared-insert [tbl-name columns]
+  (let [ps [(format "INSERT INTO %s (%s) VALUES (%s)"
+                    (dashes->underscores tbl-name)
+                    (x/str (comp (map dashes->underscores) (interpose ",")) columns)
+                    (x/str (interpose ",") (repeat (count columns) "?")))]]
+    ps))
+
+(def get-prepared-insert (memoize generate-prepared-insert))
+
+(defn i! [tbl-name rows]
+  (let [columns (keys (first rows))]
+    (with-open [con (jdbc/get-connection connection)
+                ps (jdbc/prepare con (get-prepared-insert tbl-name columns))]
+      (p/execute-batch! ps (map (apply juxt columns) rows) {:batch-size 50}))))
+
+#_(defn i!
+    [tbl-name rows]
+    (let [ks (keys (first rows))
+          batched-values (partition-all 200 (map (apply juxt ks) rows))]
+      (doseq [values batched-values]
+        (sql/insert-multi! connection tbl-name ks
+                           values
+                           {:table-fn dashes->underscores :column-fn dashes->underscores}))))
 
 (defn map->and-query [qs]
   (reduce-kv #(conj %1 [:= %2 %3]) [:and] qs))
 
 ;; Query
-
-;; TODO Factor this out and clean up.
-(deftype HugsqlAdapterNextJdbc []
-
-  adapter/HugsqlAdapter
-  (execute [this db sqlvec options]
-    (jdbc/execute! (:datasource db) sqlvec
-                   (if (some #(= % (:command options)) [:insert :i!])
-                     {:return-keys true}
-                     (:command-options options))))
-
-  (query [this db sqlvec options]
-    (sql/query (:datasource db) sqlvec {:builder-fn as-kebab-maps :table-fn dashes->underscores} #_(:command-options options)))
-
-  (result-one [this result options]
-    (first result))
-
-  (result-many [this result options]
-    result)
-
-  (result-affected [this result options]
-    (:next.jdbc/update-count (first result)))
-
-  (result-raw [this result options]
-    result)
-
-  (on-exception [this exception]
-    (throw exception)))
-
-(defn hugsql-adapter-next-jdbc []
-  (->HugsqlAdapterNextJdbc))
-(hugsql/set-adapter! (hugsql-adapter-next-jdbc))
-(hugsql/def-db-fns "natsume_server/component/sql/fulltext.sql")
+(hugsql/def-db-fns "natsume_server/component/sql/fulltext.sql"
+                   {:adapter (adapter/hugsql-adapter-next-jdbc
+                               {:builder-fn as-kebab-maps :table-fn dashes->underscores})})
 
 (defn re-pos [re s]
   (loop [m (re-matcher re s)
@@ -181,7 +173,8 @@
 ;; ### Sources
 
 (defn insert-source! [sources-metadata]
-  (i1! :sources sources-metadata))
+  (timbre/fatal ((juxt :metadata/basename :metadata/title) sources-metadata))
+  (i1! :sources (select-keys sources-metadata [:metadata/title :metadata/author :metadata/year :metadata/basename :metadata/genre :metadata/permission])))
 
 (defn insert-sources!
   "Inserts sources meta-information from the corpus into the database."
@@ -190,12 +183,13 @@
 
 ;; ### Sentence
 
-(s/defn insert-sentence :- [{:id s/Num s/Keyword s/Any}]
+(defn insert-sentence
   [sentence-values]
   (i1! :sentences
        (select-keys sentence-values (db/schema-keys db/sentences-schema))))
 
 ;; ### Collocations
+;; FIXME slow
 (defn insert-collocations! [collocations sentences-id]
   (doseq [collocation collocations]
     (let [grams (count (:type collocation))
@@ -460,7 +454,7 @@
                   (-> record
                       (merge contingency-table)
                       (merge (for-map [m (set/difference measure #{:count :f-ix :f-xi :log-dice})]
-                                      m ((m stats/association-measures-graph) contingency-table))))))
+                               m ((m stats/association-measures-graph) contingency-table))))))
 
               db-results
               (qm {:select   (vec (distinct (concat aggregates-clause selected)))
@@ -539,7 +533,7 @@
         begin-end-fields (for [number (range 1 (inc n))
                                s ["begin-" "end-"]]
                            (keyword (str s number)))]
-    (db/q {:select [(h/call :setseed 0.2)]})           ; FIXME Better way to get consistent ordering? -> when setting connection?
+    (db/q {:select [(h/call :setseed 0.2)]})                ; FIXME Better way to get consistent ordering? -> when setting connection?
     (qm {:select [:*]
          :where  [:<= :part.r limit]
          :from   [[{:select   (-> selected-fields
@@ -571,7 +565,7 @@
         query-fields (select-keys m [:orth :orth-base :lemma :pron :pron-base :pos-1 :pos-2 :pos-3 :pos-4 :c-form :c-type :goshu])
         selected-fields [:sources.genre :sources.title :sources.author :sources.year :sentences.text]
         search-table :tokens]
-    (db/q {:select [(h/call :setseed 0.2)]})           ; FIXME Better way to get consistent ordering? -> when setting connection?
+    (db/q {:select [(h/call :setseed 0.2)]})                ; FIXME Better way to get consistent ordering? -> when setting connection?
     (qm {:select [:*]
          :where  [:<= :part.r limit]
          :from   [[{:select   (-> selected-fields
