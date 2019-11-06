@@ -13,7 +13,8 @@
             [natsume-server.component.transit :as transit]
             [natsume-server.config :refer [config]]
             [natsume-web.bulma-ui :as ui]
-            [natsume-server.utils.fs :as fs]))
+            [natsume-server.utils.fs :as fs])
+  (:import [org.postgresql.util PSQLException]))
 
 (def index-compiled
   (ui/page {:author      "Bor Hodošček/Hinoki Project"
@@ -29,7 +30,7 @@
              {:status 200
               :body   response}
              {:status 405 :body request})
-           (catch org.postgresql.util.PSQLException e
+           (catch PSQLException e
              {:status 500
               :body   {:error/message (str "SQL " (.getMessage e))}})))
     {:status 400 :body request}))
