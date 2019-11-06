@@ -13,12 +13,9 @@
 
             [clojure.set :as set]
             [taoensso.timbre :as timbre]
+            [parallel.core :as p]
             [datoteka.core :as datoteka])
-  (:import (java.nio.file Path)))
-
-(defn dorunconc
-  [f coll]
-  ((comp dorun (partial pmap f)) coll))
+  (:import [java.nio.file Path]))
 
 (defn filter-on-filesystem [sources files]
   (let [file-bases (set (map fs/base-name files))
@@ -35,8 +32,8 @@
         (timbre/debugf "%d basenames in sources.tsv missing on filesystem: %s"
                        (count basenames-missing-from-fs)
                        basenames-missing-from-fs)))
-    (sequence (filter (fn [file-path] (contains? files-to-insert (fs/base-name file-path))))
-              files)))
+    (filter (fn [file-path] (contains? files-to-insert (fs/base-name file-path)))
+            files)))
 
 (s/fdef filter-on-filesystem
   :args (s/cat :sources (s/coll-of :document/metadata) :files :corpus/files)
@@ -84,49 +81,58 @@
                      (-> doc :document/basename))
         sources-id (q/basename->source-id basename)]
     (when-not sources-id
-      (throw (Exception. (str basename " not in: (?) " doc))))
+      (throw (ex-info (str basename " not in: (?) " (:document/metadata doc)) doc)))
     (persist-paragraphs! paragraphs sources-id)))
 
 (defn infer-corpus-type [corpus-dir]
   (condp re-seq (.toString ^Path (datoteka/name corpus-dir))
     #"(?i)wiki" :corpus/wikipedia
     #"(?i)(newspaper|mai|yomi)" :corpus/newspaper
-    #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN)" :corpus/bccwj
+    #"(?i)(LB|OB|OC|OL|OM|OP|OT|OV|OW|OY|PB|PM|PN|VARIABLE)" :corpus/bccwj
     #"(?i)ldcc" :corpus/livedoor
     :default))
 
 (defn persist-corpus!
   [sampling-options corpus-dir]
+  (timbre/info {:corpus          corpus-dir
+                :starting-memory (/ (.totalMemory (Runtime/getRuntime)) 1024 1024)})
   (let [corpus-type (infer-corpus-type corpus-dir)
         files (set (corpus/files {:corpus/type corpus-type :corpus-dir corpus-dir}))
         ratio (:ratio sampling-options)
-        sampler (let [N (case corpus-type
-                          :corpus/wikipedia 1000000
-                          :corpus/newspaper 10000
-                          (count files))]
-                  (if (not= ratio 0.0)
-                    ;; We add one to make sure at least one document is sampled.
-                    (fs/sample (assoc sampling-options :total N)) #_(take (inc (int (* ratio N))))
-                    identity))
+        limit-n (:limit-n sampling-options)
+        sampler (if limit-n
+                  (take limit-n)
+                  (let [N (case corpus-type
+                            :corpus/wikipedia 1000000
+                            :corpus/newspaper 10000
+                            (count files))]
+                    (if (not= ratio 0.0)
+                      ;; We add one to make sure at least one document is sampled.
+                      (fs/sample (assoc sampling-options :total N)) #_(take (inc (int (* ratio N))))
+                      identity)))
         sources-metadata (corpus/metadata {:corpus/type corpus-type :corpus-dir corpus-dir})]
 
     ;; Insert all metadata in one go when present as separate files.
     (when sources-metadata
-      (let [target-files (into #{} (sampler (filter-on-filesystem sources-metadata files)))
+      (let [target-files (into #{} sampler (filter-on-filesystem sources-metadata files))
             target-basenames (into #{} (map fs/base-name) target-files)
             sources-filtered (into []
                                    (filter (fn [{:keys [metadata/basename]}]
                                              (contains? target-basenames basename)))
                                    sources-metadata)]
+        #_(timbre/fatal target-files)
+        #_(timbre/fatal (count target-files))
+        #_(timbre/fatal (mapv :metadata/basename sources-filtered))
+        #_(timbre/fatal (count sources-filtered))
         (timbre/info "Persisting metadata for" (name corpus-type) "using" (count target-files) "/" (count files) "documents and ratio" ratio)
         (assert (= (count target-files) (count sources-filtered)))
-        (q/insert-sources! sources-filtered #_(into #{} (map fs/base-name) target-files))
+        (q/insert-sources! sources-filtered)
         (timbre/info "Persisting" (count target-files) "documents for" (name corpus-type))
-        (dorunconc persist-doc! (corpus/documents {:corpus/type corpus-type :files target-files}))))
+        (dorun (p/pmap persist-doc! (corpus/documents {:corpus/type corpus-type :files target-files :corpus-dir corpus-dir})))))
 
     ;; Otherwise persist per-document.
     (when-not sources-metadata
       (if (= ratio 0.0)
         (timbre/info "Persisting documents for corpus type" (name corpus-type))
         (timbre/info "Persisting documents with sampling ratio of" ratio "for" (name corpus-type)))
-      (dorunconc persist-doc! (sampler (corpus/documents {:corpus/type corpus-type :files files}))))))
+      (dorun (p/pmap persist-doc! (sequence sampler (corpus/documents {:corpus/type corpus-type :files files :corpus-dir corpus-dir})))))))
