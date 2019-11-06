@@ -43,7 +43,3 @@
 (defmethod documents :default
   [{:keys [files corpus-type]}]
   (map #(document {:corpus-type corpus-type :file %}) files))
-
-
-
-
