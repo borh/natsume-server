@@ -4,6 +4,8 @@
             [clojure.java.io :as io]
             [ring.mock.request :as mock]))
 
+(use-fixtures :once (fn [f] (mount.core/start) (f)))
+
 (defn edn-body
   "Set the body of the request to a JSON structure. The supplied body value
   should be a map of parameters to be converted to JSON."
