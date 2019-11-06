@@ -29,6 +29,7 @@
                :metadata   #:metadata{:author     author?   ;; Other author formats are more common...
                                       :basename   (fs/base-name filename)
                                       :genre      ["livedoor" "ニュース" (genre-map parent)]
+                                      :category   ["ニュース" (genre-map parent)]
                                       :year       (Integer/parseInt (first (re-seq #"^\d\d\d\d" date)))
                                       :title      title
                                       :permission true}}))
