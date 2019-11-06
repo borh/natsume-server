@@ -19,7 +19,7 @@
   ([request-type path]
    (r request-type path nil))
   ([request-type path body?]
-   (let [req (mock/request request-type path)
+   (let [req (mock/request request-type (str "/natsume-search" path))
          req (if body? (edn-body req body?) req)]
      (app req))))
 
@@ -42,7 +42,9 @@
 
 (deftest local-test
   (doseq [url ["public/app.css" "public/js/main.js"]]
-    (is (= (slurp (io/resource url)) (slurp-body (r :get (str "/" url)))))))
+    (let [a (slurp (io/resource url))
+          b (slurp-body (r :get (str "/" url)))]
+      (is (= a b)))))
 
 (deftest webjar-test
   (doseq [url ["assets/bulma/css/bulma.css" "assets/font-awesome/css/all.min.css" "assets/balloon-css/balloon.min.css"]]
