@@ -167,7 +167,7 @@
              ;;
 
              ;; Text processing
-             corpus-utils                           {:mvn/version "0.3.6"}
+             corpus-utils                           {:mvn/version "0.3.7"}
              borh/clj-ginza                         {:mvn/version "0.0.1"}
              org.chasen/cabocha                     {:mvn/version "0.69"}
              clj-mecab                              {:mvn/version "0.4.24"}
